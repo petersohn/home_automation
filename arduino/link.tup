@@ -1,6 +1,7 @@
 export EXTRA_LD_FLAGS
 
-LD_FLAGS += -Os -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -L$(ESP_DIR)/tools/sdk//lib -L$(ESP_DIR)/tools/sdk//ld -Teagle.flash.512k.ld -Wl,-wrap,system_restart_local -Wl,-wrap,register_chipv6_phy -Wl,--start-group -lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lsmartconfig -lwps -lcrypto -Wl,--end-group
+LD_FLAGS += -Os -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -L$(ESP_DIR)/tools/sdk//lib -L$(ESP_DIR)/tools/sdk//ld -Teagle.flash.512k.ld -Wl,-wrap,system_restart_local -Wl,-wrap,register_chipv6_phy
+LIBS += -Wl,--start-group $(CORE_A) -lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lsmartconfig -lwps -lcrypto -Wl,--end-group
 
 LD_FLAGS += $EXTRA_LD_FLAGS
 

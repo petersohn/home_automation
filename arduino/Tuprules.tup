@@ -14,6 +14,7 @@ LD = $(CC)
 
 COMPILE_TUP = $(TUP_CWD)/compile.tup
 LINK_TUP = $(TUP_CWD)/link.tup
+FLASH_TUP = $(TUP_CWD)/flash.tup
 
 ARDUINO_DIR = $(TUP_CWD)
 

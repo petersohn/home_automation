@@ -7,4 +7,9 @@ include $(COMPILE_TUP)
 
 include $(LINK_TUP)
 
-: ./test.o $(CORE_A) |> !linker |> test.bin
+: ./test.o | $(CORE_A) |> !linker |> test.elf
+
+include $(FLASH_TUP)
+
+: test.elf |> !elf2bin |> test.bin
+: test.bin |> !flash |>
