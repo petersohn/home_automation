@@ -1,0 +1,9 @@
+
+include_rules
+
+include $(ARDUINO_DIR)/compile.tup
+
+: foreach *.S |> !ass |> %B.o
+: foreach *.c |> !cc |> %B.o
+
+: *.o |> $(AR) cru %o %f |> $(CORE_A)

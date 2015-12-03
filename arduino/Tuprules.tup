@@ -1,0 +1,21 @@
+
+export HOME
+export ESP_DIR
+export ESP_TOOLS_DIR
+
+ESP_DIR = $ESP_DIR
+ESP_TOOLS_DIR = $ESP_TOOLS_DIR
+
+CXX = $(ESP_TOOLS_DIR)/bin/xtensa-lx106-elf-g++
+CC = $(ESP_TOOLS_DIR)/bin/xtensa-lx106-elf-gcc
+AR = $(ESP_TOOLS_DIR)/bin/xtensa-lx106-elf-ar
+
+LD = $(CC)
+
+COMPILE_TUP = $(TUP_CWD)/compile.tup
+LINK_TUP = $(TUP_CWD)/link.tup
+
+ARDUINO_DIR = $(TUP_CWD)
+
+CORE_A = $(TUP_CWD)/core/core.a
+
