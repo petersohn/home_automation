@@ -7,4 +7,4 @@ include $(COMPILE_TUP)
 
 include $(LINK_TUP)
 
-#: ./test.o $(CORE_A) |> !linker |> test.bin
+: ./test.o $(CORE_A) |> !linker |> test.bin

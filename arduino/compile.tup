@@ -6,7 +6,7 @@ BASIC_COMPILE_FLAGS = -D__ets__ -DICACHE_FLASH -U__STRICT_ANSI__ -I$(ESP_DIR)/to
 CXX_FLAGS += $(BASIC_COMPILE_FLAGS)
 CXX_FLAGS += -std=c++11
 CXX_FLAGS += -fno-rtti
-CXX_FLAGS += -Wall -Wextra -Werror
+CXX_FLAGS += -Wall -Wextra
 CXX_FLAGS += -ftemplate-backtrace-limit=0
 CXX_FLAGS += $EXTRA_CPP_FLAGS
 
