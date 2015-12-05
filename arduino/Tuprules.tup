@@ -1,14 +1,14 @@
 
 export HOME
 export ESP_DIR
-export ESP_TOOLS_DIR
+export ESP_COMPILER_DIR
 
 ESP_DIR = $ESP_DIR
-ESP_TOOLS_DIR = $ESP_TOOLS_DIR
+ESP_COMPILER_DIR = $ESP_COMPILER_DIR
 
-CXX = $(ESP_TOOLS_DIR)/bin/xtensa-lx106-elf-g++
-CC = $(ESP_TOOLS_DIR)/bin/xtensa-lx106-elf-gcc
-AR = $(ESP_TOOLS_DIR)/bin/xtensa-lx106-elf-ar
+CXX = $(ESP_COMPILER_DIR)/bin/xtensa-lx106-elf-g++
+CC = $(ESP_COMPILER_DIR)/bin/xtensa-lx106-elf-gcc
+AR = $(ESP_COMPILER_DIR)/bin/xtensa-lx106-elf-ar
 
 LD = $(CC)
 
