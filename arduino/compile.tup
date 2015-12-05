@@ -1,5 +1,6 @@
 
-export EXTRA_CPP_FLAGS
+export EXTRA_C_FLAGS
+export EXTRA_CXX_FLAGS
 
 BASIC_COMPILE_FLAGS = -D__ets__ -DICACHE_FLASH -U__STRICT_ANSI__ -I$(ESP_DIR)/tools/sdk/include -Os -mlongcalls -mtext-section-literals -fno-exceptions -falign-functions=4 -DF_CPU=80000000L -DARDUINO=10605 -DARDUINO_ESP8266_ESP01 -DARDUINO_ARCH_ESP8266 -DESP8266 -I$(ESP_DIR)/cores/esp8266 -I$(ESP_DIR)/variants/generic
 
@@ -8,12 +9,13 @@ CXX_FLAGS += -std=c++11
 CXX_FLAGS += -fno-rtti
 CXX_FLAGS += -Wall -Wextra
 CXX_FLAGS += -ftemplate-backtrace-limit=0
-CXX_FLAGS += $EXTRA_CPP_FLAGS
+CXX_FLAGS += $EXTRA_CXX_FLAGS
 
 C_FLAGS += $(BASIC_COMPILE_FLAGS)
 C_FLAGS += -std=gnu99
 C_FLAGS += -Wno-implicit-function-declaration
 C_FLAGS += -fno-inline-functions
+C_FLAGS += $EXTRA_C_FLAGS
 
 ASS_FLAGS += $(BASIC_COMPILE_FLAGS)
 ASS_FLAGS += -x assembler-with-cpp
