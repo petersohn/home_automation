@@ -1,5 +1,4 @@
 
-export HOME
 export ESP_DIR
 export ESP_COMPILER_DIR
 
