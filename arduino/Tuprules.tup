@@ -11,11 +11,27 @@ AR = $(ESP_COMPILER_DIR)/bin/xtensa-lx106-elf-ar
 
 LD = $(CC)
 
+ARCHIVE_TUP = $(TUP_CWD)/archive.tup
 COMPILE_TUP = $(TUP_CWD)/compile.tup
-LINK_TUP = $(TUP_CWD)/link.tup
 FLASH_TUP = $(TUP_CWD)/flash.tup
+LINK_TUP = $(TUP_CWD)/link.tup
+GEN_CPP_TUP = $(TUP_CWD)/gen_cpp.tup
 
 ARDUINO_DIR = $(TUP_CWD)
+SOURCE_DIR = $(TUP_CWD)/src
 
-CORE_A = $(TUP_CWD)/core/core.a
+PRINT_JSON = $(ARDUINO_DIR)/print_json.sh
 
+LIBRARIES_SOURCE_DIR = $(ESP_DIR)/libraries
+LIBRARIES_DIR = $(TUP_CWD)/libraries
+
+CORE_DIR = $(LIBRARIES_DIR)/core
+CORE_SRC_DIR =  $(ESP_DIR)/cores/esp8266
+CORE_LIB = $(CORE_DIR)/libcore.a
+
+ESP8266WIFI_SRC_DIR = $(ESP_DIR)/libraries/ESP8266WiFi/src
+ESP8266WIFI_DIR = $(LIBRARIES_DIR)/ESP8266WiFi
+ESP8266WIFI_LIB = $(ESP8266WIFI_DIR)/libESP8266WiFi.a
+
+WIFI_DIR=$(SOURCE_DIR)/wifi
+WIFI_LIB=$(WIFI_DIR)/libwifi.a

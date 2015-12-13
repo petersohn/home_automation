@@ -1,18 +1,27 @@
+#include "wifi/credentials.hpp"
+#include "wifi/wifi.hpp"
+
+#include <ESP8266WiFi.h>
 #include <Arduino.h>
 
-int ledPin = 2;                 // LED connected to digital pin 13
+static int ledPin = 2;
 
 void setup()
 {
-  Serial.begin(115200);
-  Serial.println("START");
-  pinMode(ledPin, OUTPUT);      // sets the digital pin as output
+    Serial.begin(115200);
+    Serial.println("START");
+    pinMode(ledPin, OUTPUT);
+    wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
 }
 
 void loop()
 {
-  digitalWrite(ledPin, HIGH);   // sets the LED on
-  delay(1000);                  // waits for a second
-  digitalWrite(ledPin, LOW);    // sets the LED off
-  delay(1000);                  // waits for a second
+    digitalWrite(ledPin, HIGH);
+    delay(2000);
+    digitalWrite(ledPin, LOW);
+    delay(2000);
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi connection lost.");
+        wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
+    }
 }

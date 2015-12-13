@@ -1,13 +1,16 @@
 
 include_rules
 
+
 include $(COMPILE_TUP)
+
+INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
 
 : foreach *.cpp |> !cxx |>
 
 include $(LINK_TUP)
 
-: *.o | $(CORE_A) |> !linker |> test.elf
+: *.o $(WIFI_LIB) $(ESP8266WIFI_LIB) | $(CORE_LIB) |> !linker |> test.elf
 
 include $(FLASH_TUP)
 

@@ -7,4 +7,6 @@ include $(ARDUINO_DIR)/compile.tup
 : foreach *.c |> !cc |> %B.o
 : foreach *.cpp |> !cxx |> %B.o
 
-: *.o |> $(AR) cru %o %f |> $(CORE_A)
+include $(ARCHIVE_TUP)
+
+: *.o |> !ar |> $(OUTPUT_LIB)
