@@ -1,5 +1,5 @@
 
 export ESP_CONFIG_FILES
 
-!gen_cpp = |> $(ARDUINO_DIR)/generate.py --input %f --output %o --comment // $ESP_CONFIG_FILES |>
+!gen_cpp = |> ^ GENERATE %o^ $(ARDUINO_DIR)/generate.py --input %f --output %o --comment // $ESP_CONFIG_FILES |>
 
