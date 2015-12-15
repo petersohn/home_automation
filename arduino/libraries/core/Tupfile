@@ -1,0 +1,10 @@
+include_rules
+
+include $(COMPILE_TUP)
+
+run $(GENERATE_RULES) $(CORE_SRC_DIR)
+
+include $(ARCHIVE_TUP)
+
+: *.o |> !ar |> libcore.a
+

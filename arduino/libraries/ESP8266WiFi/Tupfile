@@ -1,0 +1,13 @@
+include_rules
+
+include $(COMPILE_TUP)
+
+INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
+
+run $(GENERATE_RULES) $(ESP8266WIFI_SRC_DIR)
+
+include $(ARCHIVE_TUP)
+
+: *.o |> !ar |> libESP8266WiFi.a
+
+
