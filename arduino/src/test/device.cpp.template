@@ -1,0 +1,6 @@
+namespace device {
+
+const char* name = "$deviceName";
+
+}
+

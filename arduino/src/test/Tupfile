@@ -3,9 +3,12 @@ include_rules
 
 
 include $(COMPILE_TUP)
+include $(GEN_CPP_TUP)
 
 INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
 
+: device.cpp.template |> !gen_cpp |> device.cpp
+: server.cpp.template |> !gen_cpp |> server.cpp
 : foreach *.cpp |> !cxx |>
 
 include $(LINK_TUP)
