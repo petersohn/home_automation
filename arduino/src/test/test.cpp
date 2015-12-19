@@ -1,7 +1,7 @@
-#include "device.hpp"
 #include "login.hpp"
-#include "server.hpp"
-#include "wifi/credentials.hpp"
+#include "config//credentials.hpp"
+#include "config/device.hpp"
+#include "config/server.hpp"
 #include "wifi/wifi.hpp"
 
 #include <Arduino.h>

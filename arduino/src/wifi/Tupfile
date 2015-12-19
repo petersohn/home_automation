@@ -2,11 +2,9 @@
 include_rules
 
 include $(COMPILE_TUP)
-include $(GEN_CPP_TUP)
 
 INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
 
-: credentials.cpp.template |> !gen_cpp |> credentials.cpp
 : foreach *.cpp |> !cxx |>
 
 include $(ARCHIVE_TUP)

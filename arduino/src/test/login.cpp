@@ -28,11 +28,11 @@ bool sendLogin(const char* address, int port, const char* name) {
 
     bool result = false;
     String line = tools::readLine(client);
-    for (size_t i = 0; i < line.length(); ++i) {
-        Serial.print((int)line[i]);
-        Serial.print(" ");
-        Serial.println();
-    }
+    //for (size_t i = 0; i < line.length(); ++i) {
+        //Serial.print((int)line[i]);
+        //Serial.print(" ");
+        //Serial.println();
+    //}
     Serial.println(line);
     if (line.length() == 0) {
         return result;
