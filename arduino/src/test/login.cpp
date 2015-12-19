@@ -1,5 +1,5 @@
 #include "login.hpp"
-#include "tools/stream.hpp"
+#include "tools/string.hpp"
 
 #include <ESP8266WiFi.h>
 #include <Arduino.h>
