@@ -5,6 +5,21 @@ import json
 import string
 import sys
 
+def decode(data):
+    if data.__class__ == dict:
+        raise Exception("Not supported!")
+    if data.__class__ == list:
+        result = "{"
+        for element in data:
+            result += decode(element) + ","
+        result += "}"
+        return result
+    if data.__class__ == float or data.__class__ == int:
+        return str(data)
+    # TODO: escape if necessary
+    return '"' + data + '"'
+
+
 def main():
     parser = argparse.ArgumentParser(
             description="Generate files from config files.")
@@ -21,6 +36,9 @@ def main():
     for file in arguments.configFile:
         contents = json.load(file)
         config.update(contents)
+
+    for key, value in config.iteritems():
+        config[key] = decode(value)
 
     input = arguments.input.read()
     output = arguments.output

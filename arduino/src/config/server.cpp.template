@@ -1,6 +1,6 @@
 namespace server {
 
-const char* address = "$serverAddress";
+const char* address = $serverAddress;
 int port = $serverPort;
 
 }
