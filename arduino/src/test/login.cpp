@@ -27,25 +27,20 @@ bool sendLogin(const char* address, int port, const char* name) {
     client.write(dataToSend.c_str(), dataToSend.length());
 
     bool result = false;
-    String line = tools::readLine(client);
-    //for (size_t i = 0; i < line.length(); ++i) {
-        //Serial.print((int)line[i]);
-        //Serial.print(" ");
-        //Serial.println();
-    //}
-    Serial.println(line);
-    if (line.length() == 0) {
-        return result;
-    }
+    while (true) {
+        String line = tools::readLine(client);
+        Serial.println(line);
+        if (line.length() == 0) {
+            return result;
+        }
 
-    if (line.startsWith("HTTP")) {
-        int index = line.indexOf(' ');
-        int statusCode = line.substring(index + 1, index + 4).toInt();
-        Serial.print("--> Status code: ");
-        Serial.println(statusCode);
-        result = statusCode >= 100 && statusCode < 300;
+        if (line.startsWith("HTTP")) {
+            int index = line.indexOf(' ');
+            int statusCode = line.substring(index + 1, index + 4).toInt();
+            Serial.print("--> Status code: ");
+            Serial.println(statusCode);
+            result = statusCode >= 100 && statusCode < 300;
+        }
     }
-
-    return result;
 }
 
