@@ -5,6 +5,7 @@ include_rules
 include $(COMPILE_TUP)
 
 INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
+INCLUDE_DIRS += -I$(ESP_DIR)/tools/sdk/include
 
 : foreach *.cpp |> !cxx |>
 

@@ -8,8 +8,13 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 
+extern "C" {
+#include "user_interface.h"
+}
+
 static int ledPin = 2;
 static WiFiServer httpServer{80};
+static unsigned long memoryPrintTime;
 
 static void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
@@ -26,6 +31,7 @@ void setup()
     Serial.begin(115200);
     Serial.println("START");
     pinMode(ledPin, OUTPUT);
+    memoryPrintTime = millis();
 }
 
 void loop()
@@ -40,8 +46,16 @@ void loop()
         Serial.print("Incoming connection from ");
         Serial.println(connection.remoteIP());
         http::serve(connection);
+        connection.stop();
+    }
+    delayMicroseconds(10000);
+
+    unsigned long time = millis();
+    if (time - memoryPrintTime > 1000) {
+        Serial.print("Memory: ");
+        Serial.println(system_get_free_heap_size());
+        memoryPrintTime = time;
         int value = digitalRead(ledPin);
         digitalWrite(ledPin, !value);
     }
-    delayMicroseconds(10000);
 }
