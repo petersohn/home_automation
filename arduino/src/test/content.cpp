@@ -1,7 +1,7 @@
-#include "server.hpp"
+#include "content.hpp"
 
-#include "http.hpp"
 #include "config/device.hpp"
+#include "http/http.hpp"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -10,10 +10,7 @@ extern "C" {
 #include "user_interface.h"
 }
 
-namespace http {
-namespace detail {
-
-String getContent(const String& path) {
+String getContent(const String& path, const String& /*content*/) {
     if (path == "/") {
         IPAddress ip = WiFi.localIP();
         String ipString = String(ip[0]) + '.' + String(ip[1]) + '.' +
@@ -27,6 +24,3 @@ String getContent(const String& path) {
         return "";
     }
 }
-
-} // namespace detail
-} // namespace http

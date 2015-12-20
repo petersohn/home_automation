@@ -1,4 +1,5 @@
 #include "ConnectionPool.hpp"
+#include "content.hpp"
 #include "login.hpp"
 #include "config//credentials.hpp"
 #include "config/device.hpp"
@@ -58,7 +59,10 @@ void loop()
         Serial.println(connection.remoteIP());
         connectionPool.add(connection);
     }
-    connectionPool.serve(http::serve<WiFiClient>);
+    connectionPool.serve(
+            [](WiFiClient& client) {
+                http::serve<WiFiClient>(client, getContent);
+            });
 
     unsigned long time = millis();
     if (time - ledTime > 1000) {

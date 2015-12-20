@@ -10,7 +10,7 @@ INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
 
 include $(LINK_TUP)
 
-: *.o $(WIFI_LIB) $(ESP8266WIFI_LIB) $(HTTP_LIB) $(_CONFIG_LIB) | $(CORE_LIB) |> !linker |> test.elf
+: *.o $(WIFI_LIB) $(ESP8266WIFI_LIB) $(_CONFIG_LIB) | $(CORE_LIB) |> !linker |> test.elf
 
 include $(FLASH_TUP)
 

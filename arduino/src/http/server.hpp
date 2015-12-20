@@ -10,14 +10,13 @@ namespace http {
 
 namespace detail {
 
-String getContent(const String& path);
-
 template <typename Stream>
 class Request {
 public:
     Request(Stream& stream) : stream(stream) {}
 
-    void serve() {
+    template <typename ContentProvider>
+    void serve(const ContentProvider& contentProvider) {
         if (!receiveRequest(stream, method, path)) {
             isHead = (method == "HEAD");
             sendError(400, "Bad Request", "Invalid request header");
@@ -47,7 +46,7 @@ public:
         String incomingContent = tools::readBuffer(stream, contentLength);
 
         if (isGet || isHead) {
-            String content = getContent(path);
+            String content = contentProvider(path, incomingContent);
             if (content.length() == 0) {
                 sendError(404, "Not Found", "Invalid path: " + path);
             } else {
@@ -92,9 +91,9 @@ private:
 
 } // namespace detail
 
-template <typename Stream>
-void serve(Stream& stream) {
-    detail::Request<Stream>{stream}.serve();
+template <typename Stream, typename ContentProvider>
+void serve(Stream& stream, ContentProvider contentProvider) {
+    detail::Request<Stream>{stream}.serve(contentProvider);
 }
 
 #undef CHECKED_RECEIVE
