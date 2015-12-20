@@ -56,9 +56,11 @@ void sendHeadersEnd(Stream& stream) {
 }
 
 inline
-String createErrorContent(int statusCode, const char* description) {
+String createErrorContent(int statusCode, const char* description,
+        const String& details) {
     return "{ \"statusCode\": " + String(statusCode) +
-            ", \"description\": \"" + String(description) + "\" }";
+            ", \"description\": \"" + String(description) +
+            "\", \"details\": \"" + details + "\" }";
 }
 
 template <typename Stream>

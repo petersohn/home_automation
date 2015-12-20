@@ -1,3 +1,4 @@
+#include "ConnectionPool.hpp"
 #include "login.hpp"
 #include "config//credentials.hpp"
 #include "config/device.hpp"
@@ -16,6 +17,7 @@ static int ledPin = 2;
 static WiFiServer httpServer{80};
 static unsigned long ledTime;
 static uint32_t lastMemory = 0;
+static ConnectionPool<WiFiClient> connectionPool;
 
 static void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
@@ -31,6 +33,14 @@ void setup()
 {
     Serial.begin(115200);
     Serial.println("START");
+    Serial.print("short = ");
+    Serial.println(sizeof(short));
+    Serial.print("int = ");
+    Serial.println(sizeof(int));
+    Serial.print("long = ");
+    Serial.println(sizeof(long));
+    Serial.print("pointer = ");
+    Serial.println(sizeof(void*));
     pinMode(ledPin, OUTPUT);
     ledTime = millis();
 }
@@ -46,9 +56,9 @@ void loop()
     if (connection) {
         Serial.print("Incoming connection from ");
         Serial.println(connection.remoteIP());
-        http::serve(connection);
+        connectionPool.add(connection);
     }
-    delayMicroseconds(10000);
+    connectionPool.serve(http::serve<WiFiClient>);
 
     unsigned long time = millis();
     if (time - ledTime > 1000) {
@@ -63,4 +73,6 @@ void loop()
         Serial.println(memory);
         lastMemory = memory;
     }
+
+    delayMicroseconds(10000);
 }

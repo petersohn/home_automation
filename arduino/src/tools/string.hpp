@@ -13,8 +13,11 @@ String readLine(Stream& stream) {
             return result;
         }
 
+        while (!stream.available()) {
+            yield();
+        }
         char ch = stream.read();
-        if (ch == '\r' || ch == '\xff') {
+        if (ch == '\r') {
             continue;
         }
 

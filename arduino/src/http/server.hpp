@@ -19,7 +19,7 @@ public:
     void serve() {
         if (!receiveRequest(stream, method, path)) {
             isHead = (method == "HEAD");
-            sendError(400, "Bad Request");
+            sendError(400, "Bad Request", "Invalid request header");
             return;
         }
         isGet = (method == "GET");
@@ -29,32 +29,34 @@ public:
         String headerValue;
         while (true) {
             if (!receiveHeader(stream, headerName, headerValue)) {
-                sendError(400, "Bad Request");
+                sendError(400, "Bad Request", "Invalid header format");
                 return;
             }
             if (headerName.length() == 0) {
                 break;
             }
-            //if (headerName == "Connection") {
-                //connection = headerValue;
-            //}
+            if (headerName == "Connection") {
+                connection = headerValue;
+            }
         }
 
         if (isGet || isHead) {
             String content = getContent(path);
             if (content.length() == 0) {
-                sendError(404, "Not Found");
+                sendError(404, "Not Found", "Invalid path: " + path);
             } else {
                 sendAnswer(200, "OK", content);
             }
         } else {
-            sendError(405, "Method Not Allowed");
+            sendError(405, "Method Not Allowed", "Invalid method: " +
+                    method);
         }
     }
 private:
-    void sendError(int statusCode, const char* description) {
+    void sendError(int statusCode, const char* description,
+            const String& details) {
         sendAnswer(statusCode, description, createErrorContent(
-                statusCode, description));
+                statusCode, description, details));
     }
 
     void sendAnswer(int statusCode, const char* description,
@@ -62,6 +64,7 @@ private:
         sendResponse(stream, statusCode, description);
         sendHeader(stream, "Accept", "GET, HEAD");
         sendHeader(stream, "Content-Length", content.length());
+        sendHeader(stream, "Content-Type", "application/json");
         sendHeader(stream, "Connection", connection);
         sendHeadersEnd(stream);
 
