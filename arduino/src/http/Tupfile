@@ -1,0 +1,12 @@
+
+include_rules
+
+include $(COMPILE_TUP)
+
+INCLUDE_DIRS += -I$(ESP8266WIFI_SRC_DIR)
+
+: foreach *.cpp |> !cxx |>
+
+include $(ARCHIVE_TUP)
+
+: *.o |> !ar |> $(HTTP_LIB)
