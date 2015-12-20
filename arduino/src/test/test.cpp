@@ -14,7 +14,8 @@ extern "C" {
 
 static int ledPin = 2;
 static WiFiServer httpServer{80};
-static unsigned long memoryPrintTime;
+static unsigned long ledTime;
+static uint32_t lastMemory = 0;
 
 static void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
@@ -31,7 +32,7 @@ void setup()
     Serial.begin(115200);
     Serial.println("START");
     pinMode(ledPin, OUTPUT);
-    memoryPrintTime = millis();
+    ledTime = millis();
 }
 
 void loop()
@@ -51,11 +52,16 @@ void loop()
     delayMicroseconds(10000);
 
     unsigned long time = millis();
-    if (time - memoryPrintTime > 1000) {
-        Serial.print("Memory: ");
-        Serial.println(system_get_free_heap_size());
-        memoryPrintTime = time;
+    if (time - ledTime > 1000) {
+        ledTime = time;
         int value = digitalRead(ledPin);
         digitalWrite(ledPin, !value);
+    }
+
+    uint32_t memory = system_get_free_heap_size();
+    if (lastMemory != memory) {
+        Serial.print("Memory: ");
+        Serial.println(memory);
+        lastMemory = memory;
     }
 }
