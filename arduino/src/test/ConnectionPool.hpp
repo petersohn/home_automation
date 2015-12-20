@@ -19,11 +19,9 @@ public:
                 element = &connections[i];
             }
         }
-        Serial.println(element - connections);
         element->connection.stop();
         element->connection = connection;
         element->lastSeen = time++;
-        Serial.println(element->lastSeen);
     }
 
     template <typename ServeFunction>

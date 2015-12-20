@@ -9,13 +9,13 @@ template <typename Stream>
 String readLine(Stream& stream) {
     String result;
     while (true) {
+        while (stream.connected() && !stream.available()) {
+            yield();
+        }
         if (!stream.connected()) {
             return result;
         }
 
-        while (!stream.available()) {
-            yield();
-        }
         char ch = stream.read();
         if (ch == '\r') {
             continue;
@@ -27,6 +27,26 @@ String readLine(Stream& stream) {
 
         result += ch;
     }
+}
+
+template <typename Stream>
+String readBuffer(Stream& stream, int size) {
+    String result;
+    while (size > 0) {
+        while (stream.connected() && !stream.available()) {
+            yield();
+        }
+        if (!stream.connected()) {
+            return result;
+        }
+
+        unsigned char buffer[1000];
+        int amount = stream.read(buffer, (size > 999 ? 999 : size));
+        buffer[amount] = 0;
+        result += reinterpret_cast<char*>(buffer);
+        size -= amount;
+    }
+    return result;
 }
 
 inline

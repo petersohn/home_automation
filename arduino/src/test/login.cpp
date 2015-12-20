@@ -1,4 +1,5 @@
 #include "login.hpp"
+#include "http/client.hpp"
 #include "http/http.hpp"
 #include "tools/string.hpp"
 
@@ -18,16 +19,8 @@ bool sendLogin(const char* address, int port, const char* name) {
     }
 
     String content = "{ \"name\": \"" + String(name) + "\" }";
-
-    http::sendRequest(client, "POST", "/login");
-    http::sendHeader(client, "Host", String(address) + ":" + String(port));
-    http::sendHeader(client, "Connection", "close");
-    http::sendHeader(client, "Content-Length", content.length());
-    http::sendHeadersEnd(client);
-    client.print(content);
-
-    int statusCode = 0;
-    return http::receiveResponse(client, statusCode) &&
-            statusCode >= 200 && statusCode < 300;
+    String returnContent;
+    return http::sendRequest(client, "POST", "/login", content, returnContent,
+            true);
 }
 

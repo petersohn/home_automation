@@ -2,6 +2,7 @@
 #define HTTP_SERVER_HPP
 
 #include "http.hpp"
+#include "tools/string.hpp"
 
 #include <Arduino.h>
 
@@ -27,6 +28,7 @@ public:
 
         String headerName;
         String headerValue;
+        int contentLength = 0;
         while (true) {
             if (!receiveHeader(stream, headerName, headerValue)) {
                 sendError(400, "Bad Request", "Invalid header format");
@@ -38,7 +40,11 @@ public:
             if (headerName == "Connection") {
                 connection = headerValue;
             }
+            if (headerName == "Content-Length") {
+                contentLength = headerValue.toInt();
+            }
         }
+        String incomingContent = tools::readBuffer(stream, contentLength);
 
         if (isGet || isHead) {
             String content = getContent(path);
