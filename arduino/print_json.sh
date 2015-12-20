@@ -2,7 +2,7 @@
 
 file="$1"
 shift
-cat >"${file}.json" <<_EOF_
+cat >"$(basename $file).compile.json" <<_EOF_
 [{
     "directory": "$PWD",
     "command": "$*",

@@ -6,6 +6,10 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 
+extern "C" {
+#include "user_interface.h"
+}
+
 namespace http {
 
 String getContent(const String& path) {
@@ -13,7 +17,8 @@ String getContent(const String& path) {
         return "{ \"device\": { "
                 "\"name\": \"" + String(device::name) + "\", "
                 "\"ip\": \"" + String(WiFi.localIP()) + "\", "
-                "\"rssi\": " + String(WiFi.RSSI()) + "\"}}";
+                "\"memory\": " + String(system_get_free_heap_size()) + ", "
+                "\"rssi\": " + String(WiFi.RSSI()) + "}}";
     } else {
         return "";
     }

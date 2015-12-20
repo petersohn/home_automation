@@ -4,5 +4,5 @@
 *.bin
 .tup
 load_environment.sh
-*.cpp.json
+*.compile.json
 

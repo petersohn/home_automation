@@ -95,7 +95,7 @@ bool receiveResponse(Stream& stream, int& statusCode) {
     Serial.print("<--- ");
     Serial.println(line);
 
-    if (line.startsWith("HTTP")) {
+    if (line.startsWith("HTTP/")) {
         int index = line.indexOf(' ');
         statusCode = line.substring(index + 1, index + 4).toInt();
         return statusCode >= 100;
