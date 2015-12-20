@@ -29,9 +29,9 @@ void setup()
 void loop()
 {
     digitalWrite(ledPin, HIGH);
-    delay(2000);
+    delay(1000);
     digitalWrite(ledPin, LOW);
-    delay(2000);
+    delay(1000);
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi connection lost.");
         initialize();

@@ -16,6 +16,8 @@ def decode(data):
         return result
     if data.__class__ == float or data.__class__ == int:
         return str(data)
+    if data.__class__ == bool:
+        return "true" if data else "false"
     # TODO: escape if necessary
     return '"' + data + '"'
 
