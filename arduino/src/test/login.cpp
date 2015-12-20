@@ -27,7 +27,7 @@ bool sendLogin(const char* address, int port, const char* name) {
     client.print(content);
 
     int statusCode = 0;
-    return http::receiveAnswerStatus(client, statusCode) && 
+    return http::receiveResponse(client, statusCode) &&
             statusCode >= 200 && statusCode < 300;
 }
 

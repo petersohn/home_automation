@@ -2,12 +2,14 @@
 #include "config//credentials.hpp"
 #include "config/device.hpp"
 #include "config/server.hpp"
+#include "http/server.hpp"
 #include "wifi/wifi.hpp"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 
 static int ledPin = 2;
+static WiFiServer httpServer{80};
 
 static void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
@@ -16,6 +18,7 @@ static void initialize() {
         delay(2000);
     }
     Serial.println("Login successful");
+    httpServer.begin();
 }
 
 void setup()
@@ -23,17 +26,22 @@ void setup()
     Serial.begin(115200);
     Serial.println("START");
     pinMode(ledPin, OUTPUT);
-    initialize();
 }
 
 void loop()
 {
-    digitalWrite(ledPin, HIGH);
-    delay(1000);
-    digitalWrite(ledPin, LOW);
-    delay(1000);
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi connection lost.");
         initialize();
     }
+
+    WiFiClient connection = httpServer.available();
+    if (connection) {
+        Serial.print("Incoming connection from ");
+        Serial.println(connection.remoteIP());
+        http::serve(connection);
+        int value = digitalRead(ledPin);
+        digitalWrite(ledPin, !value);
+    }
+    delayMicroseconds(10000);
 }

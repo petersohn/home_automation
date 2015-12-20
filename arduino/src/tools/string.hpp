@@ -14,7 +14,7 @@ String readLine(Stream& stream) {
         }
 
         char ch = stream.read();
-        if (ch == '\r' || ch == 255) {
+        if (ch == '\r' || ch == '\xff') {
             continue;
         }
 
@@ -24,6 +24,20 @@ String readLine(Stream& stream) {
 
         result += ch;
     }
+}
+
+inline
+String nextToken(const String& string, char separator, size_t& position) {
+    while (position < string.length() && string[position] == separator) {
+        ++position;
+    }
+
+    size_t startPos = position;
+    while (position < string.length() && string[position] != separator) {
+        ++position;
+    }
+
+    return string.substring(startPos, position);
 }
 
 } // namespace tools
