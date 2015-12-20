@@ -11,6 +11,7 @@ extern "C" {
 }
 
 namespace http {
+namespace detail {
 
 String getContent(const String& path) {
     if (path == "/") {
@@ -27,4 +28,5 @@ String getContent(const String& path) {
     }
 }
 
+} // namespace detail
 } // namespace http

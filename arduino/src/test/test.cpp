@@ -47,7 +47,6 @@ void loop()
         Serial.print("Incoming connection from ");
         Serial.println(connection.remoteIP());
         http::serve(connection);
-        connection.stop();
     }
     delayMicroseconds(10000);
 

@@ -7,56 +7,85 @@
 
 namespace http {
 
-#define CHECKED_RECEIVE(function, stream, headers, sendBody, ...) \
-    if (!function(stream, __VA_ARGS__)) { \
-        sendError(stream, 400, "Bad Request", headers, sendBody); \
-        return; \
-    }
+namespace detail {
 
 String getContent(const String& path);
 
 template <typename Stream>
-void serve(Stream& stream) {
-    static const Header staticHeaders[] = {
-            {"Accept", "GET, HEAD"},
-            {"Connection", "close"},
-            {nullptr, nullptr}
-    };
+class Request {
+public:
+    Request(Stream& stream) : stream(stream) {}
 
-    String method;
-    String path;
-    CHECKED_RECEIVE(receiveRequest, stream, staticHeaders, method != "HEAD",
-            method, path);
-    bool isGet = (method == "GET");
-    bool isHead = (method == "HEAD");
-
-
-    String headerName;
-    String headerValue;
-    while (true) {
-        CHECKED_RECEIVE(receiveHeader, stream, staticHeaders, !isHead,
-                headerName, headerValue);
-        if (headerName.length() == 0) {
-            break;
+    void serve() {
+        if (!receiveRequest(stream, method, path)) {
+            isHead = (method == "HEAD");
+            sendError(400, "Bad Request");
+            return;
         }
-        // Currently ignore all headers
+        isGet = (method == "GET");
+        isHead = (method == "HEAD");
+
+        String headerName;
+        String headerValue;
+        while (true) {
+            if (!receiveHeader(stream, headerName, headerValue)) {
+                sendError(400, "Bad Request");
+                return;
+            }
+            if (headerName.length() == 0) {
+                break;
+            }
+            //if (headerName == "Connection") {
+                //connection = headerValue;
+            //}
+        }
+
+        if (isGet || isHead) {
+            String content = getContent(path);
+            if (content.length() == 0) {
+                sendError(404, "Not Found");
+            } else {
+                sendAnswer(200, "OK", content);
+            }
+        } else {
+            sendError(405, "Method Not Allowed");
+        }
+    }
+private:
+    void sendError(int statusCode, const char* description) {
+        sendAnswer(statusCode, description, createErrorContent(
+                statusCode, description));
     }
 
-    if (isGet || isHead) {
-        String content = getContent(path);
-        if (content.length() == 0) {
-            sendError(stream, 404, "Not Found", staticHeaders, !isHead);
-        } else {
-            sendResponse(stream, 200, "OK");
-        }
+    void sendAnswer(int statusCode, const char* description,
+            const String& content) {
+        sendResponse(stream, statusCode, description);
+        sendHeader(stream, "Accept", "GET, HEAD");
         sendHeader(stream, "Content-Length", content.length());
-        sendHeaders(stream, staticHeaders);
+        sendHeader(stream, "Connection", connection);
         sendHeadersEnd(stream);
 
-        if (isGet) {
+        if (!isHead) {
             stream.print(content);
         }
+        if (connection != "keep-alive") {
+            stream.stop();
+        }
     }
+
+    Stream& stream;
+    String method;
+    String path;
+    String connection = "close";
+    bool isGet = false;
+    bool isHead = false;
+};
+
+} // namespace detail
+
+template <typename Stream>
+void serve(Stream& stream) {
+    detail::Request<Stream>{stream}.serve();
 }
 
 #undef CHECKED_RECEIVE

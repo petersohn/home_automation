@@ -6,11 +6,6 @@
 namespace http {
 
 
-struct Header {
-    const char* name;
-    const char* value;
-};
-
 template <typename Stream>
 void sendRequest(Stream& stream, const char* method, const char* path) {
     Serial.print("---> ");
@@ -56,37 +51,14 @@ void sendHeader(Stream& stream, const char* name, const Value& value) {
 }
 
 template <typename Stream>
-void sendHeaders(Stream& stream, const Header* headers) {
-    if (headers) {
-        while (headers->name != nullptr) {
-            sendHeader(stream, headers->name, headers->value);
-            ++headers;
-        }
-    }
-}
-
-template <typename Stream>
 void sendHeadersEnd(Stream& stream) {
     stream.println();
 }
 
-template <typename Stream>
-void sendError(Stream& stream, int statusCode, const char* description,
-        const Header* additionalHeaders, bool sendBody) {
-    String content = "{ \"statusCode\": " + String(statusCode) +
-            ", \"description\": \"" + description + "\" }";
-    sendResponse(stream, statusCode, description);
-    sendHeader(stream, "Content-Length", content.length());
-    sendHeaders(stream, additionalHeaders);
-    sendHeadersEnd(stream);
-    if (sendBody) {
-        stream.print(content);
-    }
-}
-
-template <typename Stream>
-void sendError(Stream& stream, int statusCode, const String& description) {
-    sendError(stream, statusCode, description.c_str());
+inline
+String createErrorContent(int statusCode, const char* description) {
+    return "{ \"statusCode\": " + String(statusCode) +
+            ", \"description\": \"" + String(description) + "\" }";
 }
 
 template <typename Stream>
