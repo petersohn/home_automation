@@ -17,7 +17,6 @@ extern "C" {
 static int ledPin = 2;
 static WiFiServer httpServer{80};
 static unsigned long ledTime;
-static uint32_t lastMemory = 0;
 static ConnectionPool<WiFiClient> connectionPool;
 
 static void initialize() {
@@ -69,13 +68,6 @@ void loop()
         ledTime = time;
         int value = digitalRead(ledPin);
         digitalWrite(ledPin, !value);
-    }
-
-    uint32_t memory = system_get_free_heap_size();
-    if (lastMemory != memory) {
-        Serial.print("Memory: ");
-        Serial.println(memory);
-        lastMemory = memory;
     }
 
     delayMicroseconds(10000);
