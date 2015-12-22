@@ -44,7 +44,13 @@ String getContent(const String& path, const String& /*content*/) {
     if (pinName.length() == 0) {
         String result = "{ \"device\": " + getDeviceInfo() + ", "
             "\"pins\": [ ";
+        bool first = true;
         for (const device::Pin& pin : device::pins) {
+            if (first) {
+                first = false;
+            } else {
+                result += ", ";
+            }
             result += getPinInfo(pin);
         }
         result += " ] }";
