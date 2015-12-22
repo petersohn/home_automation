@@ -59,6 +59,9 @@ String getContent(const String& path, const String& /*content*/) {
 
     String value = tools::nextToken(path, '/', position);
     if (value.length() != 0) {
+        if (!pin->output) {
+            return "";
+        }
         int logicalValue = value.toInt();
         digitalWrite(pin->number, logicalValue);
     }
