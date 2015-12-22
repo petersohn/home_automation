@@ -14,9 +14,7 @@ extern "C" {
 #include "user_interface.h"
 }
 
-static int ledPin = 2;
 static WiFiServer httpServer{80};
-static unsigned long ledTime;
 static ConnectionPool<WiFiClient> connectionPool;
 
 static void initialize() {
@@ -32,17 +30,11 @@ static void initialize() {
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("START");
-    Serial.print("short = ");
-    Serial.println(sizeof(short));
-    Serial.print("int = ");
-    Serial.println(sizeof(int));
-    Serial.print("long = ");
-    Serial.println(sizeof(long));
-    Serial.print("pointer = ");
-    Serial.println(sizeof(void*));
-    pinMode(ledPin, OUTPUT);
-    ledTime = millis();
+    Serial.println();
+
+    for (const device::Pin& pin : device::pins) {
+        pinMode(pin.number, (pin.output ? OUTPUT : INPUT));
+    }
 }
 
 void loop()
@@ -62,13 +54,6 @@ void loop()
             [](WiFiClient& client) {
                 http::serve<WiFiClient>(client, getContent);
             });
-
-    unsigned long time = millis();
-    if (time - ledTime > 1000) {
-        ledTime = time;
-        int value = digitalRead(ledPin);
-        digitalWrite(ledPin, !value);
-    }
 
     delayMicroseconds(10000);
 }
