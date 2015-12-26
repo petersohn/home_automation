@@ -66,3 +66,26 @@ String getContent(const String& path, const String& /*content*/) {
     }
     return getPinInfo(*pin);
 }
+
+String getModifiedPinsContent() {
+    constexpr int pressThreshold = 100;
+    tools::Join result{", "};
+    unsigned long now = millis();
+    for (device::Pin& pin : device::pins) {
+        bool status = digitalRead(pin.number);
+        if (pin.status != status && (now - pin.lastSeen) > pressThreshold) {
+            pin.status = status;
+            pin.lastSeen = now;
+            result.add(getPinInfo(pin));
+        }
+    }
+    if (result.get().length() != 0) {
+        return "{ \"pins\": [ " + result.get() + " ]}";
+    } else {
+        return {};
+    }
+}
+
+String getLoginContent() {
+    return "{ \"name\": \"" + String(device::name) + "\" }";
+}

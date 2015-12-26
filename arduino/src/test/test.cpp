@@ -1,9 +1,10 @@
 #include "ConnectionPool.hpp"
+#include "client.hpp"
 #include "content.hpp"
-#include "login.hpp"
 #include "config//credentials.hpp"
 #include "config/device.hpp"
 #include "config/server.hpp"
+#include "http/client.hpp"
 #include "http/server.hpp"
 #include "wifi/wifi.hpp"
 
@@ -16,10 +17,22 @@ extern "C" {
 
 static WiFiServer httpServer{80};
 static ConnectionPool<WiFiClient> connectionPool;
+static WiFiClient httpClient;
 
-static void initialize() {
+namespace {
+
+bool sendLogin() {
+    if (!httpClient.connect(server::address, server::port)) {
+        return false;
+    }
+    String returnContent;
+    return http::sendRequest(httpClient, "POST", "/login",
+            getLoginContent(), returnContent, false);
+}
+
+void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
-    while (!sendLogin(server::address, server::port, device::name)) {
+    while (!sendLogin()) {
         Serial.println("Login failed.");
         delay(2000);
     }
@@ -27,13 +40,16 @@ static void initialize() {
     httpServer.begin();
 }
 
+} // unnamed namespace
+
 void setup()
 {
     Serial.begin(115200);
     Serial.println();
 
-    for (const device::Pin& pin : device::pins) {
+    for (device::Pin& pin : device::pins) {
         pinMode(pin.number, (pin.output ? OUTPUT : INPUT));
+        pin.status = digitalRead(pin.number);
     }
 }
 
@@ -55,5 +71,14 @@ void loop()
                 http::serve<WiFiClient>(client, getContent);
             });
 
-    delayMicroseconds(10000);
+    String modifiedPinsContent = getModifiedPinsContent();
+    if (modifiedPinsContent.length() != 0) {
+        if (httpClient.connect(server::address, server::port)) {
+            String returnContent;
+            http::sendRequest(httpClient, "POST", "/status",
+                    modifiedPinsContent, returnContent, false);
+        }
+    }
+
+    delay(10);
 }

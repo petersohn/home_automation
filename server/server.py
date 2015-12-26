@@ -17,6 +17,13 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
                 currentDevices[self.client_address[0]] = data["name"]
             elif (self.path == "/logout"):
                 currentDevices.pop(self.client_address[0])
+            elif (self.path == "/status"):
+                contentLength = self.headers.getheader("Content-Length")
+                content = self.rfile.read(int(contentLength))
+                data = json.loads(content)
+                print "Device", currentDevices[self.client_address[0]];
+                for pin in data["pins"]:
+                    print "   ", pin["name"], ",", pin["value"]
             else:
                 self.send_error(404)
                 return

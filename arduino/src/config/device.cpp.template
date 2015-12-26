@@ -4,7 +4,7 @@ namespace device {
 
 const char* name = $deviceName;
 
-const std::vector<Pin> pins = $pins;
+std::vector<Pin> pins = $pins;
 
 }
 

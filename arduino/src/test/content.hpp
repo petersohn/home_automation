@@ -5,5 +5,8 @@
 
 String getContent(const String& path, const String& content);
 
+String getModifiedPinsContent();
+
+String getLoginContent();
 
 #endif // TEST_CONTENT_HPP
