@@ -72,6 +72,9 @@ String getModifiedPinsContent() {
     tools::Join result{", "};
     unsigned long now = millis();
     for (device::Pin& pin : device::pins) {
+        if (pin.output) {
+            continue;
+        }
         bool status = digitalRead(pin.number);
         if (pin.status != status && (now - pin.lastSeen) > pressThreshold) {
             pin.status = status;
