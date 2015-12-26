@@ -63,6 +63,28 @@ String nextToken(const String& string, char separator, size_t& position) {
     return string.substring(startPos, position);
 }
 
+class Join {
+public:
+    Join(const char* separator) : separator(separator) {}
+
+    void add(const String& value) {
+        if (first) {
+            first = false;
+        } else {
+            result += separator;
+        }
+        result += value;
+    }
+
+    const String& get() const {
+        return result;
+    }
+private:
+    const char* separator;
+    String result;
+    bool first = true;
+};
+
 } // namespace tools
 
 #endif // TOOLS_STREAM_HPP

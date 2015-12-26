@@ -42,19 +42,12 @@ String getContent(const String& path, const String& /*content*/) {
     size_t position = 0;
     String pinName = tools::nextToken(path, '/', position);
     if (pinName.length() == 0) {
-        String result = "{ \"device\": " + getDeviceInfo() + ", "
-            "\"pins\": [ ";
-        bool first = true;
+        tools::Join pinData{", "};
         for (const device::Pin& pin : device::pins) {
-            if (first) {
-                first = false;
-            } else {
-                result += ", ";
-            }
-            result += getPinInfo(pin);
+            pinData.add(getPinInfo(pin));
         }
-        result += " ] }";
-        return result;
+        return "{ \"device\": " + getDeviceInfo() + ", "
+            "\"pins\": [ " + pinData.get() + " ] }";
     }
 
     auto pin = std::find_if(device::pins.begin(), device::pins.end(),
