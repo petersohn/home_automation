@@ -1,11 +1,33 @@
 #!/usr/bin/env python
 import BaseHTTPServer
+import httplib
 import json
+import signal
+import thread
 import traceback
+
+class DeviceInfo:
+    ledStatus = False
+
+    def __init__(self, name):
+        self.name = name;
+
 
 currentDevices = {}
 
 class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def toggleLed(self):
+        connection = httplib.HTTPConnection(self.client_address[0], 80)
+        deviceInfo = currentDevices[self.client_address[0]]
+        deviceInfo.ledStatus = not deviceInfo.ledStatus
+        newValue = "1" if deviceInfo.ledStatus else "0"
+        print "Led -> ", newValue
+        connection.request("GET", "/led/" + newValue)
+        response = connection.getresponse()
+        print response.status, response.reason
+        connection.close()
+
+
     def do_POST(self):
         try:
             print "--->", self.path
@@ -14,16 +36,18 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
                 contentLength = self.headers.getheader("Content-Length")
                 content = self.rfile.read(int(contentLength))
                 data = json.loads(content)
-                currentDevices[self.client_address[0]] = data["name"]
+                currentDevices[self.client_address[0]] = DeviceInfo(data["name"])
             elif (self.path == "/logout"):
                 currentDevices.pop(self.client_address[0])
             elif (self.path == "/status"):
                 contentLength = self.headers.getheader("Content-Length")
                 content = self.rfile.read(int(contentLength))
                 data = json.loads(content)
-                print "Device", currentDevices[self.client_address[0]];
+                print "Device", currentDevices[self.client_address[0]].name;
                 for pin in data["pins"]:
                     print "   ", pin["name"], ",", pin["value"]
+                if pin["name"] == "button" and pin["value"] == 0:
+                    thread.start_new_thread(Handler.toggleLed, (self,))
             else:
                 self.send_error(404)
                 return
