@@ -26,7 +26,7 @@ bool sendLogin() {
         return false;
     }
     String returnContent;
-    return http::sendRequest(httpClient, "POST", "/login",
+    return http::sendRequest(httpClient, "POST", "/login/",
             getLoginContent(), returnContent, false);
 }
 
@@ -75,7 +75,7 @@ void loop()
     if (modifiedPinsContent.length() != 0) {
         if (httpClient.connect(server::address, server::port)) {
             String returnContent;
-            http::sendRequest(httpClient, "POST", "/status",
+            http::sendRequest(httpClient, "POST", "/status/",
                     modifiedPinsContent, returnContent, false);
         }
     }
