@@ -3,20 +3,22 @@
 
 #include <Arduino.h>
 
+#include <array>
+
 template <typename Connection>
 class ConnectionPool {
 public:
     void add(const Connection& connection) {
         unsigned long leastTime = time;
         PoolElement* element = nullptr;
-        for (size_t i = 0; i < poolSize; ++i) {
-            if (!connections[i].connection.connected()) {
-                element = &connections[i];
+        for (PoolElement& connection : connections) {
+            if (!connection.connection.connected()) {
+                element = &connection;
                 break;
             }
-            if (leastTime > connections[i].lastSeen) {
-                leastTime = connections[i].lastSeen;
-                element = &connections[i];
+            if (leastTime > connection.lastSeen) {
+                leastTime = connection.lastSeen;
+                element = &connection;
             }
         }
         element->connection.stop();
@@ -26,18 +28,18 @@ public:
 
     template <typename ServeFunction>
     void serve(const ServeFunction& serveFunction) {
-        for (size_t i = 0; i < poolSize; ++i) {
-            if (connections[i].lastSeen != 0 &&
-                    !connections[i].connection.connected()) {
-                connections[i].connection.stop();
-                connections[i].lastSeen = 0;
+        for (PoolElement& connection : connections) {
+            if (connection.lastSeen != 0 &&
+                    !connection.connection.connected()) {
+                connection.connection.stop();
+                connection.lastSeen = 0;
                 continue;
             }
-            if (connections[i].connection.available()) {
+            if (connection.connection.available()) {
                 Serial.print("Incoming request from ");
-                Serial.println(connections[i].connection.remoteIP());
-                connections[i].lastSeen = time++;
-                serveFunction(connections[i].connection);
+                Serial.println(connection.connection.remoteIP());
+                connection.lastSeen = time++;
+                serveFunction(connection.connection);
             }
         }
     }
@@ -46,8 +48,7 @@ private:
         Connection connection;
         unsigned long lastSeen;
     };
-    static constexpr size_t poolSize = 4;
-    PoolElement connections[poolSize];
+    std::array<PoolElement, 3> connections;
     unsigned long time = 0;
 };
 
