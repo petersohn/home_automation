@@ -10,6 +10,26 @@
 namespace http {
 
 template <typename Connection>
+bool connectIfNeeded(Connection& connection, const char* address,
+        uint16_t port) {
+    if (connection.connected()) {
+        return true;
+    }
+
+    Serial.print("Connecting to server ");
+    Serial.print(address);
+    Serial.print(':');
+    Serial.print(port);
+    Serial.println("...");
+
+    if (!connection.connect(address, port)) {
+        Serial.println("Connection failed.");
+        return false;
+    }
+    return true;
+}
+
+template <typename Connection>
 bool sendRequest(Connection& connection, const char* method, const char* path,
         const String& content, String& response, bool closeConnection) {
     IPAddress ip = connection.remoteIP();

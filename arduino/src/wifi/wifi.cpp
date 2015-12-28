@@ -4,7 +4,7 @@
 namespace wifi {
 
 void connect(const char* ssid, const char* password) {
-    Serial.print("Connecting to ");
+    Serial.print("Connecting to SSID ");
     Serial.print(ssid);
     Serial.println("...");
     WiFi.begin(ssid, password);

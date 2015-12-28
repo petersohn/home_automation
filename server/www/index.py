@@ -7,7 +7,6 @@ import sys
 def run(environ, start_response):
     start_response('200 OK', [('Content-Type', 'text/html')])
 
-    print "asdasdasd"
     yield '<h1>FastCGI Environment</h1>'
     yield '<table>'
     for k, v in sorted(environ.items()):

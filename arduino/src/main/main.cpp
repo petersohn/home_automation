@@ -18,25 +18,27 @@ extern "C" {
 static WiFiServer httpServer{80};
 static ConnectionPool<WiFiClient> connectionPool;
 static WiFiClient httpClient;
+static unsigned long nextHeartbeat = 0;
 
 namespace {
 
-bool sendLogin() {
-    if (!httpClient.connect(server::address, server::port)) {
+bool sendHeartbeat() {
+    if (!http::connectIfNeeded(httpClient, server::address, server::port)) {
         return false;
     }
     String returnContent;
-    return http::sendRequest(httpClient, "POST", "/login/",
+    return http::sendRequest(httpClient, "POST", "/device/heartbeat/",
             getLoginContent(), returnContent, false);
+}
+
+void heartbeat() {
+    unsigned long now = millis();
+    nextHeartbeat = sendHeartbeat() ? now + 10000 : now + 1000;
 }
 
 void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
-    while (!sendLogin()) {
-        Serial.println("Login failed.");
-        delay(2000);
-    }
-    Serial.println("Login successful");
+    heartbeat();
     httpServer.begin();
 }
 
@@ -73,11 +75,15 @@ void loop()
 
     String modifiedPinsContent = getModifiedPinsContent();
     if (modifiedPinsContent.length() != 0) {
-        if (httpClient.connect(server::address, server::port)) {
+        if (http::connectIfNeeded(httpClient, server::address, server::port)) {
             String returnContent;
-            http::sendRequest(httpClient, "POST", "/status/",
+            http::sendRequest(httpClient, "POST", "/device/event/",
                     modifiedPinsContent, returnContent, false);
         }
+    }
+
+    if (millis() > nextHeartbeat) {
+        heartbeat();
     }
 
     delay(10);
