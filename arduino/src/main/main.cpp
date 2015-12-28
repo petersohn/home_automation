@@ -19,21 +19,31 @@ static WiFiServer httpServer{80};
 static ConnectionPool<WiFiClient> connectionPool;
 static WiFiClient httpClient;
 static unsigned long nextHeartbeat = 0;
+static String heartbeatType = "login";
+
+static constexpr int heartbeatInterval = 60000;
+static constexpr int heartbeatRetryInterval = 5000;
+static constexpr const char* statusPath = "/device/status/";
 
 namespace {
 
-bool sendHeartbeat() {
+bool sendHeartbeat(const String& type) {
     if (!http::connectIfNeeded(httpClient, server::address, server::port)) {
         return false;
     }
     String returnContent;
-    return http::sendRequest(httpClient, "POST", "/device/heartbeat/",
-            getLoginContent(), returnContent, false);
+    return http::sendRequest(httpClient, "POST", statusPath,
+            getFullStatus(type), returnContent, false);
 }
 
 void heartbeat() {
     unsigned long now = millis();
-    nextHeartbeat = sendHeartbeat() ? now + 30000 : now + 1000;
+    if (sendHeartbeat(heartbeatType)) {
+        nextHeartbeat = now + heartbeatInterval;
+        heartbeatType = "heartbeat";
+    } else {
+        nextHeartbeat = now + heartbeatRetryInterval;
+    }
 }
 
 void initialize() {
@@ -52,6 +62,7 @@ void setup()
     for (device::Pin& pin : device::pins) {
         pinMode(pin.number, (pin.output ? OUTPUT : INPUT));
         pin.status = digitalRead(pin.number);
+        pin.lastSeen = millis();
     }
 }
 
@@ -73,12 +84,14 @@ void loop()
                 http::serve<WiFiClient>(client, getContent);
             });
 
-    String modifiedPinsContent = getModifiedPinsContent();
+    String modifiedPinsContent = getModifiedPinsContent("event");
     if (modifiedPinsContent.length() != 0) {
         if (http::connectIfNeeded(httpClient, server::address, server::port)) {
             String returnContent;
-            http::sendRequest(httpClient, "POST", "/device/event/",
-                    modifiedPinsContent, returnContent, false);
+            if (http::sendRequest(httpClient, "POST", statusPath,
+                    modifiedPinsContent, returnContent, false)) {
+                nextHeartbeat = millis() + heartbeatInterval;
+            }
         }
     }
 

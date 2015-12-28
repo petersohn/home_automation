@@ -32,6 +32,37 @@ String getPinInfo(const device::Pin& pin) {
         "\"value\": " + String(digitalRead(pin.number)) + " }";
 }
 
+String getModifiedPinsInfo() {
+    constexpr int pressThreshold = 100;
+    tools::Join result{", "};
+    unsigned long now = millis();
+    for (device::Pin& pin : device::pins) {
+        if (pin.output) {
+            continue;
+        }
+        bool status = digitalRead(pin.number);
+        if (pin.status != status && (now - pin.lastSeen) > pressThreshold) {
+            pin.status = status;
+            pin.lastSeen = now;
+            result.add(getPinInfo(pin));
+        }
+    }
+    return result.get();
+}
+
+} // unnamed namespace
+
+String getFullStatus(const String& type) {
+    tools::Join pinData{", "};
+    for (const device::Pin& pin : device::pins) {
+        pinData.add(getPinInfo(pin));
+    }
+    String result = "{ \"device\": " + getDeviceInfo() + ", "
+        "\"pins\": [ " + pinData.get() + " ]";
+    if (type.length() != 0) {
+        result += ", \"type\": \"" + type + "\"";
+    }
+    return result + " }";
 }
 
 String getContent(const String& path, const String& /*content*/) {
@@ -42,12 +73,7 @@ String getContent(const String& path, const String& /*content*/) {
     size_t position = 0;
     String pinName = tools::nextToken(path, '/', position);
     if (pinName.length() == 0) {
-        tools::Join pinData{", "};
-        for (const device::Pin& pin : device::pins) {
-            pinData.add(getPinInfo(pin));
-        }
-        return "{ \"device\": " + getDeviceInfo() + ", "
-            "\"pins\": [ " + pinData.get() + " ] }";
+        return getFullStatus("");
     }
 
     auto pin = std::find_if(device::pins.begin(), device::pins.end(),
@@ -67,28 +93,14 @@ String getContent(const String& path, const String& /*content*/) {
     return getPinInfo(*pin);
 }
 
-String getModifiedPinsContent() {
-    constexpr int pressThreshold = 100;
-    tools::Join result{", "};
-    unsigned long now = millis();
-    for (device::Pin& pin : device::pins) {
-        if (pin.output) {
-            continue;
-        }
-        bool status = digitalRead(pin.number);
-        if (pin.status != status && (now - pin.lastSeen) > pressThreshold) {
-            pin.status = status;
-            pin.lastSeen = now;
-            result.add(getPinInfo(pin));
-        }
-    }
-    if (result.get().length() != 0) {
-        return "{ \"pins\": [ " + result.get() + " ]}";
+String getModifiedPinsContent(const String& type) {
+    String modifiedPins = getModifiedPinsInfo();
+    if (modifiedPins.length() != 0) {
+        return "{ \"device\": " + getDeviceInfo() + ", "
+            "\"pins\": [ " + modifiedPins + " ],"
+            "\"type\": \"" + type + "\" }";
     } else {
         return {};
     }
 }
 
-String getLoginContent() {
-    return "{ \"name\": \"" + String(device::name) + "\" }";
-}

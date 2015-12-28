@@ -44,6 +44,11 @@ public:
                     method);
         }
     }
+
+    bool isOk() {
+        return statusCode >= 200 && statusCode < 300;
+    }
+
 private:
     void sendError(int statusCode, const char* description,
             const String& details) {
@@ -74,13 +79,16 @@ private:
     String connection = "close";
     bool isGet = false;
     bool isHead = false;
+    int statusCode = 0;
 };
 
 } // namespace detail
 
 template <typename Stream, typename ContentProvider>
-void serve(Stream& stream, ContentProvider contentProvider) {
-    detail::Request<Stream>{stream}.serve(contentProvider);
+bool serve(Stream& stream, ContentProvider contentProvider) {
+    detail::Request<Stream> request{stream};
+    request.serve(contentProvider);
+    return request.isOk();
 }
 
 #undef CHECKED_RECEIVE
