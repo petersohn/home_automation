@@ -51,25 +51,10 @@ bool sendRequest(Connection& connection, const char* method, const char* path,
         return false;
     }
 
-    String headerName;
-    String headerValue;
-    int contentLength = 0;
-    while (true) {
-        if (!receiveHeader(connection, headerName, headerValue)) {
-            continue;
-        }
-        if (headerName.length() == 0) {
-            break;
-        }
-        if (headerName == "Connection") {
-            connectionHeader = headerValue;
-        }
-        if (headerName == "Content-Length") {
-            contentLength = headerValue.toInt();
-        }
+    if (!readHeadersAndContent(connection, response, connectionHeader)) {
+        connection.stop();
+        return false;
     }
-
-    response = tools::readBuffer(connection, contentLength);
     if (connectionHeader != "keep-alive") {
         connection.stop();
     }

@@ -50,6 +50,24 @@ String readBuffer(Stream& stream, int size) {
 }
 
 inline
+bool hexToString(const String& s, long& value) {
+    value = 0;
+    for (size_t i = 0; i < s.length(); ++i) {
+        value *= 16;
+        if (s[i] >= '0' && s[i] <= '9') {
+            value += s[i] - '0';
+        } else if (s[i] >= 'a' || s[i] <= 'f') {
+            value += s[i] - 'a' + 10;
+        } else if (s[i] >= 'A' || s[i] <= 'F') {
+            value += s[i] - 'A' + 10;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline
 String nextToken(const String& string, char separator, size_t& position) {
     while (position < string.length() && string[position] == separator) {
         ++position;

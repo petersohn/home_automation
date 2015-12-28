@@ -33,7 +33,7 @@ bool sendHeartbeat() {
 
 void heartbeat() {
     unsigned long now = millis();
-    nextHeartbeat = sendHeartbeat() ? now + 10000 : now + 1000;
+    nextHeartbeat = sendHeartbeat() ? now + 30000 : now + 1000;
 }
 
 void initialize() {

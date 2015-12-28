@@ -115,6 +115,68 @@ bool receiveHeader(Stream& stream, String& name, String& value) {
     return true;
 }
 
+template <typename Stream>
+bool readLineEnd(Stream& stream) {
+    String crlf = tools::readBuffer(stream, 2);
+    if (crlf.length() != 2 || crlf[0] != '\r' || crlf[1] != '\n') {
+        Serial.println("Invalid CRLF");
+        return false;
+    }
+    return true;
+}
+
+template <typename Stream>
+bool readChunkedContent(Stream& stream, String& result) {
+    while (true) {
+        String lengthString = tools::readLine(stream);
+        long length = 0;
+        if (!tools::hexToString(lengthString, length)) {
+            Serial.println("Invalid length");
+            return false;
+        }
+        result += tools::readBuffer(stream, length);
+        if (!readLineEnd(stream)) {
+            return false;
+        }
+        if (length == 0) {
+            return true;
+        }
+    }
+}
+
+template <typename Stream>
+bool readHeadersAndContent(Stream& stream, String& content,
+        String& connectionHeader) {
+    String headerName;
+    String headerValue;
+    int contentLength = 0;
+    bool chunkedEncoding = false;
+    while (true) {
+        if (!receiveHeader(stream, headerName, headerValue)) {
+            return false;
+        }
+        if (headerName.length() == 0) {
+            break;
+        }
+        if (headerName == "Connection") {
+            connectionHeader = headerValue;
+        }
+        if (headerName == "Content-Length") {
+            contentLength = headerValue.toInt();
+        }
+        if (headerName == "Transfer-Encoding" && headerValue == "chunked") {
+            chunkedEncoding = true;
+        }
+    }
+
+    if (chunkedEncoding) {
+        content = "";
+        return readChunkedContent(stream, content);
+    }
+    content = tools::readBuffer(stream, contentLength);
+    return true;
+}
+
 } // namespace http
 
 #endif // HTTP_HTTP_HPP

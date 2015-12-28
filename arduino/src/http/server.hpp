@@ -25,25 +25,12 @@ public:
         isGet = (method == "GET");
         isHead = (method == "HEAD");
 
-        String headerName;
-        String headerValue;
-        int contentLength = 0;
-        while (true) {
-            if (!receiveHeader(stream, headerName, headerValue)) {
-                sendError(400, "Bad Request", "Invalid header format");
-                return;
-            }
-            if (headerName.length() == 0) {
-                break;
-            }
-            if (headerName == "Connection") {
-                connection = headerValue;
-            }
-            if (headerName == "Content-Length") {
-                contentLength = headerValue.toInt();
-            }
+        String incomingContent;
+        if (!readHeadersAndContent(stream, incomingContent, connection)) {
+            connection = "close";
+            sendError(400, "Bad Request", "Invalid format");
+            return;
         }
-        String incomingContent = tools::readBuffer(stream, contentLength);
 
         if (isGet || isHead) {
             String content = contentProvider(path, incomingContent);
