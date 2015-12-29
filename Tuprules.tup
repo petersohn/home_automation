@@ -9,12 +9,12 @@ PRINT_JSON = $(TUP_CWD)/print_json.sh
 
 PROJECT_DIR = $(TUP_CWD)
 
-ARDUINO_DIR = $(TUP_CWD)/arduino
+DEVICE_DIR = $(TUP_CWD)/device
 
-SOURCE_DIR = $(ARDUINO_DIR)/src
+SOURCE_DIR = $(DEVICE_DIR)/src
 
 LIBRARIES_SOURCE_DIR = $(ESP_DIR)/libraries
-LIBRARIES_DIR = $(ARDUINO_DIR)/libraries
+LIBRARIES_DIR = $(DEVICE_DIR)/libraries
 
 CORE_DIR = $(LIBRARIES_DIR)/core
 CORE_SRC_DIR =  $(ESP_DIR)/cores/esp8266
