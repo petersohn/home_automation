@@ -2,7 +2,4 @@
 *.a
 *.elf
 *.bin
-.tup
-load_environment.sh
-*.compile.json
 
