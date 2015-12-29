@@ -27,7 +27,9 @@ String getDeviceInfo() {
 }
 
 String getPinInfo(const device::Pin& pin) {
+    String type = (pin.output ? "output" : "input");
     return "{ "
+        "\"type\": \"" + type + "\", "
         "\"name\": \"" + String(pin.name) + "\", "
         "\"value\": " + String(digitalRead(pin.number)) + " }";
 }
