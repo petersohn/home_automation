@@ -3,9 +3,10 @@
 
 import sys
 
-def run(environ, start_response):
-    start_response('200 OK', [('Content-Type', 'text/plain')])
+def run(environ, response):
+    response.headers = [('Content-Type', 'text/plain')]
     input = environ["wsgi.input"]
+
     s = input.read()
     sys.stderr.write(s + '\n')
     return s
