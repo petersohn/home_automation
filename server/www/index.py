@@ -5,7 +5,7 @@ from cgi import escape
 import sys
 
 def run(environ, response):
-    response.headers = [('Content-Type', 'text/plain')]
+    response.headers = [('Content-Type', 'text/html')]
 
     yield '<h1>FastCGI Environment</h1>'
     yield '<table>'

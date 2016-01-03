@@ -5,9 +5,9 @@ import psycopg2
 import sys
 
 class Session:
-    def __init__(self):
+    def __init__(self, connectString):
+        self.connectString = connectString
         self._connect()
-        sys.stderr.write("---------------- asdasdasd\n")
 
     def log(self, severity, description):
         self._connectIfNeeded()
@@ -17,12 +17,11 @@ class Session:
         self.connection.commit()
 
     def _connect(self):
-        self.connection = psycopg2.connect(
-                config.database_config.psql_connect_string)
+        self.connection = psycopg2.connect(self.connectString)
 
     def _connectIfNeeded(self):
         if self.connection.closed:
             self._connect()
 
 def getSession():
-    return Session()
+    return Session(config.database_config.psql_connect_string)
