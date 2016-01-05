@@ -44,6 +44,7 @@ if __name__ == "__main__":
 
     import database
 
+    database.getSession().log("info", "Server instance started.")
     server = flup.server.fcgi.WSGIServer(main)
     server.run()
 
