@@ -1,3 +1,3 @@
 import datetime
 
-deviceHeartbeatTimeout = datetime.timedelta(minutes = 1)
+deviceHeartbeatTimeout = datetime.timedelta(minutes = 2)
