@@ -3,7 +3,7 @@ create type severity as enum ('info', 'warning', 'error');
 
 create table device (
     device_id serial primary key,
-    name text not null,
+    name text unique not null,
     last_seen timestamp not null
 );
 

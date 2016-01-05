@@ -1,13 +1,13 @@
 #!/usr/bin/env python2
 
-import globals
+import test_globals
 
 import sys
 import unittest
 
 if __name__ == "__main__":
-    sys.path.append(globals.libDirectory)
-    globals.parseArguments()
+    sys.path.append(test_globals.libDirectory)
+    test_globals.parseArguments()
 
     import tests
 
