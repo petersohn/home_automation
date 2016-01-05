@@ -67,6 +67,10 @@ class Session:
                 "pin_id) values (%s, %s, %s, %s, %s)",
                 (severity, datetime.datetime.now(), description, device, pin))
 
+session = None
 
 def getSession():
-    return Session(config.database_config.psql_connect_string)
+    global session
+    if session == None:
+        session = Session(config.database_config.psql_connect_string)
+    return session
