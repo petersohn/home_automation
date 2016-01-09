@@ -107,7 +107,8 @@ class Session:
                 "where control_group.control_group_id = " +
                         "control_output.control_group_id " +
                 "and pin.pin_id = control_output.pin_id " +
-                "and control_group.state = true")
+                "and control_group.state = true and pin.name = %s",
+                (pinName,))
         count, = cursor.fetchone()
         return count != 0
 
