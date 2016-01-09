@@ -245,11 +245,12 @@ class SessionTest(DatabaseTest):
 
 
     def test_getIntendedState_false_if_there_are_no_control_groups(self):
+        deviceName = "someDevice"
         pinName = "somePin"
         deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [(pinName, "output")])
+                self.addDevice, deviceName, pins = [(pinName, "output")])
 
-        result = self.session.getIntendedState(pinName)
+        result = self.session.getIntendedState(deviceName, pinName)
         self.assertFalse(result)
 
     def insertControlGroup(self, name, state, pins):
@@ -264,99 +265,109 @@ class SessionTest(DatabaseTest):
                 (pin, controlGroupId))
 
     def test_getIntendedState_false_if_control_group_value_is_false(self):
+        deviceName = "someDevice"
         pinName = "somePin"
         deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [(pinName, "output")])
+                self.addDevice, deviceName, pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", False, [pinId])
 
-        result = self.session.getIntendedState(pinName)
+        result = self.session.getIntendedState(deviceName, pinName)
         self.assertEquals(result, False)
 
     def test_getIntendedState_true_if_control_group_value_is_true(self):
+        deviceName = "someDevice"
         pinName = "somePin"
         deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [(pinName, "output")])
+                self.addDevice, deviceName, pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True, [pinId])
 
-        result = self.session.getIntendedState(pinName)
+        result = self.session.getIntendedState(deviceName, pinName)
         self.assertEquals(result, True)
 
     def test_getIntendedState_true_if_one_of_control_group_values_is_true(self):
+        deviceName = "someDevice"
         pinName = "somePin"
         deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [(pinName, "output")])
+                self.addDevice, deviceName, pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True, [pinId])
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "otherControlGroup", False, [pinId])
 
-        result = self.session.getIntendedState(pinName)
+        result = self.session.getIntendedState(deviceName, pinName)
         self.assertEquals(result, True)
 
     def test_getIntendedState_false_if_none_of_control_group_values_is_true(self):
+        deviceName = "someDevice"
         pinName = "somePin"
         deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [(pinName, "output")])
+                self.addDevice, deviceName, pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", False, [pinId])
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "otherControlGroup", False, [pinId])
 
-        result = self.session.getIntendedState(pinName)
+        result = self.session.getIntendedState(deviceName, pinName)
         self.assertEquals(result, False)
 
     def test_getIntendedState_true_if_all_of_control_group_values_is_true(self):
+        deviceName = "someDevice"
         pinName = "somePin"
         deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [(pinName, "output")])
+                self.addDevice, deviceName, pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True, [pinId])
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "otherControlGroup", True, [pinId])
 
-        result = self.session.getIntendedState(pinName)
+        result = self.session.getIntendedState(deviceName, pinName)
         self.assertEquals(result, True)
 
     def test_getIntendedState_true_for_the_correct_pin(self):
+        deviceName = "someDevice"
         truePinName = "somePin"
         falsePinName = "otherPin"
         deviceId, [truePinId, falsePinId] = \
                 database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [
+                self.addDevice, deviceName, pins = [
                         (truePinName, "output"), (falsePinName, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True,
                 [truePinId])
 
-        truePinIntendedState = self.session.getIntendedState(truePinName)
+        truePinIntendedState = self.session.getIntendedState(deviceName,
+                truePinName)
         self.assertEquals(truePinIntendedState, True)
-        falsePinIntendedState = self.session.getIntendedState(falsePinName)
+        falsePinIntendedState = self.session.getIntendedState(deviceName,
+                falsePinName)
         self.assertEquals(falsePinIntendedState, False)
 
     def test_getIntendedState_one_conrol_group_controls_more_pins(self):
+        deviceName = "someDevice"
         pin1Name = "somePin"
         pin2Name = "otherPin"
         deviceId, [pin1Id, pin2Id] = \
                 database.executeTransactionally(self.connection,
-                self.addDevice, "someDevice", pins = [
+                self.addDevice, deviceName, pins = [
                         (pin1Name, "output"), (pin2Name, "output")])
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True,
                 [pin1Id, pin2Id])
 
-        pin1IntendedState = self.session.getIntendedState(pin1Name)
+        pin1IntendedState = self.session.getIntendedState(deviceName, pin1Name)
         self.assertEquals(pin1IntendedState, True)
-        pin2IntendedState = self.session.getIntendedState(pin2Name)
+        pin2IntendedState = self.session.getIntendedState(deviceName, pin2Name)
         self.assertEquals(pin2IntendedState, True)
+
 
 
 

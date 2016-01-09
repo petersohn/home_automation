@@ -38,8 +38,9 @@ class Session:
         return self._executeTransactionally(self._updateDevice, data)
 
 
-    def getIntendedState(self, pinName):
-        return self._executeTransactionally(self._getIntendedState, pinName)
+    def getIntendedState(self, deviceName, pinName):
+        return self._executeTransactionally(self._getIntendedState, deviceName,
+                pinName)
 
 
     def _executeTransactionally(self, function, *args, **kwargs):
@@ -100,15 +101,17 @@ class Session:
                     (deviceId, name, type))
 
 
-    def _getIntendedState(self, pinName):
+    def _getIntendedState(self, deviceName, pinName):
         cursor = self.connection.cursor()
         cursor.execute(
-                "select count(*) from pin, control_group, control_output " +
-                "where control_group.control_group_id = " +
+                "select count(*) from device, pin, control_group, " +
+                "control_output where device.device_id = pin.device_id "
+                "and control_group.control_group_id = " +
                         "control_output.control_group_id " +
                 "and pin.pin_id = control_output.pin_id " +
-                "and control_group.state = true and pin.name = %s",
-                (pinName,))
+                "and control_group.state = true " +
+                "and device.name = %s and pin.name = %s",
+                (deviceName, pinName))
         count, = cursor.fetchone()
         return count != 0
 

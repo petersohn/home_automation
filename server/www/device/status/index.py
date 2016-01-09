@@ -14,12 +14,14 @@ def run(environ, response):
 
     session.updateDevice(inputData)
 
+    deviceName = inputData["device"]["name"]
     for pin in inputData["pins"]:
+        pinName = pin["name"]
         if pin["type"] == "output" and \
-                pin["value"] != session.getIntendedState(pin["name"]):
+                pin["value"] != session.getIntendedState(deviceName, pinName):
             session.log(
-                    device = inputData["device"]["name"],
-                    pin = pin["name"],
+                    device = deviceName,
+                    pin = pinName,
                     severity = "warning",
                     description = "Wrong value of pin.")
 
