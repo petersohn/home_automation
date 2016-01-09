@@ -10,6 +10,7 @@ class Session:
         self.connectString = connectString
         self._connect()
 
+
     def log(self, severity, description, device = None, pin = None):
         try:
             self._connectIfNeeded()
@@ -19,8 +20,10 @@ class Session:
             if not self.connection.closed:
                 self.connection.rollback()
 
+
     def updateDevice(self, data):
         return self._exectueTransactionally(self._updateDevice, data)
+
 
     def _exectueTransactionally(self, function, *args, **kwargs):
         try:
@@ -32,12 +35,15 @@ class Session:
                 self.connection.rollback()
             raise
 
+
     def _connect(self):
         self.connection = psycopg2.connect(self.connectString)
+
 
     def _connectIfNeeded(self):
         if self.connection.closed:
             self._connect()
+
 
     def _updateDevice(self, data):
         isLogin = "type" in data and data["type"] == "login"
@@ -88,6 +94,8 @@ class Session:
         cursor.execute("insert into log (severity, time, message, device_id, " +
                 "pin_id) values (%s, %s, %s, %s, %s)",
                 (severity, datetime.datetime.now(), description, device, pin))
+
+
 
 session = None
 
