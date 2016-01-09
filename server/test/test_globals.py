@@ -21,5 +21,5 @@ def parseArguments():
     global connectString
     connectString = arguments.connectString
 
-    sys.argv[1:] = arguments.unittest_args
+    return arguments.unittest_args
 

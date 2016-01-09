@@ -7,8 +7,10 @@ import unittest
 
 if __name__ == "__main__":
     sys.path.append(test_globals.libDirectory)
-    test_globals.parseArguments()
+    args = test_globals.parseArguments()
 
     import tests
 
-    unittest.main(module=tests)
+    argv = sys.argv[0:1]
+    argv.extend(args)
+    unittest.main(module=tests, argv=argv)

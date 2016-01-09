@@ -5,6 +5,18 @@ import datetime
 import psycopg2
 import sys
 
+def executeTransactionally(connection, function, *args, **kwargs):
+    try:
+        result = function(*args, **kwargs)
+        connection.commit()
+        return result
+    except:
+        if not connection.closed:
+            connection.rollback()
+        raise
+
+
+
 class Session:
     def __init__(self, connectString):
         self.connectString = connectString
@@ -22,18 +34,16 @@ class Session:
 
 
     def updateDevice(self, data):
-        return self._exectueTransactionally(self._updateDevice, data)
+        return self._executeTransactionally(self._updateDevice, data)
 
 
-    def _exectueTransactionally(self, function, *args, **kwargs):
-        try:
-            result = function(*args, **kwargs)
-            self.connection.commit()
-            return result
-        except:
-            if not self.connection.closed:
-                self.connection.rollback()
-            raise
+    def getIntendedState(self, pinName):
+        return self._executeTransactionally(self._getIntendedState, pinName)
+
+
+    def _executeTransactionally(self, function, *args, **kwargs):
+        return executeTransactionally(self.connection, function,
+                *args, **kwargs)
 
 
     def _connect(self):
@@ -87,6 +97,18 @@ class Session:
             cursor.execute("insert into pin (device_id, name, type) " +
                     "values (%s, %s, %s) returning pin_id",
                     (deviceId, name, type))
+
+
+    def _getIntendedState(self, pinName):
+        cursor = self.connection.cursor()
+        cursor.execute(
+                "select count(*) from pin, control_group, control_output " +
+                "where control_group.control_group_id = " +
+                        "control_output.control_group_id " +
+                "and pin.pin_id = control_output.pin_id " +
+                "and control_group.state = true")
+        count, = cursor.fetchone()
+        return count != 0
 
 
     def _log(self, severity, description, device = None, pin = None):
