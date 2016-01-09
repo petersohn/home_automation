@@ -368,6 +368,49 @@ class SessionTest(DatabaseTest):
         pin2IntendedState = self.session.getIntendedState(deviceName, pin2Name)
         self.assertEquals(pin2IntendedState, True)
 
+    def test_getIntendedState_complex_case_with_more_devices(self):
+        pin1Name = "firstPin"
+        pin2Name = "secondPin"
+        pin3Name = "thirdPin"
+        device1Name = "someDevice"
+        device1Id, [pin11Id, pin12Id, pin13Id] = \
+                database.executeTransactionally(self.connection,
+                self.addDevice, device1Name, pins = [
+                        (pin1Name, "output"), (pin2Name, "output"),
+                        (pin3Name, "output")])
+        device2Name = "otherDevice"
+        device1Id, [pin21Id, pin22Id, pin23Id] = \
+                database.executeTransactionally(self.connection,
+                self.addDevice, device2Name, pins = [
+                        (pin1Name, "output"), (pin2Name, "output"),
+                        (pin3Name, "output")])
+
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, "firstControlGroup", True,
+                [pin11Id, pin23Id])
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, "secondControlGroup", True,
+                [pin11Id])
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, "thirdControlGroup", False,
+                [pin12Id, pin23Id])
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, "fourthControlGroup", False,
+                [pin23Id])
+
+        self.assertEquals(self.session.getIntendedState(device1Name, pin1Name),
+                True)
+        self.assertEquals(self.session.getIntendedState(device1Name, pin2Name),
+                False)
+        self.assertEquals(self.session.getIntendedState(device1Name, pin3Name),
+                False)
+        self.assertEquals(self.session.getIntendedState(device2Name, pin1Name),
+                False)
+        self.assertEquals(self.session.getIntendedState(device2Name, pin2Name),
+                False)
+        self.assertEquals(self.session.getIntendedState(device2Name, pin3Name),
+                True)
+
 
 
 
