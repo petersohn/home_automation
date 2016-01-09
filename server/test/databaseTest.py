@@ -260,8 +260,7 @@ class SessionTest(DatabaseTest):
             controlGroupId = cursor.fetchone()
             for pin in pins:
                 cursor.execute("insert into control_output " +
-                "(pin_id, control_group_id) values ((" +
-                "select pin_id from pin where name = %s), %s)",
+                "(pin_id, control_group_id) values (%s, %s)",
                 (pin, controlGroupId))
 
     def test_getIntendedState_false_if_control_group_value_is_false(self):
@@ -270,7 +269,7 @@ class SessionTest(DatabaseTest):
                 self.addDevice, "someDevice", pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "someControlGroup", False, [pinName])
+                self.insertControlGroup, "someControlGroup", False, [pinId])
 
         result = self.session.getIntendedState(pinName)
         self.assertEquals(result, False)
@@ -281,7 +280,7 @@ class SessionTest(DatabaseTest):
                 self.addDevice, "someDevice", pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "someControlGroup", True, [pinName])
+                self.insertControlGroup, "someControlGroup", True, [pinId])
 
         result = self.session.getIntendedState(pinName)
         self.assertEquals(result, True)
@@ -292,9 +291,9 @@ class SessionTest(DatabaseTest):
                 self.addDevice, "someDevice", pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "someControlGroup", True, [pinName])
+                self.insertControlGroup, "someControlGroup", True, [pinId])
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "otherControlGroup", False, [pinName])
+                self.insertControlGroup, "otherControlGroup", False, [pinId])
 
         result = self.session.getIntendedState(pinName)
         self.assertEquals(result, True)
@@ -305,9 +304,9 @@ class SessionTest(DatabaseTest):
                 self.addDevice, "someDevice", pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "someControlGroup", False, [pinName])
+                self.insertControlGroup, "someControlGroup", False, [pinId])
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "otherControlGroup", False, [pinName])
+                self.insertControlGroup, "otherControlGroup", False, [pinId])
 
         result = self.session.getIntendedState(pinName)
         self.assertEquals(result, False)
@@ -318,9 +317,9 @@ class SessionTest(DatabaseTest):
                 self.addDevice, "someDevice", pins = [(pinName, "output")])
 
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "someControlGroup", True, [pinName])
+                self.insertControlGroup, "someControlGroup", True, [pinId])
         database.executeTransactionally(self.connection,
-                self.insertControlGroup, "otherControlGroup", True, [pinName])
+                self.insertControlGroup, "otherControlGroup", True, [pinId])
 
         result = self.session.getIntendedState(pinName)
         self.assertEquals(result, True)
@@ -335,7 +334,7 @@ class SessionTest(DatabaseTest):
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True,
-                [truePinName])
+                [truePinId])
 
         truePinIntendedState = self.session.getIntendedState(truePinName)
         self.assertEquals(truePinIntendedState, True)
@@ -352,7 +351,7 @@ class SessionTest(DatabaseTest):
 
         database.executeTransactionally(self.connection,
                 self.insertControlGroup, "someControlGroup", True,
-                [pin1Name, pin2Name])
+                [pin1Id, pin2Id])
 
         pin1IntendedState = self.session.getIntendedState(pin1Name)
         self.assertEquals(pin1IntendedState, True)
