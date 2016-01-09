@@ -84,38 +84,89 @@ class SessionTest(DatabaseTest):
         result = cursor.fetchall()
         self.assertItemsEqual(result, [(severity, message, None, None)])
 
-    def test_log_device(self):
+    def addDevice(self, name, ip = "192.168.1.10",
+            seen = datetime.datetime.now(), pins = []):
         cursor = self.connection.cursor()
         cursor.execute("insert into device (name, ip, last_seen) values " +
-                "(%s, %s, %s) returning device_id",
-                ("foo", "192.168.1.10", datetime.datetime(2016, 1, 1)))
+                "(%s, %s, %s) returning device_id", (name, ip, seen))
         deviceId, = cursor.fetchone()
-        self.connection.commit()
+
+        pinIds = []
+        for pin in pins:
+            pinName, pinType = pin
+            cursor.execute("insert into pin (name, device_id, type) values " +
+                    "(%s, %s, %s) returning pin_id",
+                    (pinName, deviceId, pinType))
+            pinId, = cursor.fetchone()
+            pinIds.append(pinId)
+
+        return (deviceId, pinIds)
+
+    def test_log_device(self):
+        deviceId, pinIds = database.executeTransactionally(self.connection,
+                self.addDevice, "foo")
 
         severity = 'warning'
         message = 'some warning message'
         self.session.log(severity, message, device = deviceId)
 
+        cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
         self.assertItemsEqual(result, [(severity, message, deviceId, None)])
 
     def test_log_device_pin(self):
-        cursor = self.connection.cursor()
-        cursor.execute("insert into device (name, ip, last_seen) values " +
-                "(%s, %s, %s) returning device_id",
-                ("foo", "192.168.1.10", datetime.datetime(2016, 1, 1)))
-        deviceId, = cursor.fetchone()
-        cursor.execute("insert into pin (name, device_id, type) values " +
-                "(%s, %s, %s) returning pin_id",
-                ("bar", deviceId, "input"))
-        pinId, = cursor.fetchone()
-        self.connection.commit()
+        deviceId, [pinId] = database.executeTransactionally(self.connection,
+                self.addDevice, "foo", pins = [("bar", "input")])
 
         severity = 'error'
         message = 'some error message'
         self.session.log(severity, message, device = deviceId, pin = pinId)
 
+        cursor = self.connection.cursor()
+        cursor.execute("select severity, message, device_id, pin_id from log")
+        result = cursor.fetchall()
+        self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])
+
+    def test_log_device_with_name(self):
+        deviceName = "foo"
+        deviceId, pinIds = database.executeTransactionally(self.connection,
+                self.addDevice, deviceName)
+
+        severity = 'info'
+        message = 'some other message'
+        self.session.log(severity, message, device = deviceName)
+
+        cursor = self.connection.cursor()
+        cursor.execute("select severity, message, device_id, pin_id from log")
+        result = cursor.fetchall()
+        self.assertItemsEqual(result, [(severity, message, deviceId, None)])
+
+    def test_log_pin_with_name(self):
+        pinName = "baar"
+        deviceId, [pinId] = database.executeTransactionally(self.connection,
+                self.addDevice, "foo", pins = [(pinName, "input")])
+
+        severity = 'error'
+        message = 'some other error message'
+        self.session.log(severity, message, device = deviceId, pin = pinName)
+
+        cursor = self.connection.cursor()
+        cursor.execute("select severity, message, device_id, pin_id from log")
+        result = cursor.fetchall()
+        self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])
+
+    def test_log_device_and_pin_with_name(self):
+        deviceName = "someDevice"
+        pinName = "somePin"
+        deviceId, [pinId] = database.executeTransactionally(self.connection,
+                self.addDevice, deviceName, pins = [(pinName, "input")])
+
+        severity = 'info'
+        message = 'yet another message'
+        self.session.log(severity, message, device = deviceName, pin = pinName)
+
+        cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
         self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])

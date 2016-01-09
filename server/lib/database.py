@@ -31,6 +31,7 @@ class Session:
         except:
             if not self.connection.closed:
                 self.connection.rollback()
+            raise
 
 
     def updateDevice(self, data):
@@ -112,11 +113,35 @@ class Session:
 
 
     def _log(self, severity, description, device = None, pin = None):
+        if type(device) == str:
+            deviceId = self.getDeviceId(device)
+        else:
+            deviceId = device
+
+        if type(pin) == str:
+            pinId = self.getPinId(pin)
+        else:
+            pinId = pin
+
         cursor = self.connection.cursor()
         cursor.execute("insert into log (severity, time, message, device_id, " +
                 "pin_id) values (%s, %s, %s, %s, %s)",
-                (severity, datetime.datetime.now(), description, device, pin))
+                (severity, datetime.datetime.now(), description, deviceId,
+                        pinId))
 
+
+    def getDeviceId(self, deviceName):
+        cursor = self.connection.cursor()
+        cursor.execute("select device_id from device where name = %s",
+                (deviceName,))
+        deviceId, = cursor.fetchone()
+        return deviceId
+
+    def getPinId(self, pinName):
+        cursor = self.connection.cursor()
+        cursor.execute("select pin_id from pin where name = %s", (pinName,))
+        pinId, = cursor.fetchone()
+        return pinId
 
 
 session = None
