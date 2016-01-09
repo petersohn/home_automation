@@ -19,8 +19,8 @@ class Session:
             if not self.connection.closed:
                 self.connection.rollback()
 
-    def updateDevice(self, name, login = False):
-        return self._exectueTransactionally(self._updateDevice, name, login)
+    def updateDevice(self, data):
+        return self._exectueTransactionally(self._updateDevice, data)
 
     def _exectueTransactionally(self, function, *args, **kwargs):
         try:
@@ -39,26 +39,31 @@ class Session:
         if self.connection.closed:
             self._connect()
 
-    def _updateDevice(self, name, login):
+    def _updateDevice(self, data):
+        isLogin = "type" in data and data["type"] == "login"
+        deviceData = data["device"]
+        name = deviceData["name"]
+        ip = deviceData["ip"]
+
         cursor = self.connection.cursor()
         cursor.execute("select device_id, last_seen from device where " +
                 "name = %s", (name,))
         found = cursor.fetchone()
         if found == None:
-            cursor.execute("insert into device (name, last_seen) values " +
-                    "(%s, %s) returning device_id",
-                    (name, datetime.datetime.now()))
+            cursor.execute("insert into device (name, ip, last_seen) values " +
+                    "(%s, %s, %s) returning device_id",
+                    (name, ip, datetime.datetime.now()))
             deviceId, = cursor.fetchone()
             self._log("info", "Found new device.", device = deviceId)
             return deviceId
         else:
             deviceId, lastSeen = found
             now = datetime.datetime.now()
-            cursor.execute("update device set last_seen = %s where " +
-                    "device_id = %s", (now, deviceId))
+            cursor.execute("update device set ip = %s, last_seen = %s where " +
+                    "device_id = %s", (ip, now, deviceId))
             if now - lastSeen > globals.deviceHeartbeatTimeout:
                 self._log("info", "Lost device reappeared.", device = deviceId)
-            elif login:
+            elif isLogin:
                 self._log("warning", "Device restarted.", device = deviceId)
 
     def _log(self, severity, description, device = None, pin = None):
