@@ -30,8 +30,10 @@ class DatabaseTest(unittest.TestCase):
     def tearDown(self):
         self.cleanup()
 
-    def createInputData(self, name, ip):
-        return {"device": {"name": name, "ip": ip}}
+    def createInputData(self, name, ip, pins = []):
+        device = {"name": name, "ip": ip}
+        pins = [{"name": name, "type": type} for (name, type) in pins]
+        return {"device": device, "pins": pins}
 
     def test_log(self):
         severity = 'info'
@@ -43,7 +45,7 @@ class DatabaseTest(unittest.TestCase):
         cursor.execute("select severity, message, device_id, pin_id " +
                 "from log")
         result = cursor.fetchall()
-        self.assertListEqual(result, [(severity, message, None, None)])
+        self.assertItemsEqual(result, [(severity, message, None, None)])
 
     def test_log_device(self):
         connection = psycopg2.connect(test_globals.connectString)
@@ -60,7 +62,7 @@ class DatabaseTest(unittest.TestCase):
 
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertListEqual(result, [(severity, message, deviceId, None)])
+        self.assertItemsEqual(result, [(severity, message, deviceId, None)])
 
     def test_log_device_pin(self):
         connection = psycopg2.connect(test_globals.connectString)
@@ -81,7 +83,8 @@ class DatabaseTest(unittest.TestCase):
 
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertListEqual(result, [(severity, message, deviceId, pinId)])
+        self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])
+
 
     def test_updateDevice_add_new_device(self):
         deviceName = "someDevice"
@@ -114,7 +117,7 @@ class DatabaseTest(unittest.TestCase):
         cursor = connection.cursor()
         cursor.execute("select name, ip from device")
         result = cursor.fetchall()
-        self.assertListEqual(result, [(deviceName, deviceIp)])
+        self.assertItemsEqual(result, [(deviceName, deviceIp)])
 
     def test_updateDevice_add_multiple_devices(self):
         device1Name = "firstDevice"
@@ -131,6 +134,30 @@ class DatabaseTest(unittest.TestCase):
         cursor = connection.cursor()
         cursor.execute("select name, ip from device")
         result = cursor.fetchall()
-        self.assertListEqual(result,
+        self.assertItemsEqual(result,
                 [(device1Name, device1Ip), (device2Name, device2Ip)])
+
+    def test_updateDevice_set_pins(self):
+        deviceName = "someDevice"
+        deviceIp = "192.168.1.10"
+        inputPinName = "inputPin"
+        inputPinType = "input"
+        outputPinName = "outputPin"
+        outputPinType = "output"
+        data = self.createInputData(deviceName, deviceIp,
+                [(inputPinName, inputPinType), (outputPinName, outputPinType)])
+
+        self.session.updateDevice(data)
+
+        connection = psycopg2.connect(test_globals.connectString)
+        cursor = connection.cursor()
+        cursor.execute("select device_id from device")
+        deviceId, = cursor.fetchone()
+        self.assertEqual(cursor.fetchone(), None)
+
+        cursor.execute("select device_id, name, type from pin")
+        result = cursor.fetchall()
+        self.assertItemsEqual(result, [
+                (deviceId, inputPinName, inputPinType),
+                (deviceId, outputPinName, outputPinType)])
 

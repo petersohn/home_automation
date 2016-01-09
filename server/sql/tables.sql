@@ -12,10 +12,13 @@ create index device_name on device (name);
 
 create table pin (
     pin_id serial primary key,
-    name text not null,
     device_id integer not null references device on delete cascade,
-    type pin_type not null
+    name text not null,
+    type pin_type not null,
+    unique (device_id, name)
 );
+
+create index pin_name on pin (device_id, name);
 
 create table log (
     device_id integer references device on delete cascade,

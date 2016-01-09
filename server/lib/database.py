@@ -42,9 +42,14 @@ class Session:
     def _updateDevice(self, data):
         isLogin = "type" in data and data["type"] == "login"
         deviceData = data["device"]
-        name = deviceData["name"]
+        deviceName = deviceData["name"]
         ip = deviceData["ip"]
+        deviceId = self._updateDeviceData(deviceName, ip, isLogin)
+        if deviceId is not None:
+            self._updatePinData(deviceId, data["pins"])
 
+
+    def _updateDeviceData(self, name, ip, isLogin):
         cursor = self.connection.cursor()
         cursor.execute("select device_id, last_seen from device where " +
                 "name = %s", (name,))
@@ -65,6 +70,18 @@ class Session:
                 self._log("info", "Lost device reappeared.", device = deviceId)
             elif isLogin:
                 self._log("warning", "Device restarted.", device = deviceId)
+            return None
+
+
+    def _updatePinData(self, deviceId, pins):
+        cursor = self.connection.cursor()
+        for pin in pins:
+            name = pin["name"]
+            type = pin["type"]
+            cursor.execute("insert into pin (device_id, name, type) " +
+                    "values (%s, %s, %s) returning pin_id",
+                    (deviceId, name, type))
+
 
     def _log(self, severity, description, device = None, pin = None):
         cursor = self.connection.cursor()
