@@ -111,17 +111,16 @@ class Session:
         count, = cursor.fetchone()
         return count != 0
 
+    def _findValue(self, value, finder):
+        if value is None:
+            return None
+        if type(value) == int or type(value) == long:
+            return value
+        return finder(value)
 
     def _log(self, severity, description, device = None, pin = None):
-        if type(device) == str:
-            deviceId = self.getDeviceId(device)
-        else:
-            deviceId = device
-
-        if type(pin) == str:
-            pinId = self.getPinId(pin)
-        else:
-            pinId = pin
+        deviceId = self._findValue(device, self.getDeviceId)
+        pinId = self._findValue(pin, self.getPinId)
 
         cursor = self.connection.cursor()
         cursor.execute("insert into log (severity, time, message, device_id, " +
