@@ -16,6 +16,9 @@ def run(environ, senderQueue, response):
     session.updateDevice(inputData)
 
     deviceName = inputData["device"]["name"]
+    if "type" in inputData and inputData["type"] == "login":
+        senderQueue.put(sender.ClearDevice(deviceName))
+
     for pin in inputData["pins"]:
         pinName = pin["name"]
         intendedValue = session.getIntendedState(deviceName, pinName)

@@ -1,7 +1,6 @@
 import database
 
 import httplib
-import socket
 import sys
 import traceback
 
@@ -26,7 +25,7 @@ class Request:
         self.getSession = getSession
 
 
-    def send(self, httpConnections):
+    def execute(self, httpConnections):
         session = self.getSession()
         deviceIp = session.getDeviceIp(self.deviceName)
 
@@ -43,12 +42,20 @@ class Request:
             if response.status < 200 or response.status >= 300:
                 raise BadResponse(response.status, response.reason)
             return response.read()
-        except socket.timeout:
-            connection.close()
-            return Retry()
         except:
             connection.close()
             raise
+
+
+class ClearDevice:
+    def __init__(self, deviceName, getSession = database.getSession):
+        self.deviceName = deviceName
+        self.getSession = getSession
+
+    def execute(self, httpConnections):
+        session = self.getSession()
+        deviceIp = session.getDeviceIp(self.deviceName)
+        httpConnections.pop(deviceIp, None)
 
 
 def handleGenericException():
@@ -62,7 +69,7 @@ def runProcess(queue):
     while True:
         request = queue.get()
         try:
-            result = request.send(connections)
+            result = request.execute(connections)
             if result.__class__ == Retry:
                 queue.put(request)
         except Exception as e:

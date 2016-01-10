@@ -22,5 +22,11 @@ class ExecuteTransactionallyTest(databaseTest.ExecuteTransactionallyTest):
     pass
 
 
-class SenderTest(senderTest.SenderTest):
+class RequestTest(senderTest.RequestTest):
     pass
+
+
+
+class ClearDeviceTest(senderTest.ClearDeviceTest):
+    pass
+
