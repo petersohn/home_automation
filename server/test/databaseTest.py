@@ -412,6 +412,25 @@ class SessionTest(DatabaseTest):
                 True)
 
 
+    def test_getDeviceIp_for_one_device(self):
+        deviceName = "someDevice"
+        deviceIp = "192.168.12.34"
+        deviceId, pins = database.executeTransactionally(self.connection,
+                self.addDevice, deviceName, ip = deviceIp)
 
+        self.assertEquals(self.session.getDeviceIp(deviceName), deviceIp)
+
+    def test_getDeviceIp_for_more_devices(self):
+        device1Name = "someDevice"
+        device1Ip = "192.168.12.34"
+        device1Id, pins = database.executeTransactionally(self.connection,
+                self.addDevice, device1Name, ip = device1Ip)
+        device2Name = "otherDevice"
+        device2Ip = "10.22.33.44"
+        device2Id, pins = database.executeTransactionally(self.connection,
+                self.addDevice, device2Name, ip = device2Ip)
+
+        self.assertEquals(self.session.getDeviceIp(device1Name), device1Ip)
+        self.assertEquals(self.session.getDeviceIp(device2Name), device2Ip)
 
 

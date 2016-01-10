@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import databaseTest
+import senderTest
 import test_globals
 
 import psycopg2
@@ -18,4 +19,8 @@ class SessionTest(databaseTest.SessionTest):
 
 
 class ExecuteTransactionallyTest(databaseTest.ExecuteTransactionallyTest):
+    pass
+
+
+class SenderTest(senderTest.SenderTest):
     pass

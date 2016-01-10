@@ -3,6 +3,7 @@
 
 import flup.server.fcgi
 import imp
+import multiprocessing
 import os.path
 import sys
 import traceback
@@ -17,7 +18,12 @@ class Response:
     title = "200 OK"
     headers = []
 
+
+senderQueue = None
+
+
 def main(environ, start_response):
+    global senderQueue
     try:
         fullpath = environ["DOCUMENT_ROOT"] + environ["SCRIPT_NAME"]
         name, ext = os.path.splitext(os.path.basename(fullpath))
@@ -26,7 +32,7 @@ def main(environ, start_response):
         try:
             module = imp.load_module(name, file, pathname, description)
             response = Response()
-            result = module.run(environ, response)
+            result = module.run(environ, senderQueue, response)
             start_response(response.title, response.headers)
             return result
         finally:
@@ -43,6 +49,13 @@ if __name__ == "__main__":
     sys.path.append(scriptDirectory + "/lib")
 
     import database
+    import sender
+
+    senderQueue = multiprocessing.Queue()
+    process = multiprocessing.Process(target = sender.runProcess,
+            args = (senderQueue,))
+    process.daemon = True
+    process.start()
 
     database.getSession().log("info", "Server instance started.")
     server = flup.server.fcgi.WSGIServer(main)

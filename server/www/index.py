@@ -4,7 +4,7 @@
 from cgi import escape
 import sys
 
-def run(environ, response):
+def run(environ, senderQueue, response):
     response.headers = [('Content-Type', 'text/html')]
 
     yield '<h1>FastCGI Environment</h1>'

@@ -42,6 +42,9 @@ class Session:
         return self._executeTransactionally(self._getIntendedState, deviceName,
                 pinName)
 
+    def getDeviceIp(self, deviceName):
+        return self._executeTransactionally(self._getDeviceIp, deviceName)
+
 
     def _executeTransactionally(self, function, *args, **kwargs):
         return executeTransactionally(self.connection, function,
@@ -114,6 +117,13 @@ class Session:
                 (deviceName, pinName))
         count, = cursor.fetchone()
         return count != 0
+
+    def _getDeviceIp(self, deviceName):
+        cursor = self.connection.cursor()
+        cursor.execute("select ip from device where name = %s",
+                (deviceName,))
+        deviceIp, = cursor.fetchone()
+        return deviceIp
 
     def _findValue(self, value, finder):
         if value is None:

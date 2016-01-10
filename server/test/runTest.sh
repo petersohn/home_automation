@@ -10,7 +10,7 @@ create database $database_name;
 _EOF_
 set +e
 
-"${script_dir}/main.py" --connectString "dbname=$database_name" -- "$@"
+"${script_dir}/main.py" --connectString "dbname=$database_name" --testServerAddress "${TEST_SERVER_ADDRESS:-127.0.0.1:8080}" -- "$@"
 result=$?
 
 psql --quiet postgres <<_EOF_
