@@ -21,11 +21,18 @@ class Request:
         self.getSession = getSession
 
 
-    def send(self):
+    def send(self, httpConnections):
         session = self.getSession()
         deviceIp = session.getDeviceIp(self.deviceName)
-        connection = httplib.HTTPConnection(deviceIp)
-        connection.request("GET", self.path)
+
+        if deviceIp not in httpConnections:
+            connection = httplib.HTTPConnection(deviceIp)
+            httpConnections[deviceIp] = connection
+        else:
+            connection = httpConnections[deviceIp]
+
+        connection.request("GET", self.path,
+                headers = {"Connection": "keep-alive"})
         response = connection.getresponse()
         if response.status < 200 or response.status >= 300:
             raise BadResponse(response.status, response.reason)
@@ -34,10 +41,11 @@ class Request:
 
 def runProcess(queue):
     session = database.getSession()
+    connections = {}
     while True:
         request = queue.get()
         try:
-            request.send()
+            request.send(connections)
         except Exception as e:
             session.log("error", "Error sending request: " + str(e),
                     device=request.deviceName)
