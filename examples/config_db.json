@@ -1,0 +1,4 @@
+{
+    "psql_connect_string": "dbname=home_automation"
+}
+

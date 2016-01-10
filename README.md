@@ -8,7 +8,11 @@
     - [Server](#server-1)
     - [Development](#development-1)
 - [Setting up the web server](#setting-up-the-web-server)
-- [PostgreSQL](#postgresql)
+- [Setting up the PostgreSQL server](#setting-up-the-postgresql-server)
+- [Configuration variables](#configuration-variables)
+    - [Environment variables](#environment-variables)
+    - [Variables in configuration files](#variables-in-configuration-files)
+- [Permissions of serial devices](#permissions-of-serial-devices)
 
 # Introduction
 
@@ -106,7 +110,7 @@ An example `lighttpd.conf` file can be found [here](examples/lighttpd.conf).
 
 ## Setting up the PostgreSQL server
 
-The server requires a connection to an arbitrary PostgreSQL database The connection parameters for this database can be configured (see [Configuration variables](configuration-variables)). The contents of the database can be set up with the `server/sql/tables.sql` file. For example:
+The server requires a connection to an arbitrary PostgreSQL database The connection parameters for this database can be configured (see [Configuration variables](#configuration-variables)). The contents of the database can be set up with the `server/sql/tables.sql` file. For example:
 
 ```bash
 postgres@machine:~$ psql postgres <<<'create database home_automation;'
@@ -141,7 +145,8 @@ The following environment variables are used by tup:
   images to the device.
 * `ESP_PORT`: The device name for serial communication with the device.
 * `ESP_CONFIG_FILES`: The config files used for code generation (see [Variables
-  in configuration files](variables-in-configuration-files)).
+  in configuration files](#variables-in-configuration-files)). A full path is
+  recommended to be able to run tup from anywhere within the project.
 
 An example configuration (the directories are for a typical installation
 through the Arduino IDE's module manager):
@@ -214,7 +219,7 @@ If you do not want to upload the code to device, you may use individual tup
 targets, or run tup with `--keep-going` to avoid stoppin when it fails to
 upload to the device:
 
-```
+```bash
 # build only the server
 tup server
 
@@ -262,4 +267,4 @@ The tests can also be run manually. In this case an empty database (without any
 tables in it) must be provided to it. In this case, the following parameters
 are mandatory:
 * `--connectString`: Connect string used to access the database.
-* `testServerAddress`: Address (host:port) of the running web server.
+* `--testServerAddress`: Address (host:port) of the running web server.
