@@ -1,7 +1,9 @@
 import database
 
 import httplib
+import socket
 import sys
+import traceback
 
 
 class BadResponse(Exception):
@@ -12,6 +14,9 @@ class BadResponse(Exception):
     def __str__(self):
         return str(self.status) + " " + self.reason
 
+
+class Retry:
+    pass
 
 
 class Request:
@@ -26,17 +31,29 @@ class Request:
         deviceIp = session.getDeviceIp(self.deviceName)
 
         if deviceIp not in httpConnections:
-            connection = httplib.HTTPConnection(deviceIp)
+            connection = httplib.HTTPConnection(deviceIp, timeout=10)
             httpConnections[deviceIp] = connection
         else:
             connection = httpConnections[deviceIp]
 
-        connection.request("GET", self.path,
-                headers = {"Connection": "keep-alive"})
-        response = connection.getresponse()
-        if response.status < 200 or response.status >= 300:
-            raise BadResponse(response.status, response.reason)
-        return response.read()
+        try:
+            connection.request("GET", self.path,
+                    headers = {"Connection": "keep-alive"})
+            response = connection.getresponse()
+            if response.status < 200 or response.status >= 300:
+                raise BadResponse(response.status, response.reason)
+            return response.read()
+        except socket.timeout:
+            connection.close()
+            return Retry()
+        except:
+            connection.close()
+            raise
+
+
+def handleGenericException():
+    s = traceback.format_exc()
+    sys.stderr.write(s + '\n')
 
 
 def runProcess(queue):
@@ -45,8 +62,15 @@ def runProcess(queue):
     while True:
         request = queue.get()
         try:
-            request.send(connections)
+            result = request.send(connections)
+            if result.__class__ == Retry:
+                queue.put(request)
         except Exception as e:
             session.log("error", "Error sending request: " + str(e),
                     device=request.deviceName)
+            handleGenericException()
+        except:
+            handleGenericException()
+
+
 
