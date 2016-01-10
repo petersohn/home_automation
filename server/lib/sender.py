@@ -1,6 +1,7 @@
 import database
 
 import httplib
+import sys
 
 
 class BadResponse(Exception):
@@ -21,11 +22,14 @@ class Request:
 
 
     def send(self):
+        sys.stderr.write("Sending to " + self.deviceName + "\n")
         session = self.getSession()
-        connection = httplib.HTTPConnection(
-                session.getDeviceIp(self.deviceName))
+        deviceIp = session.getDeviceIp(self.deviceName)
+        sys.stderr.write(deviceIp + "\n")
+        connection = httplib.HTTPConnection(deviceIp)
         connection.request("GET", self.path)
         response = connection.getresponse()
+        sys.stderr.write(response.reason + "\n")
         if response.status < 200 or response.status >= 300:
             raise BadResponse(response.status, response.reason)
         return response.read()

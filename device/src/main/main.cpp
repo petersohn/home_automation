@@ -48,8 +48,8 @@ void heartbeat() {
 
 void initialize() {
     wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
-    heartbeat();
     httpServer.begin();
+    heartbeat();
 }
 
 } // unnamed namespace
