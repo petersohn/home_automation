@@ -114,11 +114,15 @@ The following configurations are required for the web server:
   the devices. Because TCP connections remain in TIME_WAIT after closing, it
   can make them run out of memory fast.
 
-An example `lighttpd.conf` file can be found [here](examples/lighttpd.conf).
+An example `lighttpd.conf` file can be found
+[here](example_config/lighttpd.conf).
 
 ## Setting up the PostgreSQL server
 
-The server requires a connection to an arbitrary PostgreSQL database The connection parameters for this database can be configured (see [Configuration variables](#configuration-variables)). The contents of the database can be set up with the `server/sql/tables.sql` file. For example:
+The server requires a connection to an arbitrary PostgreSQL database The
+connection parameters for this database can be configured (see [Configuration
+variables](#configuration-variables)). The contents of the database can be set
+up with the `server/sql/tables.sql` file. For example:
 
 ```bash
 postgres@machine:~$ psql postgres <<<'create database home_automation;'
@@ -188,16 +192,16 @@ value, which can contain strings, numbers and other arrays. These are converted
 into (possibly nested) initializer lists for C++ code.
 
 The JSON config files used by tup can be configured with the `ESP_CONFIG_FILES`
-environment variable. Example files can be found in the `examples` directory,
-and contain the following variables:
-* [`config_common.json`](examples/config_common.json): This file contains
+environment variable. Example files can be found in the `example_config`
+directory, and contain the following variables:
+* [`config_common.json`](example_config/config_common.json): This file contains
   configuration that is common in the system.
   * `ssid` (string): The SSID of the WiFi network to connect.
   * `password` (string): The password of the WiFi connection.
   * `serverAddress` (string): IP address of the server.
   * `serverPort` (number): Port used by the web server.
-* [`config_device_specific.json`](examples/config_device_specific.json): This
-  file contains configuration that is specific to each device.
+* [`config_device_specific.json`](example_config/config_device_specific.json):
+  This file contains configuration that is specific to each device.
   * `deviceName` (string): The name of the device. It should be unique for all
     devices running at the same time.
   * `pins` (composite): The pin configuration of the device. It is an array of
@@ -205,9 +209,12 @@ and contain the following variables:
     * `name`: The name of the pin. It should be unique within one device.
     * `number`: The pin number on the device.
     * `isOutput`: If true, it is an output pin, otherwise an input.
-* [`config_db.json`](examples/config_db.json): While other config files are
-  used by the device, this is used by the server.
-  * `psql_connect_string`: The connection string used to connect to the database. See the [PostgreSQL documentation](http://www.postgresql.org/docs/9.4/interactive/libpq-connect.html#LIBPQ-PARAMKEYWORDS) for more information on the format.
+* [`config_db.json`](example_config/config_db.json): While other config files
+  are used by the device, this is used by the server.
+  * `psql_connect_string`: The connection string used to connect to the
+    database. See the [PostgreSQL
+    documentation](http://www.postgresql.org/docs/9.4/interactive/libpq-connect.html#LIBPQ-PARAMKEYWORDS)
+    for more information on the format.
 
 Note that it is not necessary to arrange the config files this way: they will
 be concatenated. However, the device specific configuration should be in a
