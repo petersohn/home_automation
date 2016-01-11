@@ -39,11 +39,25 @@ class Session:
 
 
     def getIntendedState(self, deviceName, pinName):
-        return self._executeTransactionally(self._getIntendedState, deviceName,
-                pinName)
+        cursor = self.connection.cursor()
+        cursor.execute(
+                "select count(*) from device, pin, control_group, " +
+                "control_output where device.device_id = pin.device_id "
+                "and control_group.control_group_id = " +
+                        "control_output.control_group_id " +
+                "and pin.pin_id = control_output.pin_id " +
+                "and control_group.state = true " +
+                "and device.name = %s and pin.name = %s",
+                (deviceName, pinName))
+        count, = cursor.fetchone()
+        return count != 0
+
 
     def getDeviceIp(self, deviceName):
-        return self._executeTransactionally(self._getDeviceIp, deviceName)
+        cursor = self.connection.cursor()
+        cursor.execute("select ip from device where name = %s", (deviceName,))
+        deviceIp, = cursor.fetchone()
+        return deviceIp
 
 
     def _executeTransactionally(self, function, *args, **kwargs):
@@ -103,27 +117,6 @@ class Session:
                     "values (%s, %s, %s) returning pin_id",
                     (deviceId, name, type))
 
-
-    def _getIntendedState(self, deviceName, pinName):
-        cursor = self.connection.cursor()
-        cursor.execute(
-                "select count(*) from device, pin, control_group, " +
-                "control_output where device.device_id = pin.device_id "
-                "and control_group.control_group_id = " +
-                        "control_output.control_group_id " +
-                "and pin.pin_id = control_output.pin_id " +
-                "and control_group.state = true " +
-                "and device.name = %s and pin.name = %s",
-                (deviceName, pinName))
-        count, = cursor.fetchone()
-        return count != 0
-
-    def _getDeviceIp(self, deviceName):
-        cursor = self.connection.cursor()
-        cursor.execute("select ip from device where name = %s",
-                (deviceName,))
-        deviceIp, = cursor.fetchone()
-        return deviceIp
 
     def _findValue(self, value, finder):
         if value is None:
