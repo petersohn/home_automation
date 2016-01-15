@@ -39,7 +39,8 @@ def main(environ, start_response):
             file.close()
     except Exception as e:
         session = database.getSession()
-        session.log('error', 'Request failed: ' + e.message)
+        session.log('error', 'Request failed: ' + e.__class__.__name__ + ": " +
+                str(e))
         return handleGenericException(start_response)
     except:
         return handleGenericException(start_response)

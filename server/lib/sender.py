@@ -9,9 +9,10 @@ class BadResponse(Exception):
     def __init__(self, status, reason):
         self.status = status
         self.reason = reason
+        self.message = str(self.status) + " " + self.reason
 
     def __str__(self):
-        return str(self.status) + " " + self.reason
+        return self.message
 
 
 class Retry:
@@ -73,7 +74,8 @@ def runProcess(queue):
             if result.__class__ == Retry:
                 queue.put(request)
         except Exception as e:
-            session.log("error", "Error sending request: " + str(e),
+            session.log("error", "Error sending request: " +
+                            e.__class__.__name__ + ': ' + str(e),
                     device=request.deviceName)
             handleGenericException()
         except:
