@@ -54,6 +54,12 @@ class RequestTest(SenderTest):
         self.getSession().getDeviceIp.reset_mock()
 
 
+    def resetConnectionMocks(self):
+        self.httpConnection.reset_mock()
+        self.connection.request.reset_mock()
+        self.connection.getresponse.reset_mock()
+
+
     def test_successful_request(self):
         deviceIp = "5.4.3.2"
         self.makeSuccessfulRequest("someDevice", deviceIp, "some test data")
@@ -64,24 +70,15 @@ class RequestTest(SenderTest):
         ip2 = "1.3.5.7"
         self.makeSuccessfulRequest("device1", ip1, "some test data")
         self.httpConnection.assert_called_once_with(ip1, timeout = ANY)
-
-        self.httpConnection.reset_mock()
-        self.connection.request.reset_mock()
-        self.connection.getresponse.reset_mock()
+        self.resetConnectionMocks()
 
         self.makeSuccessfulRequest("device2", ip2, "other test data")
         self.httpConnection.assert_called_once_with(ip2, timeout = ANY)
-
-        self.httpConnection.reset_mock()
-        self.connection.request.reset_mock()
-        self.connection.getresponse.reset_mock()
+        self.resetConnectionMocks()
 
         self.makeSuccessfulRequest("device2", ip2, "more data")
         self.httpConnection.assert_not_called()
-
-        self.httpConnection.reset_mock()
-        self.connection.request.reset_mock()
-        self.connection.getresponse.reset_mock()
+        self.resetConnectionMocks()
 
         self.makeSuccessfulRequest("device1", ip1, "asdasdasdasdasd")
         self.httpConnection.assert_not_called()
