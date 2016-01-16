@@ -7,7 +7,6 @@ import sys
 scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 libDirectory = os.path.abspath(scriptDirectory + '/../lib')
 sqlDirectory = os.path.abspath(scriptDirectory + '/../sql')
-echoUrl = "/_test/echoQuery.py"
 
 connectString=None
 testServerAddress=None

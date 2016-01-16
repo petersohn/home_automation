@@ -20,10 +20,12 @@ class Retry:
 
 
 class Request:
-    def __init__(self, deviceName, path, getSession = database.getSession):
+    def __init__(self, deviceName, path, getSession = database.getSession,
+            httpConnection = http.client.HTTPConnection):
         self.deviceName = deviceName
         self.path = path
         self.getSession = getSession
+        self.httpConnection = httpConnection
 
 
     def execute(self, httpConnections):
@@ -31,7 +33,7 @@ class Request:
         deviceIp = session.getDeviceIp(self.deviceName)
 
         if deviceIp not in httpConnections:
-            connection = http.client.HTTPConnection(deviceIp, timeout=10)
+            connection = self.httpConnection(deviceIp, timeout=10)
             httpConnections[deviceIp] = connection
         else:
             connection = httpConnections[deviceIp]
