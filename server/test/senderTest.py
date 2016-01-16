@@ -6,21 +6,8 @@ import test_globals
 import http.client
 import pickle
 import unittest
+import unittest.mock
 import urllib
-
-
-# TODO use mock instead
-class FakeSession:
-    def __init__(self, address):
-        self.address = address
-
-
-    def getDeviceIp(self, deviceName):
-        return self.address
-
-
-def getGlobalAddressSession():
-    return FakeSession(test_globals.testServerAddress)
 
 
 class TestException(Exception):
@@ -34,47 +21,52 @@ class BadSession:
 
 
 class SenderTest(unittest.TestCase):
-    pass
+    def setUp(self):
+        self.getSession = unittest.mock.MagicMock()
+
 
 
 
 class RequestTest(SenderTest):
     def setUp(self):
+        super(RequestTest, self).setUp()
         self.connections = {}
-        pass
+        self.getSession().getDeviceIp.return_value = \
+                test_globals.testServerAddress
 
     def tearDown(self):
         for ip, connection in self.connections.items():
             connection.close()
-        pass
 
 
     def test_successfulRequest(self):
+        deviceName = "someDevice"
         data = "some test data"
-        request = sender.Request("someDevice",
+        request = sender.Request(deviceName,
                 test_globals.echoUrl + "?" + urllib.parse.quote(data),
-                getSession=getGlobalAddressSession)
+                getSession=self.getSession)
         result = request.execute(self.connections)
+        self.getSession().getDeviceIp.assert_called_once_with(deviceName)
         self.assertEqual(result, data)
 
     def test_multiple_send_requests_work(self):
         data1 = "some test data"
         request1 = sender.Request("someDevice",
                 test_globals.echoUrl + "?" + urllib.parse.quote(data1),
-                getSession=getGlobalAddressSession)
+                getSession=self.getSession)
         result = str(request1.execute(self.connections))
         self.assertEqual(result, data1)
 
         data2 = "more test data"
         request2 = sender.Request("someDevice",
                 test_globals.echoUrl + "?" + urllib.parse.quote(data2),
-                getSession=getGlobalAddressSession)
+                getSession=self.getSession)
         result = request2.execute(self.connections)
         self.assertEqual(result, data2)
 
     def test_request_for_bad_url_throws(self):
         request = sender.Request("someDevice", "/_test/invalid_url",
-                getSession=getGlobalAddressSession)
+                getSession=self.getSession)
         self.assertRaises(sender.BadResponse, request.execute, self.connections)
 
     def test_request_with_bad_device_throws(self):
@@ -82,32 +74,26 @@ class RequestTest(SenderTest):
                 getSession=BadSession)
         self.assertRaises(TestException, request.execute, self.connections)
 
-    def test_request_is_picklable(self):
-        data = "some test data"
-        request = sender.Request("someDevice",
-                test_globals.echoUrl + "?" + urllib.parse.quote(data),
-                getSession=getGlobalAddressSession)
-        copiedRequest = pickle.loads(pickle.dumps(request))
-        result = copiedRequest.execute(self.connections)
-        self.assertEqual(result, data)
-
 
 
 class ClearDeviceTest(SenderTest):
     def test_clearDevice_removes_correct_ip(self):
+        deviceName = "someDevice"
         ip1 = "1.2.3.4"
         value1 = "some value"
         ip2 = "3.4.5.6"
         value2 = "other value"
         connections = {ip1: value1, ip2: value2}
 
-        clearDevice = sender.ClearDevice("someDevice",
-                (lambda: FakeSession(ip1)))
+        self.getSession().getDeviceIp.return_value = ip1
+        clearDevice = sender.ClearDevice(deviceName, getSession=self.getSession)
         clearDevice.execute(connections)
+        self.getSession().getDeviceIp.assert_called_once_with(deviceName)
         self.assertEqual(connections, {ip2: value2})
 
 
     def test_clearDevice_ignores_non_existing_devices(self):
+        deviceName = "someDevice"
         ip1 = "1.2.3.4"
         value1 = "some value"
         ip2 = "3.4.5.6"
@@ -115,9 +101,10 @@ class ClearDeviceTest(SenderTest):
         connections = {ip1: value1, ip2: value2}
         expectedResult = connections
 
-        clearDevice = sender.ClearDevice("someDevice",
-                (lambda: FakeSession("4.3.2.1")))
+        self.getSession().getDeviceIp.return_value = "4.3.2.1"
+        clearDevice = sender.ClearDevice(deviceName, getSession=self.getSession)
         clearDevice.execute(connections)
+        self.getSession().getDeviceIp.assert_called_once_with(deviceName)
         self.assertEqual(connections,  expectedResult)
 
 
