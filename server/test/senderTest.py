@@ -23,8 +23,6 @@ class RequestTest(SenderTest):
     def setUp(self):
         super(RequestTest, self).setUp()
         self.connections = {}
-        self.deviceIp = "10.21.32.40"
-        self.getSession().getDeviceIp.return_value = self.deviceIp
         self.httpConnection = unittest.mock.Mock()
 
     def tearDown(self):
@@ -41,59 +39,63 @@ class RequestTest(SenderTest):
         self.httpConnection.reset_mock()
 
 
-    def test_successful_request(self):
-        deviceName = "someDevice"
-        data = "some test data"
+    def makeSuccessfulRequest(self, deviceName, deviceIp, data):
+        self.getSession().getDeviceIp.return_value = deviceIp
         request = sender.Request(deviceName, data, getSession=self.getSession,
                 httpConnection = self.httpConnection)
         self.createExpectedResult(data)
         result = request.execute(self.connections)
         self.getSession().getDeviceIp.assert_called_once_with(deviceName)
-        self.httpConnection.assert_called_once_with(
-                self.deviceIp, timeout = ANY)
         self.connection.request.assert_called_once_with("GET", data,
                 headers = ANY)
         self.connection.getresponse.assert_called_once_with()
         self.assertEqual(result, data)
 
-    def test_multiple_send_requests_create_only_one_connection(self):
-        data1 = "some test data"
-        request1 = sender.Request("someDevice", data1,
-                getSession=self.getSession,
-                httpConnection=self.httpConnection)
-        self.createExpectedResult(data1)
-        result = str(request1.execute(self.connections))
-        self.httpConnection.assert_called_once_with(
-                self.deviceIp, timeout = ANY)
-        self.connection.request.assert_called_once_with("GET", data1,
-                headers = ANY)
-        self.connection.getresponse.assert_called_once_with()
-        self.assertEqual(result, data1)
+        self.getSession().getDeviceIp.reset_mock()
+
+
+    def test_successful_request(self):
+        deviceIp = "5.4.3.2"
+        self.makeSuccessfulRequest("someDevice", deviceIp, "some test data")
+        self.httpConnection.assert_called_once_with(deviceIp, timeout = ANY)
+
+    def test_multiple_send_requests_create_only_one_connection_per_device(self):
+        ip1 = "1.2.3.4"
+        ip2 = "1.3.5.7"
+        self.makeSuccessfulRequest("device1", ip1, "some test data")
+        self.httpConnection.assert_called_once_with(ip1, timeout = ANY)
 
         self.httpConnection.reset_mock()
         self.connection.request.reset_mock()
         self.connection.getresponse.reset_mock()
 
-        data2 = "more test data"
-        request2 = sender.Request("someDevice", data2,
-                getSession=self.getSession,
-                httpConnection = self.httpConnection)
-        self.createExpectedResult(data2)
-        result = request2.execute(self.connections)
+        self.makeSuccessfulRequest("device2", ip2, "other test data")
+        self.httpConnection.assert_called_once_with(ip2, timeout = ANY)
+
+        self.httpConnection.reset_mock()
+        self.connection.request.reset_mock()
+        self.connection.getresponse.reset_mock()
+
+        self.makeSuccessfulRequest("device2", ip2, "more data")
         self.httpConnection.assert_not_called()
-        self.connection.request.assert_called_once_with("GET", data2,
-                headers = ANY)
-        self.connection.getresponse.assert_called_once_with()
-        self.assertEqual(result, data2)
+
+        self.httpConnection.reset_mock()
+        self.connection.request.reset_mock()
+        self.connection.getresponse.reset_mock()
+
+        self.makeSuccessfulRequest("device1", ip1, "asdasdasdasdasd")
+        self.httpConnection.assert_not_called()
+
 
     def test_request_for_bad_url_throws(self):
         data = "invalid URL"
+        deviceIp = "1.2.3.4"
+        self.getSession().getDeviceIp.return_value = deviceIp
         request = sender.Request("someDevice", data, getSession=self.getSession,
                 httpConnection = self.httpConnection)
         self.createExpectedResult(data, 404, "Not Found")
         self.assertRaises(sender.BadResponse, request.execute, self.connections)
-        self.httpConnection.assert_called_once_with(
-                self.deviceIp, timeout = ANY)
+        self.httpConnection.assert_called_once_with(deviceIp, timeout = ANY)
         self.connection.request.assert_called_once_with("GET", data,
                 headers = ANY)
         self.connection.getresponse.assert_called_once_with()
