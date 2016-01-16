@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import database
 import test_globals
@@ -11,9 +11,9 @@ import sys
 
 class DatabaseTest(unittest.TestCase):
     def cleanup(self):
-        script = open(test_globals.sqlDirectory + "/cleanup.sql")
-        self.connection.cursor().execute(script.read())
-        self.connection.commit()
+        with  open(test_globals.sqlDirectory + "/cleanup.sql") as script:
+            self.connection.cursor().execute(script.read())
+            self.connection.commit()
 
     def setUp(self):
         self.connection = psycopg2.connect(test_globals.connectString)
@@ -82,7 +82,7 @@ class SessionTest(DatabaseTest):
         cursor.execute("select severity, message, device_id, pin_id " +
                 "from log")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(severity, message, None, None)])
+        self.assertCountEqual(result, [(severity, message, None, None)])
 
     def addDevice(self, name, ip = "192.168.1.10",
             seen = datetime.datetime.now(), pins = []):
@@ -113,7 +113,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(severity, message, deviceId, None)])
+        self.assertCountEqual(result, [(severity, message, deviceId, None)])
 
     def test_log_device_pin(self):
         deviceId, [pinId] = database.executeTransactionally(self.connection,
@@ -126,7 +126,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])
+        self.assertCountEqual(result, [(severity, message, deviceId, pinId)])
 
     def test_log_device_with_name(self):
         deviceName = "foo"
@@ -140,7 +140,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(severity, message, deviceId, None)])
+        self.assertCountEqual(result, [(severity, message, deviceId, None)])
 
     def test_log_pin_with_name(self):
         pinName = "baar"
@@ -154,7 +154,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])
+        self.assertCountEqual(result, [(severity, message, deviceId, pinId)])
 
     def test_log_device_and_pin_with_name(self):
         deviceName = "someDevice"
@@ -169,7 +169,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select severity, message, device_id, pin_id from log")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(severity, message, deviceId, pinId)])
+        self.assertCountEqual(result, [(severity, message, deviceId, pinId)])
 
 
     def test_updateDevice_add_new_device(self):
@@ -201,7 +201,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select name, ip from device")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [(deviceName, deviceIp)])
+        self.assertCountEqual(result, [(deviceName, deviceIp)])
 
     def test_updateDevice_add_multiple_devices(self):
         device1Name = "firstDevice"
@@ -217,7 +217,7 @@ class SessionTest(DatabaseTest):
         cursor = self.connection.cursor()
         cursor.execute("select name, ip from device")
         result = cursor.fetchall()
-        self.assertItemsEqual(result,
+        self.assertCountEqual(result,
                 [(device1Name, device1Ip), (device2Name, device2Ip)])
 
     def test_updateDevice_set_pins(self):
@@ -239,7 +239,7 @@ class SessionTest(DatabaseTest):
 
         cursor.execute("select device_id, name, type from pin")
         result = cursor.fetchall()
-        self.assertItemsEqual(result, [
+        self.assertCountEqual(result, [
                 (deviceId, inputPinName, inputPinType),
                 (deviceId, outputPinName, outputPinType)])
 
@@ -274,7 +274,7 @@ class SessionTest(DatabaseTest):
                 self.insertControlGroup, "someControlGroup", False, [pinId])
 
         result = self.session.getIntendedState(deviceName, pinName)
-        self.assertEquals(result, False)
+        self.assertEqual(result, False)
 
     def test_getIntendedState_true_if_control_group_value_is_true(self):
         deviceName = "someDevice"
@@ -286,7 +286,7 @@ class SessionTest(DatabaseTest):
                 self.insertControlGroup, "someControlGroup", True, [pinId])
 
         result = self.session.getIntendedState(deviceName, pinName)
-        self.assertEquals(result, True)
+        self.assertEqual(result, True)
 
     def test_getIntendedState_true_if_one_of_control_group_values_is_true(self):
         deviceName = "someDevice"
@@ -300,7 +300,7 @@ class SessionTest(DatabaseTest):
                 self.insertControlGroup, "otherControlGroup", False, [pinId])
 
         result = self.session.getIntendedState(deviceName, pinName)
-        self.assertEquals(result, True)
+        self.assertEqual(result, True)
 
     def test_getIntendedState_false_if_none_of_control_group_values_is_true(self):
         deviceName = "someDevice"
@@ -314,7 +314,7 @@ class SessionTest(DatabaseTest):
                 self.insertControlGroup, "otherControlGroup", False, [pinId])
 
         result = self.session.getIntendedState(deviceName, pinName)
-        self.assertEquals(result, False)
+        self.assertEqual(result, False)
 
     def test_getIntendedState_true_if_all_of_control_group_values_is_true(self):
         deviceName = "someDevice"
@@ -328,7 +328,7 @@ class SessionTest(DatabaseTest):
                 self.insertControlGroup, "otherControlGroup", True, [pinId])
 
         result = self.session.getIntendedState(deviceName, pinName)
-        self.assertEquals(result, True)
+        self.assertEqual(result, True)
 
     def test_getIntendedState_true_for_the_correct_pin(self):
         deviceName = "someDevice"
@@ -345,10 +345,10 @@ class SessionTest(DatabaseTest):
 
         truePinIntendedState = self.session.getIntendedState(deviceName,
                 truePinName)
-        self.assertEquals(truePinIntendedState, True)
+        self.assertEqual(truePinIntendedState, True)
         falsePinIntendedState = self.session.getIntendedState(deviceName,
                 falsePinName)
-        self.assertEquals(falsePinIntendedState, False)
+        self.assertEqual(falsePinIntendedState, False)
 
     def test_getIntendedState_one_conrol_group_controls_more_pins(self):
         deviceName = "someDevice"
@@ -364,9 +364,9 @@ class SessionTest(DatabaseTest):
                 [pin1Id, pin2Id])
 
         pin1IntendedState = self.session.getIntendedState(deviceName, pin1Name)
-        self.assertEquals(pin1IntendedState, True)
+        self.assertEqual(pin1IntendedState, True)
         pin2IntendedState = self.session.getIntendedState(deviceName, pin2Name)
-        self.assertEquals(pin2IntendedState, True)
+        self.assertEqual(pin2IntendedState, True)
 
     def test_getIntendedState_complex_case_with_more_devices(self):
         pin1Name = "firstPin"
@@ -398,17 +398,17 @@ class SessionTest(DatabaseTest):
                 self.insertControlGroup, "fourthControlGroup", False,
                 [pin23Id])
 
-        self.assertEquals(self.session.getIntendedState(device1Name, pin1Name),
+        self.assertEqual(self.session.getIntendedState(device1Name, pin1Name),
                 True)
-        self.assertEquals(self.session.getIntendedState(device1Name, pin2Name),
+        self.assertEqual(self.session.getIntendedState(device1Name, pin2Name),
                 False)
-        self.assertEquals(self.session.getIntendedState(device1Name, pin3Name),
+        self.assertEqual(self.session.getIntendedState(device1Name, pin3Name),
                 False)
-        self.assertEquals(self.session.getIntendedState(device2Name, pin1Name),
+        self.assertEqual(self.session.getIntendedState(device2Name, pin1Name),
                 False)
-        self.assertEquals(self.session.getIntendedState(device2Name, pin2Name),
+        self.assertEqual(self.session.getIntendedState(device2Name, pin2Name),
                 False)
-        self.assertEquals(self.session.getIntendedState(device2Name, pin3Name),
+        self.assertEqual(self.session.getIntendedState(device2Name, pin3Name),
                 True)
 
 
@@ -418,7 +418,7 @@ class SessionTest(DatabaseTest):
         deviceId, pins = database.executeTransactionally(self.connection,
                 self.addDevice, deviceName, ip = deviceIp)
 
-        self.assertEquals(self.session.getDeviceIp(deviceName), deviceIp)
+        self.assertEqual(self.session.getDeviceIp(deviceName), deviceIp)
 
     def test_getDeviceIp_for_more_devices(self):
         device1Name = "someDevice"
@@ -430,7 +430,7 @@ class SessionTest(DatabaseTest):
         device2Id, pins = database.executeTransactionally(self.connection,
                 self.addDevice, device2Name, ip = device2Ip)
 
-        self.assertEquals(self.session.getDeviceIp(device1Name), device1Ip)
-        self.assertEquals(self.session.getDeviceIp(device2Name), device2Ip)
+        self.assertEqual(self.session.getDeviceIp(device1Name), device1Ip)
+        self.assertEqual(self.session.getDeviceIp(device2Name), device2Ip)
 
 

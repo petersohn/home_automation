@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
 import database
@@ -10,7 +10,7 @@ import sys
 def run(environ, senderQueue, response):
     response.headers = [('Content-Type', 'text/plain')]
     input = environ["wsgi.input"]
-    inputData = json.load(input)
+    inputData = json.loads(input.read().decode("UTF-8"))
     session = database.getSession()
 
     session.updateDevice(inputData)

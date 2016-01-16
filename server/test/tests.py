@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import databaseTest
 import senderTest
@@ -9,9 +9,9 @@ import psycopg2
 
 def setUpModule():
     connection = psycopg2.connect(test_globals.connectString)
-    script = open(test_globals.sqlDirectory + "/tables.sql")
-    connection.cursor().execute(script.read())
-    connection.commit()
+    with open(test_globals.sqlDirectory + "/tables.sql") as script:
+        connection.cursor().execute(script.read())
+        connection.commit()
 
 
 class SessionTest(databaseTest.SessionTest):

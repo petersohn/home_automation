@@ -1,6 +1,6 @@
 import database
 
-import httplib
+import http.client
 import sys
 import traceback
 
@@ -31,7 +31,7 @@ class Request:
         deviceIp = session.getDeviceIp(self.deviceName)
 
         if deviceIp not in httpConnections:
-            connection = httplib.HTTPConnection(deviceIp, timeout=10)
+            connection = http.client.HTTPConnection(deviceIp, timeout=10)
             httpConnections[deviceIp] = connection
         else:
             connection = httpConnections[deviceIp]
@@ -42,7 +42,7 @@ class Request:
             response = connection.getresponse()
             if response.status < 200 or response.status >= 300:
                 raise BadResponse(response.status, response.reason)
-            return response.read()
+            return response.read().decode("UTF-8")
         except:
             connection.close()
             raise

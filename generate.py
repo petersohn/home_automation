@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import argparse
 import json
@@ -39,7 +39,7 @@ def main():
         contents = json.load(file)
         config.update(contents)
 
-    for key, value in config.iteritems():
+    for key, value in config.items():
         config[key] = decode(value)
 
     input = arguments.input.read()

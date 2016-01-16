@@ -1,7 +1,7 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-import flup.server.fcgi
+import flipflop
 import imp
 import multiprocessing
 import os.path
@@ -59,6 +59,6 @@ if __name__ == "__main__":
     process.start()
 
     database.getSession().log("info", "Server instance started.")
-    server = flup.server.fcgi.WSGIServer(main)
+    server = flipflop.WSGIServer(main)
     server.run()
 

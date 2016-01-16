@@ -80,8 +80,8 @@ flashing the device.
 * [PostgreSQL](http://www.postgresql.org) server
 * Web server with FastCGI capability (tested with
   [lighttpd](https://www.lighttpd.net/)).
-* Python 2.7 with the following modules installed:
-  * [flup](https://pypi.python.org/pypi/flup) (for FastCGI server).
+* Python 3 (tested with 3.5) with the following modules installed:
+  * [flipflop](https://pypi.python.org/pypi/flipflop) (for FastCGI server).
   * [psycopg2](http://initd.org/psycopg/) (for PostgreSQL access).
 
 ### Development

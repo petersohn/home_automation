@@ -16,7 +16,6 @@ def executeTransactionally(connection, function, *args, **kwargs):
         raise
 
 
-
 class Session:
     def __init__(self, connectString):
         self.connectString = connectString
@@ -121,7 +120,7 @@ class Session:
     def _findValue(self, value, finder):
         if value is None:
             return None
-        if type(value) == int or type(value) == long:
+        if type(value) == int:
             return value
         return finder(value)
 

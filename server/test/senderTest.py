@@ -1,9 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import sender
 import test_globals
 
-import httplib
+import http.client
 import pickle
 import unittest
 import urllib
@@ -44,13 +44,15 @@ class RequestTest(SenderTest):
         pass
 
     def tearDown(self):
+        for ip, connection in self.connections.items():
+            connection.close()
         pass
 
 
     def test_successfulRequest(self):
         data = "some test data"
         request = sender.Request("someDevice",
-                test_globals.echoUrl + "?" + urllib.quote(data),
+                test_globals.echoUrl + "?" + urllib.parse.quote(data),
                 getSession=getGlobalAddressSession)
         result = request.execute(self.connections)
         self.assertEqual(result, data)
@@ -58,14 +60,14 @@ class RequestTest(SenderTest):
     def test_multiple_send_requests_work(self):
         data1 = "some test data"
         request1 = sender.Request("someDevice",
-                test_globals.echoUrl + "?" + urllib.quote(data1),
+                test_globals.echoUrl + "?" + urllib.parse.quote(data1),
                 getSession=getGlobalAddressSession)
-        result = request1.execute(self.connections)
+        result = str(request1.execute(self.connections))
         self.assertEqual(result, data1)
 
         data2 = "more test data"
         request2 = sender.Request("someDevice",
-                test_globals.echoUrl + "?" + urllib.quote(data2),
+                test_globals.echoUrl + "?" + urllib.parse.quote(data2),
                 getSession=getGlobalAddressSession)
         result = request2.execute(self.connections)
         self.assertEqual(result, data2)
@@ -83,7 +85,7 @@ class RequestTest(SenderTest):
     def test_request_is_picklable(self):
         data = "some test data"
         request = sender.Request("someDevice",
-                test_globals.echoUrl + "?" + urllib.quote(data),
+                test_globals.echoUrl + "?" + urllib.parse.quote(data),
                 getSession=getGlobalAddressSession)
         copiedRequest = pickle.loads(pickle.dumps(request))
         result = copiedRequest.execute(self.connections)
