@@ -16,21 +16,28 @@ def run(environ, senderQueue, response):
     session.updateDevice(inputData)
 
     deviceName = inputData["device"]["name"]
-    if "type" in inputData and inputData["type"] == "login":
+    inputType = inputData.get("type", None)
+    if inputType == "login":
         senderQueue.put(sender.ClearDevice(deviceName))
 
     for pin in inputData["pins"]:
         pinName = pin["name"]
-        intendedValue = session.getIntendedState(deviceName, pinName)
-        if pin["type"] == "output" and pin["value"] != intendedValue:
-            session.log(
-                    device = deviceName,
-                    pin = pinName,
-                    severity = "warning",
-                    description = "Wrong value of pin.")
-            request = sender.Request(deviceName, "/" + pinName + "/" + (
-                    "1" if intendedValue else "0"))
-            senderQueue.put(request)
+        pinValue = pin["value"]
+        if inputType == "event" and pin["type"] == "input":
+            triggers = session.getTriggers(deviceName, pinName, pinValue)
+            for trigger in triggers:
+                exec(trigger, {}, {"pinValue": pinValue})
+        else:
+            intendedValue = session.getIntendedState(deviceName, pinName)
+            if pin["type"] == "output" and pinValue != intendedValue:
+                session.log(
+                        device = deviceName,
+                        pin = pinName,
+                        severity = "warning",
+                        description = "Wrong value of pin.")
+                request = sender.Request(deviceName, "/" + pinName + "/" + (
+                        "1" if intendedValue else "0"))
+                senderQueue.put(request)
 
     return ''
 
