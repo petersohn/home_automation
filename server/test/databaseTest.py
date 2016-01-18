@@ -434,3 +434,87 @@ class SessionTest(DatabaseTest):
         self.assertEqual(self.session.getDeviceIp(device2Name), device2Ip)
 
 
+    def addTrigger(self, pinId, edge, expression):
+            cursor = self.connection.cursor()
+            cursor.execute("insert into input_trigger " +
+                    "(pin_id, edge, expression) values (%s, %s, %s)",
+                    (pinId, edge, expression))
+
+
+    def test_getTriggers_true_finds_rising_and_both_triggers(self):
+        deviceName = "someDevice"
+        pinName = "somePin"
+        risingTrigger = "rising trigger"
+        fallingTrigger = "falling trigger"
+        bothTrigger = "both trigger"
+
+        deviceId, [pinId] = database.executeTransactionally(self.connection,
+                self.addDevice, deviceName, pins = [(pinName, "input")])
+
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pinId, "rising", risingTrigger)
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pinId, "falling", fallingTrigger)
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pinId, "both", bothTrigger)
+
+        result = self.session.getTriggers(deviceName, pinName, True)
+        self.assertCountEqual(result, [risingTrigger, bothTrigger])
+
+    def test_getTriggers_false_finds_falling_and_both_triggers(self):
+        deviceName = "someDevice"
+        pinName = "somePin"
+        risingTrigger = "rising trigger"
+        fallingTrigger = "falling trigger"
+        bothTrigger = "both trigger"
+
+        deviceId, [pinId] = database.executeTransactionally(self.connection,
+                self.addDevice, deviceName, pins = [(pinName, "input")])
+
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pinId, "rising", risingTrigger)
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pinId, "falling", fallingTrigger)
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pinId, "both", bothTrigger)
+
+        result = self.session.getTriggers(deviceName, pinName, False)
+        self.assertCountEqual(result, [fallingTrigger, bothTrigger])
+
+    def test_getTriggers_finds_triggers_for_correct_pin(self):
+        pin1Name = "firstPin"
+        pin2Name = "secondPin"
+        pin3Name = "thirdPin"
+        device1Name = "someDevice"
+        device1Id, [pin11Id, pin12Id, pin13Id] = \
+                database.executeTransactionally(self.connection,
+                self.addDevice, device1Name, pins = [
+                        (pin1Name, "output"), (pin2Name, "output"),
+                        (pin3Name, "output")])
+        device2Name = "otherDevice"
+        device1Id, [pin21Id, pin22Id, pin23Id] = \
+                database.executeTransactionally(self.connection,
+                self.addDevice, device2Name, pins = [
+                        (pin1Name, "output"), (pin2Name, "output"),
+                        (pin3Name, "output")])
+
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pin11Id, "both", "trigger11")
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pin12Id, "both", "trigger12")
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pin13Id, "both", "trigger13")
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pin21Id, "both", "trigger21")
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pin22Id, "both", "trigger22")
+        database.executeTransactionally(self.connection, self.addTrigger,
+                pin23Id, "both", "trigger23")
+
+        result = self.session.getTriggers(device1Name, pin3Name, False)
+        self.assertEqual(result, ["trigger13"])
+        result = self.session.getTriggers(device2Name, pin2Name, True)
+        self.assertEqual(result, ["trigger22"])
+
+
+

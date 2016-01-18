@@ -52,6 +52,19 @@ class Session:
         return count != 0
 
 
+    def getTriggers(self, deviceName, pinName, pinValue):
+        edge = "rising" if pinValue else "falling"
+        cursor = self.connection.cursor()
+        cursor.execute(
+                "select expression from device, pin, input_trigger where " +
+                "device.device_id = pin.device_id " +
+                "and input_trigger.pin_id = pin.pin_id " +
+                "and (input_trigger.edge = 'both' or input_trigger.edge = %s)" +
+                "and device.name = %s and pin.name = %s",
+                (edge, deviceName, pinName))
+        return [element[0] for element in cursor.fetchall()]
+
+
     def getDeviceIp(self, deviceName):
         cursor = self.connection.cursor()
         cursor.execute("select ip from device where name = %s", (deviceName,))

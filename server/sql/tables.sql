@@ -1,5 +1,6 @@
 create type pin_type as enum ('input', 'output');
 create type severity as enum ('info', 'warning', 'error');
+create type edge as enum ('rising', 'falling', 'both');
 
 
 create table device (
@@ -37,6 +38,16 @@ create table control_output (
     pin_id integer not null references pin on delete cascade,
     control_group_id integer not null references control_group on delete cascade
 );
+
+
+create table input_trigger (
+    input_trigger_id serial primary key,
+    pin_id integer not null references pin on delete cascade,
+    edge edge not null,
+    expression text not null
+);
+
+create index input_trigger_pin_id on input_trigger (pin_id);
 
 
 create table log (
