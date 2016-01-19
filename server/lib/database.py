@@ -71,8 +71,7 @@ class Session:
                         join input_trigger using (pin_id)
                 where (input_trigger.edge = 'both' or input_trigger.edge = %s)
                         and device.name = %s and pin.name = %s
-                """,
-                (edge, deviceName, pinName))
+                """, (edge, deviceName, pinName))
         return [element[0] for element in cursor.fetchall()]
 
 
@@ -92,6 +91,20 @@ class Session:
     def toggleControlGroup(self, name):
         self._connectIfNeeded()
         return self._executeTransactionally(self._toggleControlGroup, name)
+
+
+    def getPinsForControlGroup(self, name):
+        self._connectIfNeeded()
+        cursor = self.connection.cursor()
+        cursor.execute(
+                """
+                select device.name, pin.name from device
+                        join pin using (device_id)
+                        join control_output using (pin_id)
+                        join control_group using (control_group_id)
+                where control_group.name = %s
+                """, (name,))
+        return cursor.fetchall()
 
 
     def _executeTransactionally(self, function, *args, **kwargs):

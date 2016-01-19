@@ -584,3 +584,32 @@ class SessionTest(DatabaseTest):
         self.assertEqual(self.getControlGroupState(badControlGroupName), False)
 
 
+    def test_getPinsForControlGroup(self):
+        pin1Name = "firstPin"
+        pin2Name = "secondPin"
+        pin3Name = "thirdPin"
+        device1Name = "someDevice"
+        device1Id, [pin11Id, pin12Id, pin13Id] = \
+                database.executeTransactionally(self.connection,
+                self.addDevice, device1Name, pins = [
+                        (pin1Name, "output"), (pin2Name, "output"),
+                        (pin3Name, "output")])
+        device2Name = "otherDevice"
+        device1Id, [pin21Id, pin22Id, pin23Id] = \
+                database.executeTransactionally(self.connection,
+                self.addDevice, device2Name, pins = [
+                        (pin1Name, "output"), (pin2Name, "output"),
+                        (pin3Name, "output")])
+
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, "firstControlGroup", True,
+                [pin11Id, pin23Id, pin12Id])
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, "secondControlGroup", True,
+                [pin11Id, pin22Id])
+
+        result = self.session.getPinsForControlGroup("firstControlGroup")
+        self.assertCountEqual(result, [(device1Name, pin1Name),
+                (device1Name, pin2Name), (device2Name, pin3Name)])
+
+

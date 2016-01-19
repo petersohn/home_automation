@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import actions
 import database
 import sender
 
@@ -25,8 +26,9 @@ def run(environ, senderQueue, response):
         pinValue = pin["value"]
         if inputType == "event" and pin["type"] == "input":
             triggers = session.getTriggers(deviceName, pinName, pinValue)
+            action = actions.Actions(senderQueue, session)
             for trigger in triggers:
-                exec(trigger, {}, {"pinValue": pinValue})
+                exec(trigger, {}, {"pinValue": pinValue, "action": action})
         else:
             intendedValue = session.getIntendedState(deviceName, pinName)
             if pin["type"] == "output" and pinValue != intendedValue:
@@ -35,9 +37,8 @@ def run(environ, senderQueue, response):
                         pin = pinName,
                         severity = "warning",
                         description = "Wrong value of pin.")
-                request = sender.Request(deviceName, "/" + pinName + "/" + (
-                        "1" if intendedValue else "0"))
-                senderQueue.put(request)
+
+                actions.setPin(senderQueue, deviceName, pinName, intendedValue)
 
     return ''
 
