@@ -47,13 +47,14 @@ class Session:
         self._connectIfNeeded()
         cursor = self.connection.cursor()
         cursor.execute(
-                "select count(*) from device, pin, control_group, " +
-                "control_output where device.device_id = pin.device_id "
-                "and control_group.control_group_id = " +
-                        "control_output.control_group_id " +
-                "and pin.pin_id = control_output.pin_id " +
-                "and control_group.state = true " +
-                "and device.name = %s and pin.name = %s",
+                """
+                select count(*) from device
+                        join pin using (device_id)
+                        join control_output using (pin_id)
+                        join control_group using (control_group_id)
+                where control_group.state = true
+                        and device.name = %s and pin.name = %s
+                """,
                 (deviceName, pinName))
         count, = cursor.fetchone()
         return count != 0
@@ -64,11 +65,13 @@ class Session:
         edge = "rising" if pinValue else "falling"
         cursor = self.connection.cursor()
         cursor.execute(
-                "select expression from device, pin, input_trigger where " +
-                "device.device_id = pin.device_id " +
-                "and input_trigger.pin_id = pin.pin_id " +
-                "and (input_trigger.edge = 'both' or input_trigger.edge = %s)" +
-                "and device.name = %s and pin.name = %s",
+                """
+                select expression from device
+                        join pin using (device_id)
+                        join input_trigger using (pin_id)
+                where (input_trigger.edge = 'both' or input_trigger.edge = %s)
+                        and device.name = %s and pin.name = %s
+                """,
                 (edge, deviceName, pinName))
         return [element[0] for element in cursor.fetchall()]
 
