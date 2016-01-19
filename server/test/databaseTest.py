@@ -558,3 +558,29 @@ class SessionTest(DatabaseTest):
         self.assertEqual(self.getControlGroupState(badControlGroupName), False)
 
 
+    def test_toggleControlGroup_toggles_control_group_state(self):
+        controlGroupName = "someControlGroup"
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, controlGroupName, False, [])
+
+        self.session.toggleControlGroup(controlGroupName)
+        self.assertEqual(self.getControlGroupState(controlGroupName), True)
+        self.session.toggleControlGroup(controlGroupName)
+        self.assertEqual(self.getControlGroupState(controlGroupName), False)
+        self.session.toggleControlGroup(controlGroupName)
+        self.assertEqual(self.getControlGroupState(controlGroupName), True)
+
+
+    def test_toggleControlGroup_toggles_correct_control_Group(self):
+        goodControlGroupName = "goodControlGroup"
+        badControlGroupName = "badControlGroup"
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, goodControlGroupName, False, [])
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, badControlGroupName, False, [])
+
+        self.session.toggleControlGroup(goodControlGroupName)
+        self.assertEqual(self.getControlGroupState(goodControlGroupName), True)
+        self.assertEqual(self.getControlGroupState(badControlGroupName), False)
+
+

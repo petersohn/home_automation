@@ -86,6 +86,11 @@ class Session:
         return self._executeTransactionally(self._setControlGroup, name, state)
 
 
+    def toggleControlGroup(self, name):
+        self._connectIfNeeded()
+        return self._executeTransactionally(self._toggleControlGroup, name)
+
+
     def _executeTransactionally(self, function, *args, **kwargs):
         return executeTransactionally(self.connection, function,
                 *args, **kwargs)
@@ -148,6 +153,12 @@ class Session:
         cursor = self.connection.cursor()
         cursor.execute("update control_group set state = %s where name = %s",
                 (state, name))
+
+
+    def _toggleControlGroup(self, name):
+        cursor = self.connection.cursor()
+        cursor.execute("update control_group set state = not state " +
+                "where name = %s", (name,))
 
 
     def _findValue(self, value, finder):
