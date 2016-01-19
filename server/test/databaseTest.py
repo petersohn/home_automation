@@ -67,6 +67,11 @@ class SessionTest(DatabaseTest):
         self.session = database.Session(test_globals.connectString)
 
 
+    def tearDown(self):
+        self.session.closeConnection()
+        super(SessionTest, self).tearDown()
+
+
     def createInputData(self, name, ip, pins = []):
         device = {"name": name, "ip": ip}
         pins = [{"name": name, "type": type} for (name, type) in pins]
@@ -516,5 +521,40 @@ class SessionTest(DatabaseTest):
         result = self.session.getTriggers(device2Name, pin2Name, True)
         self.assertEqual(result, ["trigger22"])
 
+
+    def getControlGroupState(self, name):
+        cursor = self.connection.cursor()
+        cursor.execute("select state from control_group where name = %s",
+                (name,))
+        result, = cursor.fetchone()
+        return result
+
+
+    def test_setControlGroup_set_state_of_control_group(self):
+        controlGroupName = "someControlGroup"
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, controlGroupName, False, [])
+
+        self.session.setControlGroup(controlGroupName, False)
+        self.assertEqual(self.getControlGroupState(controlGroupName), False)
+        self.session.setControlGroup(controlGroupName, True)
+        self.assertEqual(self.getControlGroupState(controlGroupName), True)
+        self.session.setControlGroup(controlGroupName, True)
+        self.assertEqual(self.getControlGroupState(controlGroupName), True)
+        self.session.setControlGroup(controlGroupName, False)
+        self.assertEqual(self.getControlGroupState(controlGroupName), False)
+
+
+    def test_setControlGroup_set_state_of_the_correct_control_group(self):
+        goodControlGroupName = "goodControlGroup"
+        badControlGroupName = "badControlGroup"
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, goodControlGroupName, False, [])
+        database.executeTransactionally(self.connection,
+                self.insertControlGroup, badControlGroupName, False, [])
+
+        self.session.setControlGroup(goodControlGroupName, True)
+        self.assertEqual(self.getControlGroupState(goodControlGroupName), True)
+        self.assertEqual(self.getControlGroupState(badControlGroupName), False)
 
 

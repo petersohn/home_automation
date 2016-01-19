@@ -22,6 +22,11 @@ class Session:
         self._connect()
 
 
+    def closeConnection(self):
+        if not self.connection.closed:
+            self.connection.close()
+
+
     def log(self, severity, description, device = None, pin = None):
         try:
             self._connectIfNeeded()
@@ -34,10 +39,12 @@ class Session:
 
 
     def updateDevice(self, data):
+        self._connectIfNeeded()
         return self._executeTransactionally(self._updateDevice, data)
 
 
     def getIntendedState(self, deviceName, pinName):
+        self._connectIfNeeded()
         cursor = self.connection.cursor()
         cursor.execute(
                 "select count(*) from device, pin, control_group, " +
@@ -53,6 +60,7 @@ class Session:
 
 
     def getTriggers(self, deviceName, pinName, pinValue):
+        self._connectIfNeeded()
         edge = "rising" if pinValue else "falling"
         cursor = self.connection.cursor()
         cursor.execute(
@@ -66,10 +74,16 @@ class Session:
 
 
     def getDeviceIp(self, deviceName):
+        self._connectIfNeeded()
         cursor = self.connection.cursor()
         cursor.execute("select ip from device where name = %s", (deviceName,))
         deviceIp, = cursor.fetchone()
         return deviceIp
+
+
+    def setControlGroup(self, name, state):
+        self._connectIfNeeded()
+        return self._executeTransactionally(self._setControlGroup, name, state)
 
 
     def _executeTransactionally(self, function, *args, **kwargs):
@@ -128,6 +142,12 @@ class Session:
             cursor.execute("insert into pin (device_id, name, type) " +
                     "values (%s, %s, %s) returning pin_id",
                     (deviceId, name, type))
+
+
+    def _setControlGroup(self, name, state):
+        cursor = self.connection.cursor()
+        cursor.execute("update control_group set state = %s where name = %s",
+                (state, name))
 
 
     def _findValue(self, value, finder):
