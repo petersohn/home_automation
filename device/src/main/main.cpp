@@ -99,5 +99,5 @@ void loop()
         heartbeat();
     }
 
-    delay(10);
+    delay(5);
 }
