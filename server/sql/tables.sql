@@ -18,6 +18,7 @@ create table pin (
     device_id integer not null references device on delete cascade,
     name text not null,
     type pin_type not null,
+    expression text,
     unique (device_id, name)
 );
 
@@ -27,17 +28,10 @@ create index pin_name on pin (device_id, name);
 create table control_group (
     control_group_id serial primary key,
     name text not null,
-    state boolean not null
+    value integer not null
 );
 
 create index control_group_name on control_group (name);
-
-
-create table control_output (
-    control_output_id serial primary key,
-    pin_id integer not null references pin on delete cascade,
-    control_group_id integer not null references control_group on delete cascade
-);
 
 
 create table input_trigger (

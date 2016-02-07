@@ -21,17 +21,21 @@ def run(environ, senderQueue, response):
     if inputType == "login":
         senderQueue.put(sender.ClearDevice(deviceName))
 
-    for pin in inputData["pins"]:
+    pins = inputData["pins"]
+
+    intendedStates = session.getIntendedState(deviceName)
+    for pin in pins:
         pinName = pin["name"]
         pinValue = pin["value"]
-        if inputType == "event" and pin["type"] == "input":
-            triggers = session.getTriggers(deviceName, pinName, pinValue)
-            action = actions.Actions(senderQueue, session)
-            for trigger in triggers:
-                exec(trigger, {}, {"pinValue": pinValue, "action": action})
-        else:
-            intendedValue = session.getIntendedState(deviceName, pinName)
-            if pin["type"] == "output" and pinValue != intendedValue:
+        if inputType == "event":
+            changedDevices = session.processTriggers(deviceName, pinName, pinValue)
+            for changedDevice, changedPins in changedDevices.items():
+                for changedPin, value in changedPins.items():
+                    actions.setPin(senderQueue, changedDevice, changedPin, value)
+        elif pin["type"] == "output":
+            intendedValue = intendedStates.get(deviceName, {}).\
+                    get(pinName, pinValue)
+            if pinValue != intendedValue:
                 session.log(
                         device = deviceName,
                         pin = pinName,

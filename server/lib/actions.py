@@ -6,23 +6,7 @@ def setPin(senderQueue, deviceName, pinName, value):
     senderQueue.put(request)
 
 
-class Actions:
-    def __init__(self, senderQueue, session):
-        self.senderQueue = senderQueue
-        self.session = session
-
-
-    def setControlGroup(self, name, value):
-        self.session.setControlGroup(name, value)
-        self._setPinsForControlGroup(name)
-
-
-    def toggleControlGroup(self, name):
-        self.session.toggleControlGroup(name)
-        self._setPinsForControlGroup(name)
-
-
-    def _setPinsForControlGroup(self, name):
-        for (deviceName, pinName) in self.session.getPinsForControlGroup(name):
-            setPin(self.senderQueue, deviceName, pinName,
-                    self.session.getIntendedState(deviceName, pinName))
+def setPins(senderQueue, values):
+    for deviceName, pinInfo in values.items():
+        for pinName, value in pinInfo.items():
+            setPin(senderQueue, deviceName, pinName, value)

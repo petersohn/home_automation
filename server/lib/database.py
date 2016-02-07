@@ -2,6 +2,7 @@ import globals
 import config.database_config
 
 import datetime
+import copy
 import psycopg2
 import sys
 
@@ -38,41 +39,33 @@ class Session:
             raise
 
 
+    class Actions:
+        def __init__(self, session):
+            self.session = session
+
+
+        def setControlGroup(self, name, value):
+            self.session._setControlGroup(name, value)
+
+
+        def toggleControlGroup(self, name):
+            self.session._toggleControlGroup(name)
+
+
     def updateDevice(self, data):
         self._connectIfNeeded()
         return self._executeTransactionally(self._updateDevice, data)
 
 
-    def getIntendedState(self, deviceName, pinName):
+    def getIntendedState(self, deviceName):
         self._connectIfNeeded()
-        cursor = self.connection.cursor()
-        cursor.execute(
-                """
-                select count(*) from device
-                        join pin using (device_id)
-                        join control_output using (pin_id)
-                        join control_group using (control_group_id)
-                where control_group.state = true
-                        and device.name = %s and pin.name = %s
-                """,
-                (deviceName, pinName))
-        count, = cursor.fetchone()
-        return count != 0
+        return self._executeTransactionally(self._getIntendedState, deviceName)
 
 
-    def getTriggers(self, deviceName, pinName, pinValue):
+    def processTriggers(self, deviceName, pinName, pinValue):
         self._connectIfNeeded()
-        edge = "rising" if pinValue else "falling"
-        cursor = self.connection.cursor()
-        cursor.execute(
-                """
-                select expression from device
-                        join pin using (device_id)
-                        join input_trigger using (pin_id)
-                where (input_trigger.edge = 'both' or input_trigger.edge = %s)
-                        and device.name = %s and pin.name = %s
-                """, (edge, deviceName, pinName))
-        return [element[0] for element in cursor.fetchall()]
+        return self._executeTransactionally(
+                self._processTriggers, deviceName, pinName, pinValue)
 
 
     def getDeviceIp(self, deviceName):
@@ -81,30 +74,6 @@ class Session:
         cursor.execute("select ip from device where name = %s", (deviceName,))
         deviceIp, = cursor.fetchone()
         return deviceIp
-
-
-    def setControlGroup(self, name, state):
-        self._connectIfNeeded()
-        return self._executeTransactionally(self._setControlGroup, name, state)
-
-
-    def toggleControlGroup(self, name):
-        self._connectIfNeeded()
-        return self._executeTransactionally(self._toggleControlGroup, name)
-
-
-    def getPinsForControlGroup(self, name):
-        self._connectIfNeeded()
-        cursor = self.connection.cursor()
-        cursor.execute(
-                """
-                select device.name, pin.name from device
-                        join pin using (device_id)
-                        join control_output using (pin_id)
-                        join control_group using (control_group_id)
-                where control_group.name = %s
-                """, (name,))
-        return cursor.fetchall()
 
 
     def _executeTransactionally(self, function, *args, **kwargs):
@@ -167,14 +136,86 @@ class Session:
 
     def _setControlGroup(self, name, state):
         cursor = self.connection.cursor()
-        cursor.execute("update control_group set state = %s where name = %s",
+        cursor.execute("update control_group set value = %s where name = %s",
                 (state, name))
 
 
     def _toggleControlGroup(self, name):
         cursor = self.connection.cursor()
-        cursor.execute("update control_group set state = not state " +
+        cursor.execute("update control_group set value = 1 - value " +
                 "where name = %s", (name,))
+
+
+    def _getIntendedState(self, deviceName):
+        controlGroups = self._getControlGroupValues()
+        cursor = self.connection.cursor()
+        sql = \
+                """
+                select device.name, pin.name, expression
+                from device join pin using (device_id)
+                where expression is not null and type = 'output'
+                """
+        values = ()
+        if deviceName is not None:
+            sql += " and device.name = %s"
+            values = (deviceName,)
+        cursor.execute(sql, values)
+
+        result = {}
+        for (deviceName, pinName, expression) in cursor.fetchall():
+            result.setdefault(deviceName, {})[pinName] = \
+                    eval(expression, {}, {"control": controlGroups})
+
+        return result
+
+
+    class Pin:
+        def __init__(self, device, pin, value):
+            self.device = device
+            self.pin = pin
+            self.value = value
+
+
+    def _processTriggers(self, deviceName, pinName, pinValue):
+        initialStates = self._getIntendedState(None)
+        edge = "rising" if pinValue else "falling"
+        cursor = self.connection.cursor()
+        cursor.execute(
+                """
+                select input_trigger.expression, device.name, pin.name
+                from device join pin using (device_id)
+                        join input_trigger using (pin_id)
+                where (input_trigger.edge = 'both' or input_trigger.edge = %s)
+                        and device.name = %s and pin.name = %s
+                """, (edge, deviceName, pinName))
+
+        action = self.Actions(self)
+        for expression, deviceName, pinName, in cursor.fetchall():
+            exec(expression, {}, {
+                    "pin": self.Pin(deviceName, pinName, pinValue),
+                    "action": action})
+
+        newStates = self._getIntendedState(None)
+        result = {}
+        for deviceName, pinInfo in newStates.items():
+            for pinName, value in pinInfo.items():
+                if value != initialStates[deviceName][pinName]:
+                    result.setdefault(deviceName, {})[pinName] = value
+
+        return result
+
+
+    def _getControlGroupValues(self):
+        cursor = self.connection.cursor()
+        cursor.execute("select name, value from control_group")
+        class ControlGroup:
+            pass
+
+        result = ControlGroup()
+        for name, value in cursor.fetchall():
+            setattr(result, name, value)
+
+        return result
 
 
     def _findValue(self, value, finder):
