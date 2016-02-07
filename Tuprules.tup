@@ -9,7 +9,7 @@ PRINT_JSON = $(TUP_CWD)/print_json.sh
 
 PROJECT_DIR = $(TUP_CWD)
 
-DEVICE_DIR = $(TUP_CWD)/device
+DEVICE_DIR = $(TUP_CWD)/device/esp
 
 SOURCE_DIR = $(DEVICE_DIR)/src
 
