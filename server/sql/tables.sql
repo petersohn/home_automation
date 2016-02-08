@@ -7,6 +7,7 @@ create table device (
     device_id serial primary key,
     name text unique not null,
     ip text not null,
+    port integer not null,
     last_seen timestamp not null
 );
 

@@ -68,12 +68,12 @@ class Session:
                 self._processTriggers, deviceName, pinName, pinValue)
 
 
-    def getDeviceIp(self, deviceName):
+    def getDeviceAddress(self, deviceName):
         self._connectIfNeeded()
         cursor = self.connection.cursor()
-        cursor.execute("select ip from device where name = %s", (deviceName,))
-        deviceIp, = cursor.fetchone()
-        return deviceIp
+        cursor.execute("select ip, port from device where name = %s",
+                (deviceName,))
+        return cursor.fetchone()
 
 
     def _executeTransactionally(self, function, *args, **kwargs):
@@ -95,28 +95,35 @@ class Session:
         deviceData = data["device"]
         deviceName = deviceData["name"]
         ip = deviceData["ip"]
-        deviceId = self._updateDeviceData(deviceName, ip, isLogin)
+        port = deviceData["port"]
+        deviceId = self._updateDeviceData(deviceName, ip, port, isLogin)
         if deviceId is not None:
             self._updatePinData(deviceId, data["pins"])
 
 
-    def _updateDeviceData(self, name, ip, isLogin):
+    def _updateDeviceData(self, name, ip, port, isLogin):
         cursor = self.connection.cursor()
         cursor.execute("select device_id, last_seen from device where " +
                 "name = %s", (name,))
         found = cursor.fetchone()
         if found == None:
-            cursor.execute("insert into device (name, ip, last_seen) values " +
-                    "(%s, %s, %s) returning device_id",
-                    (name, ip, datetime.datetime.now()))
+            cursor.execute(
+                    """
+                    insert into device (name, ip, port, last_seen)
+                    values (%s, %s, %s, %s) returning device_id
+                    """,
+                    (name, ip, port, datetime.datetime.now()))
             deviceId, = cursor.fetchone()
             self._log("info", "Found new device.", device = deviceId)
             return deviceId
         else:
             deviceId, lastSeen = found
             now = datetime.datetime.now()
-            cursor.execute("update device set ip = %s, last_seen = %s where " +
-                    "device_id = %s", (ip, now, deviceId))
+            cursor.execute(
+                    """
+                    update device set ip = %s, port = %s, last_seen = %s
+                    where device_id = %s
+                    """, (ip, port, now, deviceId))
             if now - lastSeen > globals.deviceHeartbeatTimeout:
                 self._log("info", "Lost device reappeared.", device = deviceId)
             elif isLogin:

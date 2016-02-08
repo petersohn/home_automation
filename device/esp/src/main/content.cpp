@@ -22,6 +22,7 @@ String getDeviceInfo() {
     return "{ "
         "\"name\": \"" + String(device::name) + "\", "
         "\"ip\": \"" + ipString + "\", "
+        "\"port\": 80, "
         "\"memory\": " + String(system_get_free_heap_size()) + ", "
         "\"rssi\": " + String(WiFi.RSSI()) + " }";
 }

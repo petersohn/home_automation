@@ -32,8 +32,8 @@ class ExecuteTransactionallyTest(DatabaseTest):
     def insertData(self, connection):
         cursor = connection.cursor()
         cursor.execute("insert into device " +
-                "(name, ip, last_seen) values (%s, %s, %s)",
-                ("deviceName", "1.2.3.4", datetime.datetime.now()))
+                "(name, ip, port, last_seen) values (%s, %s, %s, %s)",
+                ("deviceName", "1.2.3.4", 80, datetime.datetime.now()))
 
     def checkData(self, length):
         cursor = self.connection.cursor()
@@ -72,8 +72,8 @@ class SessionTest(DatabaseTest):
         super(SessionTest, self).tearDown()
 
 
-    def createInputData(self, name, ip, pins = []):
-        device = {"name": name, "ip": ip}
+    def createInputData(self, name, ip, port, pins = []):
+        device = {"name": name, "ip": ip, "port": port}
         pins = [{"name": name, "type": type} for (name, type) in pins]
         return {"device": device, "pins": pins}
 
@@ -94,11 +94,14 @@ class SessionTest(DatabaseTest):
         return {"name": name, "type": type, "expression": expression}
 
 
-    def addDevice(self, name, ip = "192.168.1.10",
+    def addDevice(self, name, ip = "192.168.1.10", port = 80,
             seen = datetime.datetime.now(), pins = []):
         cursor = self.connection.cursor()
-        cursor.execute("insert into device (name, ip, last_seen) values " +
-                "(%s, %s, %s) returning device_id", (name, ip, seen))
+        cursor.execute(
+                """
+                insert into device (name, ip, port, last_seen)
+                values (%s, %s, %s, %s) returning device_id
+                """, (name, ip, port, seen))
         deviceId, = cursor.fetchone()
 
         pinIds = []
@@ -190,17 +193,19 @@ class SessionTest(DatabaseTest):
     def test_updateDevice_add_new_device(self):
         deviceName = "someDevice"
         deviceIp = "192.168.1.10"
-        data = self.createInputData(deviceName, deviceIp)
+        devicePort = 80
+        data = self.createInputData(deviceName, deviceIp, devicePort)
 
         begin = datetime.datetime.now()
         self.session.updateDevice(data)
         end = datetime.datetime.now()
 
         cursor = self.connection.cursor()
-        cursor.execute("select name, ip, last_seen from device")
-        name, ip, lastSeen = cursor.fetchone()
+        cursor.execute("select name, ip, port, last_seen from device")
+        name, ip, port, lastSeen = cursor.fetchone()
         self.assertEqual(name, deviceName)
         self.assertEqual(ip, deviceIp)
+        self.assertEqual(port, devicePort)
         self.assertTrue(lastSeen >= begin)
         self.assertTrue(lastSeen <= end)
         self.assertEqual(cursor.fetchone(), None)
@@ -208,41 +213,46 @@ class SessionTest(DatabaseTest):
     def test_updateDevice_add_existing_device(self):
         deviceName = "someDevice"
         deviceIp = "192.168.1.10"
-        data = self.createInputData(deviceName, deviceIp)
+        devicePort = 81
+        data = self.createInputData(deviceName, deviceIp, devicePort)
 
         self.session.updateDevice(data)
         self.session.updateDevice(data)
 
         cursor = self.connection.cursor()
-        cursor.execute("select name, ip from device")
+        cursor.execute("select name, ip, port from device")
         result = cursor.fetchall()
-        self.assertCountEqual(result, [(deviceName, deviceIp)])
+        self.assertCountEqual(result, [(deviceName, deviceIp, devicePort)])
 
     def test_updateDevice_add_multiple_devices(self):
         device1Name = "firstDevice"
         device1Ip = "192.168.1.10"
-        device1Data = self.createInputData(device1Name, device1Ip)
+        device1Port = 8080
+        device1Data = self.createInputData(device1Name, device1Ip, device1Port)
         device2Name = "secondDevice"
         device2Ip = "192.168.2.23"
-        device2Data = self.createInputData(device2Name, device2Ip)
+        device2Port = 82
+        device2Data = self.createInputData(device2Name, device2Ip, device2Port)
 
         self.session.updateDevice(device1Data)
         self.session.updateDevice(device2Data)
 
         cursor = self.connection.cursor()
-        cursor.execute("select name, ip from device")
+        cursor.execute("select name, ip, port from device")
         result = cursor.fetchall()
-        self.assertCountEqual(result,
-                [(device1Name, device1Ip), (device2Name, device2Ip)])
+        self.assertCountEqual(result, [
+                (device1Name, device1Ip, device1Port),
+                (device2Name, device2Ip, device2Port)])
 
     def test_updateDevice_set_pins(self):
         deviceName = "someDevice"
         deviceIp = "192.168.1.10"
+        devicePort = 80
         inputPinName = "inputPin"
         inputPinType = "input"
         outputPinName = "outputPin"
         outputPinType = "output"
-        data = self.createInputData(deviceName, deviceIp,
+        data = self.createInputData(deviceName, deviceIp, devicePort,
                 [(inputPinName, inputPinType), (outputPinName, outputPinType)])
 
         self.session.updateDevice(data)
@@ -364,26 +374,32 @@ class SessionTest(DatabaseTest):
         self.assertEqual(result, {deviceName: {pinName: True}})
 
 
-    def test_getDeviceIp_for_one_device(self):
+    def test_getDeviceAddress_for_one_device(self):
         deviceName = "someDevice"
         deviceIp = "192.168.12.34"
+        devicePort = 80
         deviceId, pins = database.executeTransactionally(self.connection,
-                self.addDevice, deviceName, ip = deviceIp)
+                self.addDevice, deviceName, ip = deviceIp, port = devicePort)
 
-        self.assertEqual(self.session.getDeviceIp(deviceName), deviceIp)
+        self.assertEqual(self.session.getDeviceAddress(deviceName),
+                (deviceIp, devicePort))
 
-    def test_getDeviceIp_for_more_devices(self):
+    def test_getDeviceAddress_for_more_devices(self):
         device1Name = "someDevice"
         device1Ip = "192.168.12.34"
+        device1Port = 81
         device1Id, pins = database.executeTransactionally(self.connection,
-                self.addDevice, device1Name, ip = device1Ip)
+                self.addDevice, device1Name, ip = device1Ip, port = device1Port)
         device2Name = "otherDevice"
         device2Ip = "10.22.33.44"
+        device2Port = 8080
         device2Id, pins = database.executeTransactionally(self.connection,
-                self.addDevice, device2Name, ip = device2Ip)
+                self.addDevice, device2Name, ip = device2Ip, port = device2Port)
 
-        self.assertEqual(self.session.getDeviceIp(device1Name), device1Ip)
-        self.assertEqual(self.session.getDeviceIp(device2Name), device2Ip)
+        self.assertEqual(self.session.getDeviceAddress(device1Name),
+                (device1Ip, device1Port))
+        self.assertEqual(self.session.getDeviceAddress(device2Name),
+                (device2Ip, device2Port))
 
 
     def addTrigger(self, pinId, edge, expression):

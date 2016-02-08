@@ -30,13 +30,14 @@ class Request:
 
     def execute(self, httpConnections):
         session = self.getSession()
-        deviceIp = session.getDeviceIp(self.deviceName)
+        deviceAddress = session.getDeviceAddress(self.deviceName)
 
-        if deviceIp not in httpConnections:
-            connection = self.httpConnection(deviceIp, timeout=10)
-            httpConnections[deviceIp] = connection
+        if deviceAddress not in httpConnections:
+            connection = self.httpConnection(deviceAddress[0],
+                    port=deviceAddress[1], timeout=10)
+            httpConnections[deviceAddress] = connection
         else:
-            connection = httpConnections[deviceIp]
+            connection = httpConnections[deviceAddress]
 
         try:
             connection.request("GET", self.path,
@@ -57,8 +58,8 @@ class ClearDevice:
 
     def execute(self, httpConnections):
         session = self.getSession()
-        deviceIp = session.getDeviceIp(self.deviceName)
-        httpConnections.pop(deviceIp, None)
+        deviceAddress = session.getDeviceAddress(self.deviceName)
+        httpConnections.pop(deviceAddress, None)
 
 
 def handleGenericException():
