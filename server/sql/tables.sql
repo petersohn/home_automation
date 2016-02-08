@@ -25,13 +25,13 @@ create table pin (
 create index pin_name on pin (device_id, name);
 
 
-create table control_group (
-    control_group_id serial primary key,
+create table parameter (
+    parameter_id serial primary key,
     name text not null,
     value integer not null
 );
 
-create index control_group_name on control_group (name);
+create index parameter_name on parameter (name);
 
 
 create table input_trigger (

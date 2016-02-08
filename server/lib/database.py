@@ -44,12 +44,12 @@ class Session:
             self.session = session
 
 
-        def setControlGroup(self, name, value):
-            self.session._setControlGroup(name, value)
+        def setParameter(self, name, value):
+            self.session._setParameter(name, value)
 
 
-        def toggleControlGroup(self, name):
-            self.session._toggleControlGroup(name)
+        def toggleParameter(self, name):
+            self.session._toggleParameter(name)
 
 
     def updateDevice(self, data):
@@ -134,20 +134,20 @@ class Session:
                     (deviceId, name, type))
 
 
-    def _setControlGroup(self, name, state):
+    def _setParameter(self, name, state):
         cursor = self.connection.cursor()
-        cursor.execute("update control_group set value = %s where name = %s",
+        cursor.execute("update parameter set value = %s where name = %s",
                 (state, name))
 
 
-    def _toggleControlGroup(self, name):
+    def _toggleParameter(self, name):
         cursor = self.connection.cursor()
-        cursor.execute("update control_group set value = 1 - value " +
+        cursor.execute("update parameter set value = 1 - value " +
                 "where name = %s", (name,))
 
 
     def _getIntendedState(self, deviceName):
-        controlGroups = self._getControlGroupValues()
+        parameters = self._getParameterValues()
         cursor = self.connection.cursor()
         sql = \
                 """
@@ -164,7 +164,7 @@ class Session:
         result = {}
         for (deviceName, pinName, expression) in cursor.fetchall():
             result.setdefault(deviceName, {})[pinName] = \
-                    eval(expression, {}, {"control": controlGroups})
+                    eval(expression, {}, {"params": parameters})
 
         return result
 
@@ -205,13 +205,13 @@ class Session:
         return result
 
 
-    def _getControlGroupValues(self):
+    def _getParameterValues(self):
         cursor = self.connection.cursor()
-        cursor.execute("select name, value from control_group")
-        class ControlGroup:
+        cursor.execute("select name, value from parameter")
+        class Parameter:
             pass
 
-        result = ControlGroup()
+        result = Parameter()
         for name, value in cursor.fetchall():
             setattr(result, name, value)
 

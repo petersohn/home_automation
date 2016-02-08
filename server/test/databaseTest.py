@@ -259,13 +259,13 @@ class SessionTest(DatabaseTest):
                 (deviceId, outputPinName, outputPinType)])
 
 
-    def insertControlGroups(self, controlGroups):
+    def insertParameters(self, parameters):
             cursor = self.connection.cursor()
-            for name, value in controlGroups:
+            for name, value in parameters:
                 cursor.execute(
                         """
-                        insert into control_group (name, value) values (%s, %s)
-                        returning control_group_id
+                        insert into parameter (name, value) values (%s, %s)
+                        returning parameter_id
                         """,
                         (name, value))
 
@@ -289,18 +289,18 @@ class SessionTest(DatabaseTest):
         result = self.session.getIntendedState(None)
         self.assertEqual(result, {deviceName: {pinName: True}})
 
-    def test_getIntendedState_depends_on_control_group(self):
+    def test_getIntendedState_depends_on_parameter(self):
         deviceName = "someDevice"
         deviceId, [pin1Id, pin2Id] = database.executeTransactionally(
                 self.connection, self.addDevice, deviceName, pins = [
                         self._pin("falsePin", "output",
-                                "control.falseControlGroup"),
+                                "params.falseParameter"),
                         self._pin("truePin", "output",
-                                "control.trueControlGroup")])
+                                "params.trueParameter")])
 
         database.executeTransactionally(self.connection,
-                self.insertControlGroups, [
-                        ("trueControlGroup", 1), ("falseControlGroup", 0)])
+                self.insertParameters, [
+                        ("trueParameter", 1), ("falseParameter", 0)])
 
         result = self.session.getIntendedState(None)
         self.assertEqual(result, {deviceName:
@@ -393,81 +393,81 @@ class SessionTest(DatabaseTest):
                     (pinId, edge, expression))
 
 
-    def getControlGroupValue(self, name):
+    def getParameterValue(self, name):
         cursor = self.connection.cursor()
-        cursor.execute("select value from control_group where name = %s",
+        cursor.execute("select value from parameter where name = %s",
                 (name,))
         result, = cursor.fetchone()
         return result
 
 
-    def test_processTriggers_set_value_of_control_group(self):
+    def test_processTriggers_set_value_of_parameter(self):
         deviceName = "someDevice"
         pinName = "somePin"
-        controlGroupName = "someControlGroup"
+        parameterName = "someParameter"
 
         deviceId, [pinId] = database.executeTransactionally(self.connection,
                 self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
         database.executeTransactionally(self.connection,
-                self.insertControlGroups, [(controlGroupName, 0)])
+                self.insertParameters, [(parameterName, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.setControlGroup('" + controlGroupName +
+                pinId, "both", "action.setParameter('" + parameterName +
                 "', 31)")
 
         self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getControlGroupValue(controlGroupName), 31)
+        self.assertEqual(self.getParameterValue(parameterName), 31)
 
 
-    def test_processTriggers_toggle_value_of_control_group(self):
+    def test_processTriggers_toggle_value_of_parameter(self):
         deviceName = "someDevice"
         pinName = "somePin"
-        controlGroupName = "someControlGroup"
+        parameterName = "someParameter"
 
         deviceId, [pinId] = database.executeTransactionally(self.connection,
                 self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
         database.executeTransactionally(self.connection,
-                self.insertControlGroups, [(controlGroupName, 0)])
+                self.insertParameters, [(parameterName, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.toggleControlGroup('" +
-                controlGroupName + "')")
+                pinId, "both", "action.toggleParameter('" +
+                parameterName + "')")
 
         self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getControlGroupValue(controlGroupName), 1)
+        self.assertEqual(self.getParameterValue(parameterName), 1)
         self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getControlGroupValue(controlGroupName), 0)
+        self.assertEqual(self.getParameterValue(parameterName), 0)
 
 
     def test_processTriggers_trigger_to_the_correct_edge(self):
         deviceName = "someDevice"
         pinName = "somePin"
-        riseControlGroup = "riseControlGroup"
-        fallControlGroup = "fallControlGroup"
-        bothControlGroup = "bothControlGroup"
+        riseParameter = "riseParameter"
+        fallParameter = "fallParameter"
+        bothParameter = "bothParameter"
 
         deviceId, [pinId] = database.executeTransactionally(self.connection,
                 self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
         database.executeTransactionally(self.connection,
-                self.insertControlGroups, [(riseControlGroup, 0),
-                        (fallControlGroup, 0), (bothControlGroup, 0)])
+                self.insertParameters, [(riseParameter, 0),
+                        (fallParameter, 0), (bothParameter, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "rising", "action.toggleControlGroup('" +
-                riseControlGroup + "')")
+                pinId, "rising", "action.toggleParameter('" +
+                riseParameter + "')")
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "falling", "action.toggleControlGroup('" +
-                fallControlGroup + "')")
+                pinId, "falling", "action.toggleParameter('" +
+                fallParameter + "')")
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.toggleControlGroup('" +
-                bothControlGroup + "')")
+                pinId, "both", "action.toggleParameter('" +
+                bothParameter + "')")
 
         self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getControlGroupValue(riseControlGroup), 1)
-        self.assertEqual(self.getControlGroupValue(fallControlGroup), 0)
-        self.assertEqual(self.getControlGroupValue(bothControlGroup), 1)
+        self.assertEqual(self.getParameterValue(riseParameter), 1)
+        self.assertEqual(self.getParameterValue(fallParameter), 0)
+        self.assertEqual(self.getParameterValue(bothParameter), 1)
 
         self.session.processTriggers(deviceName, pinName, 0)
-        self.assertEqual(self.getControlGroupValue(riseControlGroup), 1)
-        self.assertEqual(self.getControlGroupValue(fallControlGroup), 1)
-        self.assertEqual(self.getControlGroupValue(bothControlGroup), 0)
+        self.assertEqual(self.getParameterValue(riseParameter), 1)
+        self.assertEqual(self.getParameterValue(fallParameter), 1)
+        self.assertEqual(self.getParameterValue(bothParameter), 0)
 
 
     def test_processTriggers_return_with_modified_pins(self):
@@ -476,20 +476,20 @@ class SessionTest(DatabaseTest):
         outputDevice = "secondDevice"
         notChangedPin = "pin1"
         changedPin = "pin2"
-        controlGroupName = "someControlGroup"
+        parameterName = "someParameter"
 
         deviceId, [pinId] = database.executeTransactionally(self.connection,
                 self.addDevice, inputDevice, pins = [
                         self._pin(inputPin, "input")])
         database.executeTransactionally(self.connection,
                 self.addDevice, outputDevice, pins = [
-                        self._pin(changedPin, "output", "control." +
-                                controlGroupName),
+                        self._pin(changedPin, "output", "params." +
+                                parameterName),
                         self._pin(notChangedPin, "output", "False")])
         database.executeTransactionally(self.connection,
-                self.insertControlGroups, [(controlGroupName, 0)])
+                self.insertParameters, [(parameterName, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.setControlGroup('" + controlGroupName +
+                pinId, "both", "action.setParameter('" + parameterName +
                 "', 1)")
 
         result = self.session.processTriggers(inputDevice, inputPin, 1)
