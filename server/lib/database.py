@@ -91,13 +91,14 @@ class Session:
 
 
     def _updateDevice(self, data):
-        isLogin = "type" in data and data["type"] == "login"
+        inputType = data.get("type", None)
+        isLogin = "type" in data and inputType == "login"
         deviceData = data["device"]
         deviceName = deviceData["name"]
         ip = deviceData["ip"]
         port = deviceData["port"]
         deviceId = self._updateDeviceData(deviceName, ip, port, isLogin)
-        if deviceId is not None:
+        if inputType != "event":
             self._updatePinData(deviceId, data["pins"])
 
 
@@ -106,7 +107,7 @@ class Session:
         cursor.execute("select device_id, last_seen from device where " +
                 "name = %s", (name,))
         found = cursor.fetchone()
-        if found == None:
+        if found is None:
             cursor.execute(
                     """
                     insert into device (name, ip, port, last_seen)
@@ -115,7 +116,6 @@ class Session:
                     (name, ip, port, datetime.datetime.now()))
             deviceId, = cursor.fetchone()
             self._log("info", "Found new device.", device = deviceId)
-            return deviceId
         else:
             deviceId, lastSeen = found
             now = datetime.datetime.now()
@@ -128,17 +128,36 @@ class Session:
                 self._log("info", "Lost device reappeared.", device = deviceId)
             elif isLogin:
                 self._log("warning", "Device restarted.", device = deviceId)
-            return None
+        return deviceId
 
 
     def _updatePinData(self, deviceId, pins):
         cursor = self.connection.cursor()
+        names = []
         for pin in pins:
             name = pin["name"]
             type = pin["type"]
-            cursor.execute("insert into pin (device_id, name, type) " +
-                    "values (%s, %s, %s) returning pin_id",
-                    (deviceId, name, type))
+            names.append(name)
+            cursor.execute(
+                    """
+                    select pin_id from pin
+                    where device_id = %s and name = %s
+                    """, (deviceId, name))
+            found = cursor.fetchone()
+
+            if found is None:
+                cursor.execute(
+                        """
+                        insert into pin (device_id, name, type)
+                        values (%s, %s, %s)
+                        """, (deviceId, name, type))
+            else:
+                cursor.execute( "update pin set type = %s where pin_id = %s",
+                        (type, found[0]))
+
+        cursor.execute(
+                "delete from pin where device_id = %s and name != ALL(%s)",
+                (deviceId, names))
 
 
     def _setParameter(self, name, state):

@@ -72,10 +72,11 @@ class SessionTest(DatabaseTest):
         super(SessionTest, self).tearDown()
 
 
-    def createInputData(self, name, ip, port, pins = []):
+    def createInputData(self, name, ip, port, inputType = "heartbeat",
+            pins = []):
         device = {"name": name, "ip": ip, "port": port}
         pins = [{"name": name, "type": type} for (name, type) in pins]
-        return {"device": device, "pins": pins}
+        return {"device": device, "pins": pins, "type": inputType}
 
 
     def test_log(self):
@@ -210,20 +211,6 @@ class SessionTest(DatabaseTest):
         self.assertTrue(lastSeen <= end)
         self.assertEqual(cursor.fetchone(), None)
 
-    def test_updateDevice_add_existing_device(self):
-        deviceName = "someDevice"
-        deviceIp = "192.168.1.10"
-        devicePort = 81
-        data = self.createInputData(deviceName, deviceIp, devicePort)
-
-        self.session.updateDevice(data)
-        self.session.updateDevice(data)
-
-        cursor = self.connection.cursor()
-        cursor.execute("select name, ip, port from device")
-        result = cursor.fetchall()
-        self.assertCountEqual(result, [(deviceName, deviceIp, devicePort)])
-
     def test_updateDevice_add_multiple_devices(self):
         device1Name = "firstDevice"
         device1Ip = "192.168.1.10"
@@ -244,6 +231,40 @@ class SessionTest(DatabaseTest):
                 (device1Name, device1Ip, device1Port),
                 (device2Name, device2Ip, device2Port)])
 
+    def test_updateDevice_update_existing_device(self):
+        device1Name = "someDevice"
+        device1Ip1 = "192.168.1.10"
+        device1Port1 = 81
+        device1Ip2 = "192.168.1.15"
+        device1Port2 = 80
+
+        device2Name = "otherDevice"
+        device2Ip = "192.168.10.10"
+        device2Port = 8080
+
+        cursor = self.connection.cursor()
+
+        self.session.updateDevice(self.createInputData(
+                device1Name, device1Ip1, device1Port1))
+        self.session.updateDevice(self.createInputData(
+                device2Name, device2Ip, device2Port))
+
+        cursor.execute("select device_id from device where name = %s",
+                (device1Name,))
+        device1Id, = cursor.fetchone()
+        cursor.execute("select device_id from device where name = %s",
+                (device2Name,))
+        device2Id, = cursor.fetchone()
+
+        self.session.updateDevice(self.createInputData(
+                device1Name, device1Ip2, device1Port2))
+        cursor.execute("select device_id, name, ip, port from device")
+        result = cursor.fetchall()
+
+        self.assertCountEqual(result, [
+            (device1Id, device1Name, device1Ip2, device1Port2),
+            (device2Id, device2Name, device2Ip, device2Port)])
+
     def test_updateDevice_set_pins(self):
         deviceName = "someDevice"
         deviceIp = "192.168.1.10"
@@ -252,7 +273,7 @@ class SessionTest(DatabaseTest):
         inputPinType = "input"
         outputPinName = "outputPin"
         outputPinType = "output"
-        data = self.createInputData(deviceName, deviceIp, devicePort,
+        data = self.createInputData(deviceName, deviceIp, devicePort, pins =
                 [(inputPinName, inputPinType), (outputPinName, outputPinType)])
 
         self.session.updateDevice(data)
@@ -267,6 +288,84 @@ class SessionTest(DatabaseTest):
         self.assertCountEqual(result, [
                 (deviceId, inputPinName, inputPinType),
                 (deviceId, outputPinName, outputPinType)])
+
+    def test_updateDevice_update_pins(self):
+        deviceName = "someDevice"
+        deviceIp = "192.168.1.10"
+        devicePort = 80
+        inputPinName = "inputPin"
+        inputPinType = "input"
+        outputPinName = "outputPin"
+        outputPinType = "output"
+        newPinName = "newPin"
+        newPinType = "output"
+
+        data1 = self.createInputData(deviceName, deviceIp, devicePort, pins =
+                [(inputPinName, inputPinType), (outputPinName, outputPinType)])
+        data2 = self.createInputData(deviceName, deviceIp, devicePort, pins =
+                [(outputPinName, outputPinType), (newPinName, newPinType)])
+
+        self.session.updateDevice(data1)
+
+        cursor = self.connection.cursor()
+        cursor.execute("select device_id from device")
+        deviceId, = cursor.fetchone()
+        self.assertEqual(cursor.fetchone(), None)
+        cursor.execute("select pin_id from pin where name = %s",
+                (outputPinName,))
+        oldPinId, = cursor.fetchone()
+
+        self.session.updateDevice(data2)
+
+        cursor.execute("select device_id, name, type from pin")
+        result = cursor.fetchall()
+        self.assertCountEqual(result, [
+                (deviceId, outputPinName, outputPinType),
+                (deviceId, newPinName, newPinType)])
+
+        cursor.execute("select pin_id from pin where name = %s",
+                (outputPinName,))
+        newPinId, = cursor.fetchone()
+        self.assertEqual(newPinId, oldPinId)
+
+    def test_updateDevice_do_not_update_pins_on_event(self):
+        deviceName = "someDevice"
+        deviceIp = "192.168.1.10"
+        devicePort = 80
+        inputPinName = "inputPin"
+        inputPinType = "input"
+        outputPinName = "outputPin"
+        outputPinType = "output"
+        newPinName = "newPin"
+        newPinType = "output"
+
+        data1 = self.createInputData(deviceName, deviceIp, devicePort, pins =
+                [(inputPinName, inputPinType), (outputPinName, outputPinType)])
+        data2 = self.createInputData(deviceName, deviceIp, devicePort,
+                inputType = "event", pins =
+                [(outputPinName, outputPinType), (newPinName, newPinType)])
+
+        self.session.updateDevice(data1)
+
+        cursor = self.connection.cursor()
+        cursor.execute("select device_id from device")
+        deviceId, = cursor.fetchone()
+        self.assertEqual(cursor.fetchone(), None)
+
+        cursor.execute("select pin_id from pin where name = %s",
+                (inputPinName,))
+        inputPinId, = cursor.fetchone()
+        cursor.execute("select pin_id from pin where name = %s",
+                (outputPinName,))
+        outputPinId, = cursor.fetchone()
+
+        self.session.updateDevice(data2)
+
+        cursor.execute("select pin_id, device_id, name, type from pin")
+        result = cursor.fetchall()
+        self.assertCountEqual(result, [
+                (inputPinId, deviceId, inputPinName, inputPinType),
+                (outputPinId, deviceId, outputPinName, outputPinType)])
 
 
     def insertParameters(self, parameters):
