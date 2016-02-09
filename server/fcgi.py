@@ -20,17 +20,22 @@ class Response:
 
 
 senderQueue = None
-
+loadedModules = {}
 
 def main(environ, start_response):
     global senderQueue
+    global loadedModules
     try:
         fullpath = environ["DOCUMENT_ROOT"] + environ["SCRIPT_NAME"]
         name, ext = os.path.splitext(os.path.basename(fullpath))
         dirname = os.path.dirname(fullpath)
         file, pathname, description = imp.find_module(name, [dirname])
         try:
-            module = imp.load_module(name, file, pathname, description)
+            module = loadedModules.get(name, None)
+            if module is None:
+                module = imp.load_module(name, file, pathname, description)
+                loadedModules[name] = module
+
             response = Response()
             result = module.run(environ, senderQueue, response)
             start_response(response.title, response.headers)
