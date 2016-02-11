@@ -17,9 +17,23 @@ def executeTransactionally(connection, function, *args, **kwargs):
         raise
 
 
+class Actions:
+    def __init__(self, session):
+        self.session = session
+
+
+    def setParameter(self, name, value):
+        self.session._setParameter(name, value)
+
+
+    def toggleParameter(self, name):
+        self.session._toggleParameter(name)
+
+
 class Session:
     def __init__(self, connectString):
         self.connectString = connectString
+        self.actions = Actions(self)
         self._connect()
 
 
@@ -37,19 +51,6 @@ class Session:
             if not self.connection.closed:
                 self.connection.rollback()
             raise
-
-
-    class Actions:
-        def __init__(self, session):
-            self.session = session
-
-
-        def setParameter(self, name, value):
-            self.session._setParameter(name, value)
-
-
-        def toggleParameter(self, name):
-            self.session._toggleParameter(name)
 
 
     def updateDevice(self, data):
@@ -160,10 +161,10 @@ class Session:
                 (deviceId, names))
 
 
-    def _setParameter(self, name, state):
+    def _setParameter(self, name, value):
         cursor = self.connection.cursor()
         cursor.execute("update parameter set value = %s where name = %s",
-                (state, name))
+                (value, name))
 
 
     def _toggleParameter(self, name):
@@ -215,11 +216,10 @@ class Session:
                         and device.name = %s and pin.name = %s
                 """, (edge, deviceName, pinName))
 
-        action = self.Actions(self)
         for expression, deviceName, pinName, in cursor.fetchall():
             exec(expression, {}, {
                     "pin": self.Pin(deviceName, pinName, pinValue),
-                    "action": action})
+                    "action": self.actions})
 
         newStates = self._getIntendedState(None)
         result = {}

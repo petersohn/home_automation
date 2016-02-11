@@ -6,6 +6,8 @@ import test_globals
 import datetime
 import psycopg2
 import unittest
+import unittest.mock
+from unittest.mock import call
 import sys
 
 
@@ -60,18 +62,38 @@ class ExecuteTransactionallyTest(DatabaseTest):
         self.checkData(0)
 
 
-
-class SessionTest(DatabaseTest):
+class SessionTestBase(DatabaseTest):
     def setUp(self):
-        super(SessionTest, self).setUp()
+        super(SessionTestBase, self).setUp()
         self.session = database.Session(test_globals.connectString)
 
 
     def tearDown(self):
         self.session.closeConnection()
-        super(SessionTest, self).tearDown()
+        super(SessionTestBase, self).tearDown()
 
 
+    def insertParameters(self, parameters):
+            cursor = self.connection.cursor()
+            for name, value in parameters:
+                cursor.execute(
+                        """
+                        insert into parameter (name, value) values (%s, %s)
+                        returning parameter_id
+                        """,
+                        (name, value))
+
+
+    def getParameterValue(self, name):
+        cursor = self.connection.cursor()
+        cursor.execute("select value from parameter where name = %s",
+                (name,))
+        result, = cursor.fetchone()
+        return result
+
+
+
+class SessionTest(SessionTestBase):
     def createInputData(self, name, ip, port, inputType = "heartbeat",
             pins = []):
         device = {"name": name, "ip": ip, "port": port}
@@ -368,16 +390,6 @@ class SessionTest(DatabaseTest):
                 (outputPinId, deviceId, outputPinName, outputPinType)])
 
 
-    def insertParameters(self, parameters):
-            cursor = self.connection.cursor()
-            for name, value in parameters:
-                cursor.execute(
-                        """
-                        insert into parameter (name, value) values (%s, %s)
-                        returning parameter_id
-                        """,
-                        (name, value))
-
     def test_getIntendedState_constant_false(self):
         deviceName = "someDevice"
         pinName = "somePin"
@@ -508,81 +520,37 @@ class SessionTest(DatabaseTest):
                     (pinId, edge, expression))
 
 
-    def getParameterValue(self, name):
-        cursor = self.connection.cursor()
-        cursor.execute("select value from parameter where name = %s",
-                (name,))
-        result, = cursor.fetchone()
-        return result
-
-
-    def test_processTriggers_set_value_of_parameter(self):
-        deviceName = "someDevice"
-        pinName = "somePin"
-        parameterName = "someParameter"
-
-        deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
-        database.executeTransactionally(self.connection,
-                self.insertParameters, [(parameterName, 0)])
-        database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.setParameter('" + parameterName +
-                "', 31)")
-
-        self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getParameterValue(parameterName), 31)
-
-
-    def test_processTriggers_toggle_value_of_parameter(self):
-        deviceName = "someDevice"
-        pinName = "somePin"
-        parameterName = "someParameter"
-
-        deviceId, [pinId] = database.executeTransactionally(self.connection,
-                self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
-        database.executeTransactionally(self.connection,
-                self.insertParameters, [(parameterName, 0)])
-        database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.toggleParameter('" +
-                parameterName + "')")
-
-        self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getParameterValue(parameterName), 1)
-        self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getParameterValue(parameterName), 0)
-
-
     def test_processTriggers_trigger_to_the_correct_edge(self):
         deviceName = "someDevice"
         pinName = "somePin"
         riseParameter = "riseParameter"
         fallParameter = "fallParameter"
         bothParameter = "bothParameter"
+        self.session.actions = unittest.mock.Mock()
 
         deviceId, [pinId] = database.executeTransactionally(self.connection,
                 self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
-        database.executeTransactionally(self.connection,
-                self.insertParameters, [(riseParameter, 0),
-                        (fallParameter, 0), (bothParameter, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "rising", "action.toggleParameter('" +
-                riseParameter + "')")
+                pinId, "rising",
+                "action.risingTrigger(pin.device, pin.pin, pin.value)")
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "falling", "action.toggleParameter('" +
-                fallParameter + "')")
+                pinId, "falling",
+                "action.fallingTrigger(pin.device, pin.pin, pin.value)")
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.toggleParameter('" +
-                bothParameter + "')")
+                pinId, "both",
+                "action.bothTrigger(pin.device, pin.pin, pin.value)")
 
         self.session.processTriggers(deviceName, pinName, 1)
-        self.assertEqual(self.getParameterValue(riseParameter), 1)
-        self.assertEqual(self.getParameterValue(fallParameter), 0)
-        self.assertEqual(self.getParameterValue(bothParameter), 1)
-
         self.session.processTriggers(deviceName, pinName, 0)
-        self.assertEqual(self.getParameterValue(riseParameter), 1)
-        self.assertEqual(self.getParameterValue(fallParameter), 1)
-        self.assertEqual(self.getParameterValue(bothParameter), 0)
+        self.session.actions.risingTrigger.assert_has_calls([
+                call(deviceName, pinName, 1)])
+        self.session.actions.fallingTrigger.assert_has_calls([
+                call(deviceName, pinName, 0)])
+        self.session.actions.bothTrigger.assert_has_calls([
+                call(deviceName, pinName, 1), call(deviceName, pinName, 0)])
+        self.assertEqual(self.session.actions.risingTrigger.call_count, 1)
+        self.assertEqual(self.session.actions.fallingTrigger.call_count, 1)
+        self.assertEqual(self.session.actions.bothTrigger.call_count, 2)
 
 
     def test_processTriggers_return_with_modified_pins(self):
@@ -611,5 +579,36 @@ class SessionTest(DatabaseTest):
         self.assertEqual(result, {outputDevice: {changedPin: 1}})
 
 
+
+class ActionsTest(SessionTestBase):
+    def setUp(self):
+        super(ActionsTest, self).setUp()
+        self.actions = database.Actions(self.session)
+
+
+    def test_set_value_of_parameter(self):
+        parameterName = "someParameter"
+        value = 31
+
+        database.executeTransactionally(self.connection,
+                self.insertParameters, [(parameterName, 0)])
+
+        self.session._executeTransactionally(
+                self.actions.setParameter, parameterName, value)
+        self.assertEqual(self.getParameterValue(parameterName), value)
+
+
+    def test_toggle_value_of_parameter(self):
+        parameterName = "someParameter"
+
+        database.executeTransactionally(self.connection,
+                self.insertParameters, [(parameterName, 0)])
+
+        self.session._executeTransactionally(
+                self.actions.toggleParameter, parameterName)
+        self.assertEqual(self.getParameterValue(parameterName), 1)
+        self.session._executeTransactionally(
+                self.actions.toggleParameter, parameterName)
+        self.assertEqual(self.getParameterValue(parameterName), 0)
 
 
