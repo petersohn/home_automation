@@ -135,9 +135,12 @@ def sendData(data):
         handleGenericException()
         return False
 
-    sys.stderr.write("<--- " + str(response.status) + " " + response.reason +
-            "\n")
-    return response.status >= 200 and response.status < 300
+    if response.status >= 200 and response.status < 300:
+        return True
+    else:
+        sys.stderr.write("<--- " + str(response.status) + " " + 
+                response.reason + "\n")
+        return False
 
 
 def sendAndGetNewTimeout(data):
