@@ -10,10 +10,11 @@ import sys
 
 def run(environ, senderQueue, response):
     response.headers = [('Content-Type', 'text/plain')]
-    input = environ["wsgi.input"]
-    inputData = json.loads(input.read().decode("UTF-8"))
-    session = database.getSession()
+    input = environ["wsgi.input"].read().decode("UTF-8")
+    inputData = json.loads(input)
+    inputData["device"].setdefault("ip", environ["REMOTE_ADDR"])
 
+    session = database.getSession()
     session.updateDevice(inputData)
 
     deviceName = inputData["device"]["name"]
