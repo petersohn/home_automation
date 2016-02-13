@@ -31,7 +31,7 @@ def main(environ, start_response):
         dirname = os.path.dirname(fullpath)
         file, pathname, description = imp.find_module(name, [dirname])
         try:
-            module = loadedModules.get(name, None)
+            module = loadedModules.get(fullpath, None)
             if module is None:
                 module = imp.load_module(name, file, pathname, description)
                 loadedModules[name] = module
