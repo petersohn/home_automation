@@ -46,8 +46,10 @@ class Main:
         while True:
             try:
                 object = self.eventQueue.get(timeout = timeout)
-                timeout, type = self.sendAndHandleResult(self.runLocked(
-                        self.content.getModifiedPinsContent, "event"), type)
+                data = self.runLocked(self.content.getModifiedPinsContent,
+                        "event")
+                if data is not None:
+                    timeout, type = self.sendAndHandleResult(data, type)
             except queue.Empty:
                 timeout, type = self.sendAndHandleResult(self.runLocked(
                         self.content.getFullStatus, type), type)
