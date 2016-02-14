@@ -39,16 +39,22 @@ class Request:
         else:
             connection = httpConnections[deviceAddress]
 
-        try:
-            connection.request("GET", self.path,
-                    headers = {"Connection": "keep-alive"})
-            response = connection.getresponse()
-            if response.status < 200 or response.status >= 300:
-                raise BadResponse(response.status, response.reason)
-            return response.read().decode("UTF-8")
-        except:
-            connection.close()
-            raise
+        retries = 5
+        while True:
+            try:
+                connection.request("GET", self.path,
+                        headers = {"Connection": "keep-alive"})
+                response = connection.getresponse()
+                if response.status < 200 or response.status >= 300:
+                    raise BadResponse(response.status, response.reason)
+                return response.read().decode("UTF-8")
+            except http.client.RemoteDisconnected:
+                if retries == 0:
+                    raise
+                retries -= 1
+            except:
+                connection.close()
+                raise
 
 
 class ClearDevice:
