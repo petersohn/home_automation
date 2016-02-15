@@ -71,10 +71,7 @@ class Session:
 
     def getDeviceAddress(self, deviceName):
         self._connectIfNeeded()
-        cursor = self.connection.cursor()
-        cursor.execute("select ip, port from device where name = %s",
-                (deviceName,))
-        return cursor.fetchone()
+        return self._executeTransactionally(self._getDeviceAddress, deviceName)
 
 
     def _executeTransactionally(self, function, *args, **kwargs):
@@ -89,6 +86,13 @@ class Session:
     def _connectIfNeeded(self):
         if self.connection.closed:
             self._connect()
+
+
+    def _getDeviceAddress(self, deviceName):
+        cursor = self.connection.cursor()
+        cursor.execute("select ip, port from device where name = %s",
+                (deviceName,))
+        return cursor.fetchone()
 
 
     def _updateDevice(self, data):
