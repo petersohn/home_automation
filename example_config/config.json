@@ -1,0 +1,19 @@
+{
+    "deviceName": "pi",
+    "port": 8081,
+    "server": {
+        "host": "192.168.1.200",
+        "port": 8080
+    },
+    "pins": [{
+            "name": "led",
+            "number": 3,
+            "output": true
+        }, {
+            "name": "button",
+            "number": 5,
+            "output": false
+        }
+    ]
+}
+

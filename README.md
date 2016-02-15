@@ -3,7 +3,8 @@
 - [Introduction](#introduction)
 - [Requirements](#requirements)
     - [Hardware requirements](#hardware-requirements)
-        - [Devices](#devices)
+        - [ESP8266 Devices](#esp8266-devices)
+        - [Raspberry Pi Devices](#raspberry-pi-devices)
         - [Server](#server)
         - [Development](#development)
     - [Software requirements](#software-requirements)
@@ -12,22 +13,25 @@
 - [Configuration](#configuration)
     - [Setting up the web server](#setting-up-the-web-server)
     - [Setting up the PostgreSQL server](#setting-up-the-postgresql-server)
+    - [Setting up a Raspberry Pi device](#setting-up-a-raspberry-pi-device)
     - [Configuration variables](#configuration-variables)
         - [Environment variables](#environment-variables)
         - [Variables in configuration files](#variables-in-configuration-files)
 - [Building](#building)
-- [build only the server](#build-only-the-server)
-- [Build the device code, but do not upload it](#build-the-device-code-but-do-not-upload-it)
-- [Build everything, but ignore the errors](#build-everything-but-ignore-the-errors)
     - [Permissions of serial devices](#permissions-of-serial-devices)
 - [Tests](#tests)
 
 # Introduction
 
 This is a home automation framework based on the ESP8266 WiFi-enabled
-microcontroller.The microcontrollers (from now on, called *devices*) can
+microcontroller. The microcontrollers (from now on, called *devices*) can
 control one or more appliances (such as lamps) and/or sensors (switches). The
 whole system is coordinated by a central server over HTTP.
+
+Raspberry Pi devices are also supported. This means that GPIO ports on a
+Raspberry Pi can be controlled the same way as ESP8266 devices. It can be
+useful if a Raspberry Pi is used as the central server. In this case its GPIO
+ports can also be utilized.
 
 The system can be monitored and configured through a web interface (not yet
 implemented).
@@ -41,7 +45,7 @@ real environment.
 
 The system requires a central server and one or more ESP8266 devices.
 
-### Devices
+### ESP8266 Devices
 
 The ESP8266 requires a stable 3.3V input voltage (according to the
 specifications, it works from 1.7V to 3.6V, but stable power is needed
@@ -57,12 +61,32 @@ with a voltage regulator can be used though.
 
 Communication with the server is done through WiFi (b/g/n) network.
 
+Here is the pin layout of the most common ESP8266 configuration. It supports
+GPIO ports 0 and 2. Note that in order for the device to boot up properly,
+these ports should be pulled up to logical 1 value at boot time.
+
+![ESP8266 pin layout](data/ESP8266.jpg)
+
+### Raspberry Pi Devices
+
+GPIO ports of the Raspberry Pi can be controlled the same way as the ESP8266.
+It is useful for example when the server runs on a Raspberry Pi.
+
+Here is the pin layout for the Raspberry Pi Model B+. Most other models use the
+same layout.
+
+![Raspberry Pi pin layout](data/Raspberry-Pi-Model-B+.png)
+
+Other than the usage of GPIO ports and a working network connection, no special
+hardware configuration is required. See
+[here](setting-up-a-raspberry-pi-device) for the software configuration.
+
 ### Server
 
 The server should be a computer capable of running a HTTP server and PostgreSQL
-database server. It can be a low-power machine such as a Raspberry Pi (not yet
-tested) or any PC. It should be connected to the same network as the devices. A
-wired connection is recommended.
+database server. It can be a low-power machine such as a Raspberry Pi or any
+PC. It should be connected to the same network as the devices. A wired
+connection is recommended.
 
 ### Development
 
@@ -106,7 +130,7 @@ For the purpose of examples, the repository is cloned into
 The following configurations are required for the web server:
 * Use `server/www` as the document root.
 * Use `server/fcgi.py` as FastCGI server.
-* Use this FastCGI server for all `.py` files.
+* Use FastCGI for all `.py` files.
 * Make `index.py` files automatically completed (e.g. the URL `/` should point
   to `/index.py`).
 * It is recommended to allow connection keep-alive with a high (> 1 min)
@@ -137,6 +161,29 @@ CREATEDB privileges, or running the tests as `postgres` Linux user. See [the
 PostgreSQL
 documentation](http://www.postgresql.org/docs/9.4/interactive/user-manag.html)
 for more details.
+
+## Setting up a Raspberry Pi device
+
+The program for the Raspberry Pi device is located under `device/pi`. It
+requires a FastCGI compatible web server. It can be the same web server that
+the server runs on, but they should listen on different ports.
+* Use `device/pi/fcgi.py` as a FastCGI server.
+* Use FastCGI for all files.
+* Only allow 1 instance of the FastCGI server.
+* Disable checking of the availability of files on the filesystem.
+
+An example `lighttpd.conf` file can be found
+[here](example_config/lighttpd.conf).
+
+The configuration for the device is done a `config.json` file. It must be
+located next to the `fcgi.py`.
+* The `port` parameter must be the same as the port configured in the web
+  server.
+* The `server` parameter controls the connection to the server. If the server
+  runs on the same Raspberry Pi, it can be `127.0.0.1`. It can also be any IP
+  address or hostname accepted by Python's HTTP client implementation.
+* The `number` parameter under `pins` is the board pin number (as opposed to
+  the BCM pin number; although it can be changed in `gpio.py`).
 
 ## Configuration variables
 
