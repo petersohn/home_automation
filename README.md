@@ -182,8 +182,9 @@ located next to the `fcgi.py`.
 * The `server` parameter controls the connection to the server. If the server
   runs on the same Raspberry Pi, it can be `127.0.0.1`. It can also be any IP
   address or hostname accepted by Python's HTTP client implementation.
-* The `number` parameter under `pins` is the board pin number (as opposed to
-  the BCM pin number; although it can be changed in `gpio.py`).
+* The `number` parameter under `pins` is the board pin number, which is labeled
+  on the pins on the above imgage (as opposed to the BCM pin number, labeled as
+  GPIOxx; although it can be changed in `gpio.py`).
 
 ## Configuration variables
 
