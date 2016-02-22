@@ -1,7 +1,9 @@
 import database
 
 import http.client
+import queue
 import sys
+import threading
 import traceback
 
 
@@ -15,34 +17,64 @@ class BadResponse(Exception):
         return self.message
 
 
-class Retry:
+def handleGenericException():
+    s = traceback.format_exc()
+    sys.stderr.write(s + '\n')
+
+
+class ConnectionInterrupted(Exception):
     pass
 
 
-class Request:
-    def __init__(self, deviceName, path, getSession = database.getSession,
-            httpConnection = http.client.HTTPConnection):
-        self.deviceName = deviceName
-        self.path = path
-        self.getSession = getSession
+class Connection:
+    def __init__(self, host, port, responseHandler, exceptionHandler,
+            httpConnection):
+        self.host = host
+        self.port = port
+        self.responseHandler = responseHandler
+        self.exceptionHandler = exceptionHandler
         self.httpConnection = httpConnection
+        self.queue = queue.Queue()
+        self.thread = None
 
+    def isRunning(self):
+        return self.thread is not None and self.thread.is_alive()
 
-    def execute(self, httpConnections):
-        session = self.getSession()
-        deviceAddress = session.getDeviceAddress(self.deviceName)
+    def sendRequest(self, url):
+        self._start()
+        self.queue.put(lambda connection: self._sendRequest(url, connection))
 
-        if deviceAddress not in httpConnections:
-            connection = self.httpConnection(deviceAddress[0],
-                    port=deviceAddress[1], timeout=10)
-            httpConnections[deviceAddress] = connection
-        else:
-            connection = httpConnections[deviceAddress]
+    def cleanup(self):
+        if self.isRunning():
+            self.queue.put(self._cleanup)
+            if self.thread:
+                self.thread.join()
 
+    def _runThread(self):
+        try:
+            connection = self.httpConnection(self.host, self.port, timeout = 10)
+            while True:
+                action = self.queue.get()
+                result = action(connection)
+                if result is not None:
+                    self.responseHandler(result)
+        except ConnectionInterrupted:
+            pass
+        except Exception as e:
+            self.exceptionHandler(e)
+        except:
+            handleGenericException()
+
+    def _start(self):
+        if not self.isRunning():
+            self.thread = threading.Thread(target = self._runThread)
+            self.thread.start()
+
+    def _sendRequest(self, url, connection):
         retries = 5
         while True:
             try:
-                connection.request("GET", self.path,
+                connection.request("GET", url,
                         headers = {"Connection": "keep-alive"})
                 response = connection.getresponse()
                 if response.status < 200 or response.status >= 300:
@@ -56,22 +88,67 @@ class Request:
                 connection.close()
                 raise
 
+    def _cleanup(self, connection):
+        connection.close()
+        raise ConnectionInterrupted
+
+
+class Request:
+    def __init__(self, deviceName, url, getSession = database.getSession,
+            httpConnection = http.client.HTTPConnection,
+            connection = Connection):
+        self.deviceName = deviceName
+        self.url = url
+        self.getSession = getSession
+        self.httpConnection = httpConnection
+        self.connection = connection
+
+    def __call__(self, httpConnections, responseHandler, exceptionHandler):
+        session = self.getSession()
+        deviceAddress = session.getDeviceAddress(self.deviceName)
+
+        if deviceAddress not in httpConnections:
+            actualConnection = self.connection(host=deviceAddress[0],
+                    port=deviceAddress[1], responseHandler=responseHandler,
+                    exceptionHandler=exceptionHandler,
+                    httpConnection=self.httpConnection)
+            httpConnections[deviceAddress] = actualConnection
+        else:
+            actualConnection = httpConnections[deviceAddress]
+
+        actualConnection.sendRequest(self.url)
+
+
 
 class ClearDevice:
     def __init__(self, deviceName, getSession = database.getSession):
         self.deviceName = deviceName
         self.getSession = getSession
 
-    def execute(self, httpConnections):
+    def __call__(self, httpConnections, responseHandler, exceptionHandler):
         session = self.getSession()
         deviceAddress = session.getDeviceAddress(self.deviceName)
-        httpConnections.pop(deviceAddress, None)
+        if deviceAddress in httpConnections:
+            httpConnections.pop(deviceAddress).cleanup()
 
+def handleException(exception):
+    database.getSession().log("error", "Error sending request: " +
+            exception.__class__.__name__ + ': ' + str(exception))
 
-def handleGenericException():
-    s = traceback.format_exc()
-    sys.stderr.write(s + '\n')
+class HandleException:
+    def __init__(self, exception):
+        self.exception = exception
 
+    def __call__(self, httpConnections, responseHandler, exceptionHandler):
+        handleException(self.exception)
+
+class ExceptionHandler:
+    def __init__(self, queue):
+        self.queue = queue
+
+    def __call__(self, e):
+        handleGenericException()
+        self.queue.put(HandleException(e))
 
 def runProcess(queue):
     session = database.getSession()
@@ -79,14 +156,11 @@ def runProcess(queue):
     while True:
         request = queue.get()
         try:
-            result = request.execute(connections)
-            if result.__class__ == Retry:
-                queue.put(request)
+            request(connections, responseHandler=lambda x: None,
+                    exceptionHandler=ExceptionHandler(queue))
         except Exception as e:
-            session.log("error", "Error sending request: " +
-                            e.__class__.__name__ + ': ' + str(e),
-                    device=request.deviceName)
             handleGenericException()
+            handleException(e)
         except:
             handleGenericException()
 

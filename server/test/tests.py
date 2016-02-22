@@ -33,3 +33,7 @@ class RequestTest(senderTest.RequestTest):
 class ClearDeviceTest(senderTest.ClearDeviceTest):
     pass
 
+
+class ConnectionTest(senderTest.ConnectionTest):
+    pass
+
