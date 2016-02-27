@@ -26,13 +26,13 @@ create table pin (
 create index pin_name on pin (device_id, name);
 
 
-create table parameter (
-    parameter_id serial primary key,
+create table variable (
+    variable_id serial primary key,
     name text not null,
     value integer not null
 );
 
-create index parameter_name on parameter (name);
+create index variable_name on variable (name);
 
 
 create table input_trigger (

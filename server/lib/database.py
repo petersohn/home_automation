@@ -22,12 +22,12 @@ class Actions:
         self.session = session
 
 
-    def setParameter(self, name, value):
-        self.session._setParameter(name, value)
+    def setVariable(self, name, value):
+        self.session._setVariable(name, value)
 
 
-    def toggleParameter(self, name):
-        self.session._toggleParameter(name)
+    def toggleVariable(self, name):
+        self.session._toggleVariable(name)
 
 
 class Session:
@@ -165,20 +165,20 @@ class Session:
                 (deviceId, names))
 
 
-    def _setParameter(self, name, value):
+    def _setVariable(self, name, value):
         cursor = self.connection.cursor()
-        cursor.execute("update parameter set value = %s where name = %s",
+        cursor.execute("update variable set value = %s where name = %s",
                 (value, name))
 
 
-    def _toggleParameter(self, name):
+    def _toggleVariable(self, name):
         cursor = self.connection.cursor()
-        cursor.execute("update parameter set value = 1 - value " +
+        cursor.execute("update variable set value = 1 - value " +
                 "where name = %s", (name,))
 
 
     def _getIntendedState(self, deviceName):
-        parameters = self._getParameterValues()
+        variables = self._getVariableValues()
         cursor = self.connection.cursor()
         sql = \
                 """
@@ -195,7 +195,7 @@ class Session:
         result = {}
         for (deviceName, pinName, expression) in cursor.fetchall():
             result.setdefault(deviceName, {})[pinName] = \
-                    eval(expression, {}, {"params": parameters})
+                    eval(expression, {}, {"vars": variables})
 
         return result
 
@@ -235,13 +235,13 @@ class Session:
         return result
 
 
-    def _getParameterValues(self):
+    def _getVariableValues(self):
         cursor = self.connection.cursor()
-        cursor.execute("select name, value from parameter")
-        class Parameter:
+        cursor.execute("select name, value from variable")
+        class Variable:
             pass
 
-        result = Parameter()
+        result = Variable()
         for name, value in cursor.fetchall():
             setattr(result, name, value)
 
