@@ -3,6 +3,12 @@ create type severity as enum ('info', 'warning', 'error');
 create type edge as enum ('rising', 'falling', 'both');
 
 
+create table expression (
+    expression_id serial primary key,
+    value text not null
+);
+
+
 create table device (
     device_id serial primary key,
     name text unique not null,
@@ -19,7 +25,7 @@ create table pin (
     device_id integer not null references device on delete cascade,
     name text not null,
     type pin_type not null,
-    expression text,
+    expression_id integer references expression on delete set null,
     unique (device_id, name)
 );
 
@@ -39,15 +45,15 @@ create table input_trigger (
     input_trigger_id serial primary key,
     pin_id integer not null references pin on delete cascade,
     edge edge not null,
-    expression text not null
+    expression_id integer not null references expression on delete cascade
 );
 
 create index input_trigger_pin_id on input_trigger (pin_id);
 
 
 create table log (
-    device_id integer references device on delete cascade,
-    pin_id integer references pin on delete cascade,
+    device_id integer references device on delete set null,
+    pin_id integer references pin on delete set null,
     severity severity not null,
     time timestamp not null,
     message text not null

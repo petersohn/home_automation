@@ -132,12 +132,23 @@ class SessionTest(SessionTestBase):
             pinName = pin["name"]
             pinType = pin["type"]
             pinExpression = pin["expression"]
+            if pinExpression is not None:
+                cursor.execute(
+                        """
+                        insert into expression (value)
+                        values (%s) returning expression_id
+                        """,
+                        (pinExpression,))
+                expressionId, = cursor.fetchone()
+            else:
+                expressionId = None
+
             cursor.execute(
                     """
-                    insert into pin (name, device_id, type, expression)
+                    insert into pin (name, device_id, type, expression_id)
                     values (%s, %s, %s, %s) returning pin_id
                     """,
-                    (pinName, deviceId, pinType, pinExpression))
+                    (pinName, deviceId, pinType, expressionId))
             pinId, = cursor.fetchone()
             pinIds.append(pinId)
 
@@ -515,9 +526,16 @@ class SessionTest(SessionTestBase):
 
     def addTrigger(self, pinId, edge, expression):
             cursor = self.connection.cursor()
+            cursor.execute(
+                    """
+                    insert into expression (value)
+                    values (%s) returning expression_id
+                    """,
+                    (expression,))
+            expressionId, = cursor.fetchone()
             cursor.execute("insert into input_trigger " +
-                    "(pin_id, edge, expression) values (%s, %s, %s)",
-                    (pinId, edge, expression))
+                    "(pin_id, edge, expression_id) values (%s, %s, %s)",
+                    (pinId, edge, expressionId))
 
 
     def test_processTriggers_trigger_to_the_correct_edge(self):

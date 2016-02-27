@@ -182,8 +182,9 @@ class Session:
         cursor = self.connection.cursor()
         sql = \
                 """
-                select device.name, pin.name, expression
+                select device.name, pin.name, expression.value
                 from device join pin using (device_id)
+                        left join expression using (expression_id)
                 where expression is not null and type = 'output'
                 """
         values = ()
@@ -213,9 +214,12 @@ class Session:
         cursor = self.connection.cursor()
         cursor.execute(
                 """
-                select input_trigger.expression, device.name, pin.name
+                select expression.value, device.name, pin.name
                 from device join pin using (device_id)
                         join input_trigger using (pin_id)
+                        join expression on (
+                                input_trigger.expression_id =
+                                expression.expression_id)
                 where (input_trigger.edge = 'both' or input_trigger.edge = %s)
                         and device.name = %s and pin.name = %s
                 """, (edge, deviceName, pinName))
