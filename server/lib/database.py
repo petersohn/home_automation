@@ -21,23 +21,35 @@ class Variables:
     def __init__(self, session):
         self.session = session
 
-
     def get(self, name):
         return self.session._getVariable(name)
-
 
     def set(self, name, value):
         self.session._setVariable(name, value)
 
-
     def toggle(self, name, modulo = 2):
         self.session._toggleVariable(name, modulo)
+
+
+class Devices:
+    def __init__(self, session):
+        self.session = session
+
+    def isAlive(self, name):
+        return self.session._isDeviceAlive(name)
+
+    def countAlive(self):
+        return self.session._countAliveDevices()
+
+    def countDead(self):
+        return self.session._countDeadDevices()
 
 
 class Session:
     def __init__(self, connectString):
         self.connectString = connectString
         self.variables = Variables(self)
+        self.devices = Devices(self)
         self._connect()
 
 
@@ -100,6 +112,7 @@ class Session:
 
 
     def _updateDevice(self, data):
+        initialStates = self._getIntendedState(None)
         inputType = data.get("type", None)
         isLogin = "type" in data and inputType == "login"
         deviceData = data["device"]
@@ -109,6 +122,8 @@ class Session:
         deviceId = self._updateDeviceData(deviceName, ip, port, isLogin)
         if inputType != "event":
             self._updatePinData(deviceId, data["pins"])
+        newStates = self._getIntendedState(None)
+        return self._getChangedStates(initialStates, newStates)
 
 
     def _updateDeviceData(self, name, ip, port, isLogin):
@@ -168,24 +183,54 @@ class Session:
                 "delete from pin where device_id = %s and name != ALL(%s)",
                 (deviceId, names))
 
+    def _executeNoReturnQuery(self, query, values):
+        cursor = self.connection.cursor()
+        cursor.execute(query, values)
+
+
+    def _executeSingleReturnQuery(self, query, values):
+        cursor = self.connection.cursor()
+        cursor.execute(query, values)
+        return cursor.fetchone()
+
 
     def _setVariable(self, name, value):
-        cursor = self.connection.cursor()
-        cursor.execute("update variable set value = %s where name = %s",
+        self._executeNoReturnQuery(
+                "update variable set value = %s where name = %s",
                 (value, name))
 
 
     def _toggleVariable(self, name, modulo):
-        cursor = self.connection.cursor()
-        cursor.execute("update variable set value = (value + 1) %% %s" +
-                "where name = %s", (modulo, name))
+        self._executeNoReturnQuery(
+                "update variable set value = (value + 1) %% %s where name = %s",
+                (modulo, name))
 
 
     def _getVariable(self, name):
-        cursor = self.connection.cursor()
-        cursor.execute("select value from variable where name = %s",
-                (name,))
-        return cursor.fetchone()[0]
+        return self._executeSingleReturnQuery(
+                "select value from variable where name = %s", (name,))[0]
+
+
+    def _isDeviceAlive(self, name):
+        return self._executeSingleReturnQuery(
+                "select last_seen >= %s from device where name = %s",
+                (self._getTimeLimit(), name))[0]
+
+
+    def _countAliveDevices(self):
+        return self._executeSingleReturnQuery(
+                "select count(*) from device where last_seen >= %s",
+                (self._getTimeLimit(),))[0]
+
+
+    def _countDeadDevices(self):
+        return self._executeSingleReturnQuery(
+                "select count(*) from device where last_seen < %s",
+                (self._getTimeLimit(),))[0]
+
+
+    def _getTimeLimit(self):
+        return datetime.datetime.now() - globals.deviceHeartbeatTimeout
 
 
     def _getIntendedState(self, deviceName):
@@ -203,14 +248,15 @@ class Session:
             values = (deviceName,)
         else:
             sql += " and device.last_seen >= %s"
-            timeLimit = datetime.datetime.now() - globals.deviceHeartbeatTimeout
-            values = (timeLimit,)
+            values = (self._getTimeLimit(),)
         cursor.execute(sql, values)
 
         result = {}
         for (deviceName, pinName, expression) in cursor.fetchall():
             result.setdefault(deviceName, {})[pinName] = \
-                    eval(expression, {}, {"var": self.variables})
+                    eval(expression, {}, {
+                            "var": self.variables,
+                            "dev": self.devices})
 
         return result
 
@@ -241,13 +287,18 @@ class Session:
         for expression, deviceName, pinName, in cursor.fetchall():
             exec(expression, {}, {
                     "pin": self.Pin(deviceName, pinName, pinValue),
-                    "var": self.variables})
+                    "var": self.variables,
+                    "dev": self.devices})
 
         newStates = self._getIntendedState(None)
+        return self._getChangedStates(initialStates, newStates)
+
+
+    def _getChangedStates(self, initialStates, newStates):
         result = {}
         for deviceName, pinInfo in newStates.items():
             for pinName, value in pinInfo.items():
-                if value != initialStates[deviceName][pinName]:
+                if value != initialStates.get(deviceName, {}).get(pinName):
                     result.setdefault(deviceName, {})[pinName] = value
 
         return result

@@ -92,27 +92,6 @@ class SessionTestBase(DatabaseTest):
         return result
 
 
-
-class SessionTest(SessionTestBase):
-    def createInputData(self, name, ip, port, inputType = "heartbeat",
-            pins = []):
-        device = {"name": name, "ip": ip, "port": port}
-        pins = [{"name": name, "type": type} for (name, type) in pins]
-        return {"device": device, "pins": pins, "type": inputType}
-
-
-    def test_log(self):
-        severity = 'info'
-        message = 'some test message'
-        self.session.log(severity, message)
-
-        cursor = self.connection.cursor()
-        cursor.execute("select severity, message, device_id, pin_id " +
-                "from log")
-        result = cursor.fetchall()
-        self.assertCountEqual(result, [(severity, message, None, None)])
-
-
     def _pin(self, name, type, expression = None):
         return {"name": name, "type": type, "expression": expression}
 
@@ -153,6 +132,28 @@ class SessionTest(SessionTestBase):
             pinIds.append(pinId)
 
         return (deviceId, pinIds)
+
+
+
+class SessionTest(SessionTestBase):
+    def createInputData(self, name, ip, port, inputType = "heartbeat",
+            pins = []):
+        device = {"name": name, "ip": ip, "port": port}
+        pins = [{"name": name, "type": type} for (name, type) in pins]
+        return {"device": device, "pins": pins, "type": inputType}
+
+
+    def test_log(self):
+        severity = 'info'
+        message = 'some test message'
+        self.session.log(severity, message)
+
+        cursor = self.connection.cursor()
+        cursor.execute("select severity, message, device_id, pin_id " +
+                "from log")
+        result = cursor.fetchall()
+        self.assertCountEqual(result, [(severity, message, None, None)])
+
 
     def test_log_device(self):
         deviceId, pinIds = database.executeTransactionally(self.connection,
@@ -423,16 +424,31 @@ class SessionTest(SessionTestBase):
 
     def test_getIntendedState_depends_on_variable(self):
         deviceName = "someDevice"
+        self.session.variables = unittest.mock.Mock()
+        self.session.variables.getFalse.return_value = False
+        self.session.variables.getTrue.return_value = True
         deviceId, [pin1Id, pin2Id] = database.executeTransactionally(
                 self.connection, self.addDevice, deviceName, pins = [
                         self._pin("falsePin", "output",
-                                "var.get('falseVariable')"),
+                                "var.getFalse()"),
                         self._pin("truePin", "output",
-                                "var.get('trueVariable')")])
+                                "var.getTrue()")])
 
-        database.executeTransactionally(self.connection,
-                self.insertVariables, [
-                        ("trueVariable", 1), ("falseVariable", 0)])
+        result = self.session.getIntendedState(None)
+        self.assertEqual(result, {deviceName:
+                {"falsePin": 0, "truePin": 1}})
+
+    def test_getIntendedState_depends_on_device(self):
+        deviceName = "someDevice"
+        self.session.devices = unittest.mock.Mock()
+        self.session.devices.getFalse.return_value = False
+        self.session.devices.getTrue.return_value = True
+        deviceId, [pin1Id, pin2Id] = database.executeTransactionally(
+                self.connection, self.addDevice, deviceName, pins = [
+                        self._pin("falsePin", "output",
+                                "dev.getFalse()"),
+                        self._pin("truePin", "output",
+                                "dev.getTrue()")])
 
         result = self.session.getIntendedState(None)
         self.assertEqual(result, {deviceName:
@@ -676,5 +692,57 @@ class VariablesTest(SessionTestBase):
         self.session._executeTransactionally(
                 self.variables.toggle, variableName, 4)
         self.assertEqual(self.getVariableValue(variableName), 0)
+
+
+class DevicesTest(SessionTestBase):
+    def setUp(self):
+        super(DevicesTest, self).setUp()
+        self.devices = database.Devices(self.session)
+
+
+    def test_isDeviceAlive_true(self):
+        deviceName = "someDevice"
+        database.executeTransactionally(
+                self.connection, self.addDevice, deviceName,
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=1))
+        self.assertEqual(self.devices.isAlive(deviceName), True)
+
+
+    def test_isDeviceAlive_false(self):
+        deviceName = "someDevice"
+        database.executeTransactionally(
+                self.connection, self.addDevice, deviceName,
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=3))
+        self.assertEqual(self.devices.isAlive(deviceName), False)
+
+    def test_countAliveDevices(self):
+        aliveDevice = "someDevice"
+        deadDevice1 = "otherDevice"
+        deadDevice2 = "anotherDevice"
+        database.executeTransactionally(
+                self.connection, self.addDevice, aliveDevice)
+        database.executeTransactionally(
+                self.connection, self.addDevice, deadDevice1,
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=3))
+        database.executeTransactionally(
+                self.connection, self.addDevice, deadDevice2,
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=5))
+        self.assertEqual(self.devices.countAlive(), 1)
+
+    def test_countDeadDevices(self):
+        aliveDevice = "someDevice"
+        deadDevice1 = "otherDevice"
+        deadDevice2 = "anotherDevice"
+        database.executeTransactionally(
+                self.connection, self.addDevice, aliveDevice)
+        database.executeTransactionally(
+                self.connection, self.addDevice, deadDevice1,
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=3))
+        database.executeTransactionally(
+                self.connection, self.addDevice, deadDevice2,
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=5))
+        self.assertEqual(self.devices.countDead(), 2)
+
+
 
 

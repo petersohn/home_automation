@@ -26,6 +26,10 @@ class VariablesTest(databaseTest.VariablesTest):
     pass
 
 
+class DevicesTest(databaseTest.DevicesTest):
+    pass
+
+
 class RequestTest(senderTest.RequestTest):
     pass
 

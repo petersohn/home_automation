@@ -8,6 +8,11 @@ import sender
 import json
 import sys
 
+def handleChangedDevices(senderQueue, changedDevices):
+    for changedDevice, changedPins in changedDevices.items():
+        for changedPin, value in changedPins.items():
+            actions.setPin(senderQueue, changedDevice, changedPin, value)
+
 def run(environ, senderQueue, response):
     response.headers = [('Content-Type', 'text/plain')]
     input = environ["wsgi.input"].read().decode("UTF-8")
@@ -17,7 +22,8 @@ def run(environ, senderQueue, response):
     inputData["device"].setdefault("ip", remoteAddress)
 
     session = database.getSession()
-    session.updateDevice(inputData)
+    changedDevices = session.updateDevice(inputData)
+    handleChangedDevices(senderQueue, changedDevices)
 
     deviceName = inputData["device"]["name"]
     inputType = inputData.get("type", None)
@@ -31,10 +37,9 @@ def run(environ, senderQueue, response):
         pinName = pin["name"]
         pinValue = pin["value"]
         if inputType == "event":
-            changedDevices = session.processTriggers(deviceName, pinName, pinValue)
-            for changedDevice, changedPins in changedDevices.items():
-                for changedPin, value in changedPins.items():
-                    actions.setPin(senderQueue, changedDevice, changedPin, value)
+            changedDevices = session.processTriggers(deviceName, pinName,
+                    pinValue)
+            handleChangedDevices(senderQueue, changedDevices)
         elif pin["type"] == "output":
             intendedValue = intendedStates.get(deviceName, {}).\
                     get(pinName, pinValue)
