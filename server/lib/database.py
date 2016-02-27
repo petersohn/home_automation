@@ -210,7 +210,7 @@ class Session:
         result = {}
         for (deviceName, pinName, expression) in cursor.fetchall():
             result.setdefault(deviceName, {})[pinName] = \
-                    eval(expression, {}, {"vars": self.variables})
+                    eval(expression, {}, {"var": self.variables})
 
         return result
 
@@ -241,7 +241,7 @@ class Session:
         for expression, deviceName, pinName, in cursor.fetchall():
             exec(expression, {}, {
                     "pin": self.Pin(deviceName, pinName, pinValue),
-                    "vars": self.variables})
+                    "var": self.variables})
 
         newStates = self._getIntendedState(None)
         result = {}

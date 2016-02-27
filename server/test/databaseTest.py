@@ -426,9 +426,9 @@ class SessionTest(SessionTestBase):
         deviceId, [pin1Id, pin2Id] = database.executeTransactionally(
                 self.connection, self.addDevice, deviceName, pins = [
                         self._pin("falsePin", "output",
-                                "vars.get('falseVariable')"),
+                                "var.get('falseVariable')"),
                         self._pin("truePin", "output",
-                                "vars.get('trueVariable')")])
+                                "var.get('trueVariable')")])
 
         database.executeTransactionally(self.connection,
                 self.insertVariables, [
@@ -566,13 +566,13 @@ class SessionTest(SessionTestBase):
                 self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
         database.executeTransactionally(self.connection, self.addTrigger,
                 pinId, "rising",
-                "vars.risingTrigger(pin.device, pin.pin, pin.value)")
+                "var.risingTrigger(pin.device, pin.pin, pin.value)")
         database.executeTransactionally(self.connection, self.addTrigger,
                 pinId, "falling",
-                "vars.fallingTrigger(pin.device, pin.pin, pin.value)")
+                "var.fallingTrigger(pin.device, pin.pin, pin.value)")
         database.executeTransactionally(self.connection, self.addTrigger,
                 pinId, "both",
-                "vars.bothTrigger(pin.device, pin.pin, pin.value)")
+                "var.bothTrigger(pin.device, pin.pin, pin.value)")
 
         self.session.processTriggers(deviceName, pinName, 1)
         self.session.processTriggers(deviceName, pinName, 0)
@@ -600,13 +600,13 @@ class SessionTest(SessionTestBase):
                         self._pin(inputPin, "input")])
         database.executeTransactionally(self.connection,
                 self.addDevice, outputDevice, pins = [
-                        self._pin(changedPin, "output", "vars.get('" +
+                        self._pin(changedPin, "output", "var.get('" +
                                 variableName + "')"),
                         self._pin(notChangedPin, "output", "False")])
         database.executeTransactionally(self.connection,
                 self.insertVariables, [(variableName, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "vars.set('" + variableName +
+                pinId, "both", "var.set('" + variableName +
                 "', 1)")
 
         result = self.session.processTriggers(inputDevice, inputPin, 1)
