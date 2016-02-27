@@ -201,6 +201,10 @@ class Session:
         if deviceName is not None:
             sql += " and device.name = %s"
             values = (deviceName,)
+        else:
+            sql += " and device.last_seen >= %s"
+            timeLimit = datetime.datetime.now() - globals.deviceHeartbeatTimeout
+            values = (timeLimit,)
         cursor.execute(sql, values)
 
         result = {}

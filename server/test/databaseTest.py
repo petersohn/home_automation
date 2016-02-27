@@ -470,6 +470,22 @@ class SessionTest(SessionTestBase):
         result = self.session.getIntendedState(device1Name)
         self.assertEqual(result, {device1Name: {"falsePin": 0, "truePin": 1}})
 
+    def test_getIntendedState_prints_results_only_for_active_devices(self):
+        device1Name = "someDevice"
+        device2Name = "otherDevice"
+        database.executeTransactionally(
+                self.connection, self.addDevice, device1Name, pins = [
+                        self._pin("falsePin", "output", "0"),
+                        self._pin("truePin", "output", "1")])
+        database.executeTransactionally(
+                self.connection, self.addDevice, device2Name, pins = [
+                        self._pin("falsePin2", "output", "0"),
+                        self._pin("truePin", "output", "1")],
+                seen = datetime.datetime.now() - datetime.timedelta(minutes=3))
+
+        result = self.session.getIntendedState(None)
+        self.assertEqual(result, {device1Name: {"falsePin": 0, "truePin": 1}})
+
     def test_getIntendedState_only_print_output_pins(self):
         deviceName = "someDevice"
         pinName = "somePin"
