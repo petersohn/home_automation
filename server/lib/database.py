@@ -17,23 +17,27 @@ def executeTransactionally(connection, function, *args, **kwargs):
         raise
 
 
-class Actions:
+class Variables:
     def __init__(self, session):
         self.session = session
 
 
-    def setVariable(self, name, value):
+    def get(self, name):
+        return self.session._getVariable(name)
+
+
+    def set(self, name, value):
         self.session._setVariable(name, value)
 
 
-    def toggleVariable(self, name):
+    def toggle(self, name):
         self.session._toggleVariable(name)
 
 
 class Session:
     def __init__(self, connectString):
         self.connectString = connectString
-        self.actions = Actions(self)
+        self.variables = Variables(self)
         self._connect()
 
 
@@ -177,8 +181,14 @@ class Session:
                 "where name = %s", (name,))
 
 
+    def _getVariable(self, name):
+        cursor = self.connection.cursor()
+        cursor.execute("select value from variable where name = %s",
+                (name,))
+        return cursor.fetchone()[0]
+
+
     def _getIntendedState(self, deviceName):
-        variables = self._getVariableValues()
         cursor = self.connection.cursor()
         sql = \
                 """
@@ -196,7 +206,7 @@ class Session:
         result = {}
         for (deviceName, pinName, expression) in cursor.fetchall():
             result.setdefault(deviceName, {})[pinName] = \
-                    eval(expression, {}, {"vars": variables})
+                    eval(expression, {}, {"vars": self.variables})
 
         return result
 
@@ -227,7 +237,7 @@ class Session:
         for expression, deviceName, pinName, in cursor.fetchall():
             exec(expression, {}, {
                     "pin": self.Pin(deviceName, pinName, pinValue),
-                    "action": self.actions})
+                    "vars": self.variables})
 
         newStates = self._getIntendedState(None)
         result = {}
@@ -235,19 +245,6 @@ class Session:
             for pinName, value in pinInfo.items():
                 if value != initialStates[deviceName][pinName]:
                     result.setdefault(deviceName, {})[pinName] = value
-
-        return result
-
-
-    def _getVariableValues(self):
-        cursor = self.connection.cursor()
-        cursor.execute("select name, value from variable")
-        class Variable:
-            pass
-
-        result = Variable()
-        for name, value in cursor.fetchall():
-            setattr(result, name, value)
 
         return result
 

@@ -22,7 +22,7 @@ class ExecuteTransactionallyTest(databaseTest.ExecuteTransactionallyTest):
     pass
 
 
-class ActionsTest(databaseTest.ActionsTest):
+class VariablesTest(databaseTest.VariablesTest):
     pass
 
 

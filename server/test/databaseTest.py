@@ -426,9 +426,9 @@ class SessionTest(SessionTestBase):
         deviceId, [pin1Id, pin2Id] = database.executeTransactionally(
                 self.connection, self.addDevice, deviceName, pins = [
                         self._pin("falsePin", "output",
-                                "vars.falseVariable"),
+                                "vars.get('falseVariable')"),
                         self._pin("truePin", "output",
-                                "vars.trueVariable")])
+                                "vars.get('trueVariable')")])
 
         database.executeTransactionally(self.connection,
                 self.insertVariables, [
@@ -544,31 +544,31 @@ class SessionTest(SessionTestBase):
         riseVariable = "riseVariable"
         fallVariable = "fallVariable"
         bothVariable = "bothVariable"
-        self.session.actions = unittest.mock.Mock()
+        self.session.variables = unittest.mock.Mock()
 
         deviceId, [pinId] = database.executeTransactionally(self.connection,
                 self.addDevice, deviceName, pins = [self._pin(pinName, "input")])
         database.executeTransactionally(self.connection, self.addTrigger,
                 pinId, "rising",
-                "action.risingTrigger(pin.device, pin.pin, pin.value)")
+                "vars.risingTrigger(pin.device, pin.pin, pin.value)")
         database.executeTransactionally(self.connection, self.addTrigger,
                 pinId, "falling",
-                "action.fallingTrigger(pin.device, pin.pin, pin.value)")
+                "vars.fallingTrigger(pin.device, pin.pin, pin.value)")
         database.executeTransactionally(self.connection, self.addTrigger,
                 pinId, "both",
-                "action.bothTrigger(pin.device, pin.pin, pin.value)")
+                "vars.bothTrigger(pin.device, pin.pin, pin.value)")
 
         self.session.processTriggers(deviceName, pinName, 1)
         self.session.processTriggers(deviceName, pinName, 0)
-        self.session.actions.risingTrigger.assert_has_calls([
+        self.session.variables.risingTrigger.assert_has_calls([
                 call(deviceName, pinName, 1)])
-        self.session.actions.fallingTrigger.assert_has_calls([
+        self.session.variables.fallingTrigger.assert_has_calls([
                 call(deviceName, pinName, 0)])
-        self.session.actions.bothTrigger.assert_has_calls([
+        self.session.variables.bothTrigger.assert_has_calls([
                 call(deviceName, pinName, 1), call(deviceName, pinName, 0)])
-        self.assertEqual(self.session.actions.risingTrigger.call_count, 1)
-        self.assertEqual(self.session.actions.fallingTrigger.call_count, 1)
-        self.assertEqual(self.session.actions.bothTrigger.call_count, 2)
+        self.assertEqual(self.session.variables.risingTrigger.call_count, 1)
+        self.assertEqual(self.session.variables.fallingTrigger.call_count, 1)
+        self.assertEqual(self.session.variables.bothTrigger.call_count, 2)
 
 
     def test_processTriggers_return_with_modified_pins(self):
@@ -584,13 +584,13 @@ class SessionTest(SessionTestBase):
                         self._pin(inputPin, "input")])
         database.executeTransactionally(self.connection,
                 self.addDevice, outputDevice, pins = [
-                        self._pin(changedPin, "output", "vars." +
-                                variableName),
+                        self._pin(changedPin, "output", "vars.get('" +
+                                variableName + "')"),
                         self._pin(notChangedPin, "output", "False")])
         database.executeTransactionally(self.connection,
                 self.insertVariables, [(variableName, 0)])
         database.executeTransactionally(self.connection, self.addTrigger,
-                pinId, "both", "action.setVariable('" + variableName +
+                pinId, "both", "vars.set('" + variableName +
                 "', 1)")
 
         result = self.session.processTriggers(inputDevice, inputPin, 1)
@@ -598,10 +598,22 @@ class SessionTest(SessionTestBase):
 
 
 
-class ActionsTest(SessionTestBase):
+class VariablesTest(SessionTestBase):
     def setUp(self):
-        super(ActionsTest, self).setUp()
-        self.actions = database.Actions(self.session)
+        super(VariablesTest, self).setUp()
+        self.variables = database.Variables(self.session)
+
+
+    def test_get_value_of_variable(self):
+        variableName = "someVariable"
+        value = 31
+
+        database.executeTransactionally(self.connection,
+                self.insertVariables, [(variableName, 42)])
+
+        result = self.session._executeTransactionally(
+                self.variables.get, variableName)
+        self.assertEqual(result, 42)
 
 
     def test_set_value_of_variable(self):
@@ -612,7 +624,7 @@ class ActionsTest(SessionTestBase):
                 self.insertVariables, [(variableName, 0)])
 
         self.session._executeTransactionally(
-                self.actions.setVariable, variableName, value)
+                self.variables.set, variableName, value)
         self.assertEqual(self.getVariableValue(variableName), value)
 
 
@@ -623,10 +635,10 @@ class ActionsTest(SessionTestBase):
                 self.insertVariables, [(variableName, 0)])
 
         self.session._executeTransactionally(
-                self.actions.toggleVariable, variableName)
+                self.variables.toggle, variableName)
         self.assertEqual(self.getVariableValue(variableName), 1)
         self.session._executeTransactionally(
-                self.actions.toggleVariable, variableName)
+                self.variables.toggle, variableName)
         self.assertEqual(self.getVariableValue(variableName), 0)
 
 

@@ -34,7 +34,7 @@ create index pin_name on pin (device_id, name);
 
 create table variable (
     variable_id serial primary key,
-    name text not null,
+    name text unique not null,
     value integer not null
 );
 
