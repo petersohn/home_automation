@@ -642,3 +642,23 @@ class VariablesTest(SessionTestBase):
         self.assertEqual(self.getVariableValue(variableName), 0)
 
 
+    def test_toggle_value_of_variable_with_modulo(self):
+        variableName = "someVariable"
+
+        database.executeTransactionally(self.connection,
+                self.insertVariables, [(variableName, 0)])
+
+        self.session._executeTransactionally(
+                self.variables.toggle, variableName, 4)
+        self.assertEqual(self.getVariableValue(variableName), 1)
+        self.session._executeTransactionally(
+                self.variables.toggle, variableName, 4)
+        self.assertEqual(self.getVariableValue(variableName), 2)
+        self.session._executeTransactionally(
+                self.variables.toggle, variableName, 4)
+        self.assertEqual(self.getVariableValue(variableName), 3)
+        self.session._executeTransactionally(
+                self.variables.toggle, variableName, 4)
+        self.assertEqual(self.getVariableValue(variableName), 0)
+
+

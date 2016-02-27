@@ -30,8 +30,8 @@ class Variables:
         self.session._setVariable(name, value)
 
 
-    def toggle(self, name):
-        self.session._toggleVariable(name)
+    def toggle(self, name, modulo = 2):
+        self.session._toggleVariable(name, modulo)
 
 
 class Session:
@@ -175,10 +175,10 @@ class Session:
                 (value, name))
 
 
-    def _toggleVariable(self, name):
+    def _toggleVariable(self, name, modulo):
         cursor = self.connection.cursor()
-        cursor.execute("update variable set value = 1 - value " +
-                "where name = %s", (name,))
+        cursor.execute("update variable set value = (value + 1) %% %s" +
+                "where name = %s", (modulo, name))
 
 
     def _getVariable(self, name):
