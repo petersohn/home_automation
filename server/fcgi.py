@@ -34,7 +34,7 @@ def main(environ, start_response):
             module = loadedModules.get(fullpath, None)
             if module is None:
                 module = imp.load_module(name, file, pathname, description)
-                loadedModules[name] = module
+                loadedModules[fullpath] = module
 
             response = Response()
             result = module.run(environ, senderQueue, response)
