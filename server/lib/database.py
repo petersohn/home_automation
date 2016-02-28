@@ -45,7 +45,7 @@ class Devices:
         return self.session._countDeadDevices()
 
 
-class Log:
+class Logger:
     def __init__(self, session):
         self.session = session
 
@@ -58,6 +58,7 @@ class Session:
         self.connectString = connectString
         self.variables = Variables(self)
         self.devices = Devices(self)
+        self.logger = Logger(self)
         self._connect()
 
 
@@ -296,7 +297,8 @@ class Session:
             exec(expression, {}, {
                     "pin": self.Pin(deviceName, pinName, pinValue),
                     "var": self.variables,
-                    "dev": self.devices})
+                    "dev": self.devices,
+                    "log": self.logger})
 
         newStates = self._getIntendedState(None)
         return self._getChangedStates(initialStates, newStates)
