@@ -48,7 +48,7 @@ def run(environ, senderQueue, response):
                         device = deviceName,
                         pin = pinName,
                         severity = "warning",
-                        description = "Wrong value of pin.")
+                        message = "Wrong value of pin.")
 
                 actions.setPin(senderQueue, deviceName, pinName, intendedValue)
 

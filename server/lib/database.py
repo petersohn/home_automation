@@ -45,6 +45,14 @@ class Devices:
         return self.session._countDeadDevices()
 
 
+class Log:
+    def __init__(self, session):
+        self.session = session
+
+    def log(self, message):
+        self.session._log("info", message, None, None)
+
+
 class Session:
     def __init__(self, connectString):
         self.connectString = connectString
@@ -58,10 +66,10 @@ class Session:
             self.connection.close()
 
 
-    def log(self, severity, description, device = None, pin = None):
+    def log(self, severity, message, device = None, pin = None):
         try:
             self._connectIfNeeded()
-            self._log(severity, description, device, pin)
+            self._log(severity, message, device, pin)
             self.connection.commit()
         except:
             if not self.connection.closed:
@@ -311,14 +319,14 @@ class Session:
             return value
         return finder(value)
 
-    def _log(self, severity, description, device = None, pin = None):
+    def _log(self, severity, message, device = None, pin = None):
         deviceId = self._findValue(device, self.getDeviceId)
         pinId = self._findValue(pin, self.getPinId)
 
         cursor = self.connection.cursor()
         cursor.execute("insert into log (severity, time, message, device_id, " +
                 "pin_id) values (%s, %s, %s, %s, %s)",
-                (severity, datetime.datetime.now(), description, deviceId,
+                (severity, datetime.datetime.now(), message, deviceId,
                         pinId))
 
 
