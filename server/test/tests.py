@@ -30,6 +30,10 @@ class DevicesTest(databaseTest.DevicesTest):
     pass
 
 
+class LoggerTest(databaseTest.DevicesTest):
+    pass
+
+
 class RequestTest(senderTest.RequestTest):
     pass
 

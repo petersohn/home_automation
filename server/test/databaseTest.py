@@ -745,4 +745,24 @@ class DevicesTest(SessionTestBase):
 
 
 
+class LoggerTest(SessionTestBase):
+    def setUp(self):
+        super(DevicesTest, self).setUp()
+        self.logger = database.Logger(self.session)
+
+
+    def test_log(self):
+        severity = 'info'
+        message = 'some test message'
+        database.executeTransactionally(self.connection,
+                self.logger.log, message)
+
+        cursor = self.connection.cursor()
+        cursor.execute("select severity, message, device_id, pin_id " +
+                "from log")
+        result = cursor.fetchall()
+        self.assertCountEqual(result, [("info", message, None, None)])
+
+
+
 
