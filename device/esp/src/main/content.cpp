@@ -24,6 +24,7 @@ String getDeviceInfo() {
         "\"ip\": \"" + ipString + "\", "
         "\"port\": 80, "
         "\"memory\": " + String(system_get_free_heap_size()) + ", "
+        "\"version\": 1, "
         "\"rssi\": " + String(WiFi.RSSI()) + " }";
 }
 

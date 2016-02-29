@@ -12,7 +12,7 @@ class Content:
 
 
     def _getDeviceInfo(self):
-        return {"name": self.deviceName, "port": self.port}
+        return {"name": self.deviceName, "port": self.port, "version": 1}
 
 
     def _getPinInfo(self, pin):

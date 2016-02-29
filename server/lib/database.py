@@ -128,14 +128,15 @@ class Session:
         deviceName = deviceData["name"]
         ip = deviceData["ip"]
         port = deviceData["port"]
-        deviceId = self._updateDeviceData(deviceName, ip, port, isLogin)
+        version = deviceData.get("version", 1)
+        deviceId = self._updateDeviceData(deviceName, ip, port, version, isLogin)
         if inputType != "event":
             self._updatePinData(deviceId, data["pins"])
         newStates = self._getIntendedState(None)
         return self._getChangedStates(initialStates, newStates)
 
 
-    def _updateDeviceData(self, name, ip, port, isLogin):
+    def _updateDeviceData(self, name, ip, port, version, isLogin):
         cursor = self.connection.cursor()
         cursor.execute("select device_id, last_seen from device where " +
                 "name = %s", (name,))
@@ -143,10 +144,10 @@ class Session:
         if found is None:
             cursor.execute(
                     """
-                    insert into device (name, ip, port, last_seen)
-                    values (%s, %s, %s, %s) returning device_id
+                    insert into device (name, ip, port, version, last_seen)
+                    values (%s, %s, %s, %s, %s) returning device_id
                     """,
-                    (name, ip, port, datetime.datetime.now()))
+                    (name, ip, port, version, datetime.datetime.now()))
             deviceId, = cursor.fetchone()
             self._log("info", "Found new device.", device = deviceId)
         else:
@@ -154,9 +155,10 @@ class Session:
             now = datetime.datetime.now()
             cursor.execute(
                     """
-                    update device set ip = %s, port = %s, last_seen = %s
+                    update device set ip = %s, port = %s, version = %s,
+                            last_seen = %s
                     where device_id = %s
-                    """, (ip, port, now, deviceId))
+                    """, (ip, port, version, now, deviceId))
             if now - lastSeen > globals.deviceHeartbeatTimeout:
                 self._log("info", "Lost device reappeared.", device = deviceId)
             elif isLogin:

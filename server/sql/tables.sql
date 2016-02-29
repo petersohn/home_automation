@@ -14,6 +14,7 @@ create table device (
     name text unique not null,
     ip text not null,
     port integer not null,
+    version integer not null,
     last_seen timestamp not null
 );
 
