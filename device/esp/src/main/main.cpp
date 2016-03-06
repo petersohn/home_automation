@@ -1,7 +1,8 @@
 #include "ConnectionPool.hpp"
 #include "client.hpp"
 #include "content.hpp"
-#include "config//credentials.hpp"
+#include "config/credentials.hpp"
+#include "config/debug.hpp"
 #include "config/device.hpp"
 #include "config/server.hpp"
 #include "http/client.hpp"
@@ -56,8 +57,8 @@ void initialize() {
 
 void setup()
 {
-    Serial.begin(115200);
-    Serial.println();
+    DEBUG_INIT;
+    DEBUGLN();
 
     for (device::Pin& pin : device::pins) {
         pinMode(pin.number, (pin.output ? OUTPUT : INPUT));
@@ -69,14 +70,14 @@ void setup()
 void loop()
 {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi connection lost.");
+        DEBUGLN("WiFi connection lost.");
         initialize();
     }
 
     WiFiClient connection = httpServer.available();
     if (connection) {
-        Serial.print("Incoming connection from ");
-        Serial.println(connection.remoteIP());
+        DEBUG("Incoming connection from ");
+        DEBUGLN(connection.remoteIP());
         connectionPool.add(connection);
     }
     connectionPool.serve(

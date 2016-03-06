@@ -1,6 +1,7 @@
 #ifndef HTTP_CLIENT_HPP
 #define HTTP_CLIENT_HPP
 
+#include "config/debug.hpp"
 #include "http/http.hpp"
 #include "tools/string.hpp"
 
@@ -16,14 +17,14 @@ bool connectIfNeeded(Connection& connection, const char* address,
         return true;
     }
 
-    Serial.print("Connecting to server ");
-    Serial.print(address);
-    Serial.print(':');
-    Serial.print(port);
-    Serial.println("...");
+    DEBUG("Connecting to server ");
+    DEBUG(address);
+    DEBUG(':');
+    DEBUG(port);
+    DEBUGLN("...");
 
     if (!connection.connect(address, port)) {
-        Serial.println("Connection failed.");
+        DEBUGLN("Connection failed.");
         return false;
     }
     return true;

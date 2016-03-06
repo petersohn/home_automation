@@ -20,4 +20,4 @@ INCLUDE_DIRS += -I$(ESP_DIR)/tools/sdk/include
 
 !ass = |> ^ CC %f^ $(PRINT_JSON) %f $(CC) $(ASS_FLAGS) $(INCLUDE_DIRS) -o %o %f |> %b.o | %b.compile.json
 !cc = |> ^ CC %f^ $(PRINT_JSON) %f $(CC) $(C_FLAGS) $(INCLUDE_DIRS) -o %o %f |> %b.o | %b.compile.json
-!cxx = |> ^ CXX %f^ $(PRINT_JSON) %f  $(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) -o %o %f |> %b.o | %b.compile.json
+!cxx = | $(_CONFIG_DIR)/debug.hpp |> ^ CXX %f^ $(PRINT_JSON) %f  $(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) -o %o %f |> %b.o | %b.compile.json

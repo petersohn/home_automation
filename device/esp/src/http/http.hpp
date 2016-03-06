@@ -1,6 +1,8 @@
 #ifndef HTTP_HTTP_HPP
 #define HTTP_HTTP_HPP
 
+#include "config/debug.hpp"
+
 #include "tools/string.hpp"
 
 namespace http {
@@ -8,11 +10,11 @@ namespace http {
 
 template <typename Stream>
 void sendRequest(Stream& stream, const char* method, const char* path) {
-    Serial.print("---> ");
-    Serial.print(method);
-    Serial.print(' ');
-    Serial.print(path);
-    Serial.println(" HTTP/1.1");
+    DEBUG("---> ");
+    DEBUG(method);
+    DEBUG(' ');
+    DEBUG(path);
+    DEBUGLN(" HTTP/1.1");
 
     stream.print(method);
     stream.print(' ');
@@ -22,10 +24,10 @@ void sendRequest(Stream& stream, const char* method, const char* path) {
 
 template <typename Stream>
 void sendResponse(Stream& stream, int statusCode, const char* description) {
-    Serial.print("---> HTTP/1.1 ");
-    Serial.print(statusCode);
-    Serial.print(' ');
-    Serial.println(description);
+    DEBUG("---> HTTP/1.1 ");
+    DEBUG(statusCode);
+    DEBUG(' ');
+    DEBUGLN(description);
 
     stream.print("HTTP/1.1 ");
     stream.print(statusCode);
@@ -66,8 +68,8 @@ String createErrorContent(int statusCode, const char* description,
 template <typename Stream>
 bool receiveResponse(Stream& stream, int& statusCode) {
     String line = tools::readLine(stream);
-    Serial.print("<--- ");
-    Serial.println(line);
+    DEBUG("<--- ");
+    DEBUGLN(line);
 
     if (line.startsWith("HTTP/")) {
         int index = line.indexOf(' ');
@@ -80,8 +82,8 @@ bool receiveResponse(Stream& stream, int& statusCode) {
 template <typename Stream>
 bool receiveRequest(Stream& stream, String& method, String& path) {
     String line = tools::readLine(stream);
-    Serial.print("<--- ");
-    Serial.println(line);
+    DEBUG("<--- ");
+    DEBUGLN(line);
     size_t position = 0;
 
     method = tools::nextToken(line, ' ', position);
@@ -119,7 +121,7 @@ template <typename Stream>
 bool readLineEnd(Stream& stream) {
     String crlf = tools::readBuffer(stream, 2);
     if (crlf.length() != 2 || crlf[0] != '\r' || crlf[1] != '\n') {
-        Serial.println("Invalid CRLF");
+        DEBUGLN("Invalid CRLF");
         return false;
     }
     return true;
@@ -131,7 +133,7 @@ bool readChunkedContent(Stream& stream, String& result) {
         String lengthString = tools::readLine(stream);
         long length = 0;
         if (!tools::hexToString(lengthString, length)) {
-            Serial.println("Invalid length");
+            DEBUGLN("Invalid length");
             return false;
         }
         result += tools::readBuffer(stream, length);

@@ -1,6 +1,8 @@
 #ifndef TEST_CONNECTIONPOOL_HPP
 #define TEST_CONNECTIONPOOL_HPP
 
+#include "config/debug.hpp"
+
 #include <Arduino.h>
 
 #include <array>
@@ -36,8 +38,8 @@ public:
                 continue;
             }
             if (connection.connection.available()) {
-                Serial.print("Incoming request from ");
-                Serial.println(connection.connection.remoteIP());
+                DEBUG("Incoming request from ");
+                DEBUGLN(connection.connection.remoteIP());
                 connection.lastSeen = time++;
                 serveFunction(connection.connection);
             }
