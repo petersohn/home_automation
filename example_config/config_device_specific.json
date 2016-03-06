@@ -1,4 +1,5 @@
 {
+    "debug": true,
     "deviceName": "testDevice",
     "pins": [
         ["led", 2, true],

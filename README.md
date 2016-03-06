@@ -67,6 +67,10 @@ these ports should be pulled up to logical 1 value at boot time.
 
 ![ESP8266 pin layout](data/ESP8266.jpg)
 
+It is possible to use additional two GPIO ports. If the serial port is
+disabled, its ports can be used the same way as the other ports. The UTXD port
+is GPIO 1 and URXD is GPIO 3.
+
 ### Raspberry Pi Devices
 
 GPIO ports of the Raspberry Pi can be controlled the same way as the ESP8266.
@@ -250,6 +254,8 @@ directory, and contain the following variables:
   * `serverPort` (number): Port used by the web server.
 * [`config_device_specific.json`](example_config/config_device_specific.json):
   This file contains configuration that is specific to each device.
+  * `debug` (bool): Whether debug messages are sent through the serial port. If
+    the serial ports are used as GPIO, this should be set to false.
   * `deviceName` (string): The name of the device. It should be unique for all
     devices running at the same time.
   * `pins` (composite): The pin configuration of the device. It is an array of
