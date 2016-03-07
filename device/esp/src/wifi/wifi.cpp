@@ -49,8 +49,5 @@ void connect(const char* ssid, const char* password) {
     }
 }
 
-void reconnectIfNeeded(const char* ssid, const char* password) {
-}
-
 } // namespace wifi
 
