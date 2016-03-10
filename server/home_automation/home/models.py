@@ -1,4 +1,5 @@
 import inspect
+import home.config
 from django.db import models
 from enum import Enum
 
@@ -20,22 +21,21 @@ class Expression(models.Model):
 
 
 class Device(models.Model):
-    # FIXME: charfield instead of text
     name = models.CharField(max_length=200, null=False, db_index=True)
-    # FIXME: restrict to IPv4?
-    ip_address = models.GenericIPAddressField(null=False, protocol='IPv4')
+    ip_address = models.GenericIPAddressField(null=False, protocol='both')
     port = models.PositiveIntegerField(null=False)
     version = models.PositiveIntegerField(null=False)
     # FIXME: auto_now?
     last_seen = models.DateTimeField(null=False, auto_now=True)
 
+    def is_alive(self):
+        return self.last_seen >= config.device_heartbeat_timeout
 
 class Pin(models.Model):
     class Kind(ChoiceEnum):
         INPUT = 0
         OUTPUT = 1
     device = models.ForeignKey(Device, null=False, on_delete=models.CASCADE)
-    # FIXME: charfields instead of text
     name = models.CharField(null=False, max_length=200, db_index=True)
     kind = models.PositiveSmallIntegerField(null=False, choices=Kind.choices())
     expression = models.ForeignKey(Expression, null=True, on_delete=models.SET_NULL)
@@ -46,15 +46,24 @@ class Variable(models.Model):
     name = models.CharField(null=False, max_length=200, db_index=True)
     value = models.IntegerField(null=False)
 
+    def get(self):
+        return self.value
+
+    def set(self, value):
+        self.value = value
+        self.save() # FIXME: save?
+
+    def toggle(self, modulo=2):
+        self.value = (self.value + 1) % modulo
+        self.save() # FIXME: save?
+
 
 class InputTrigger(models.Model):
     class Edge(ChoiceEnum):
         RISING = 0
         FALLING = 1
         BOTH = 2
-    # FIXME: foreign key?
     pin = models.ForeignKey(Pin, null=False, on_delete=models.CASCADE, db_index=True)
-    # FIXME: forein key?
     expression = models.ForeignKey(Expression, null=False, on_delete=models.CASCADE)
     edge = models.PositiveSmallIntegerField(null=False, choices=Edge.choices())
 
