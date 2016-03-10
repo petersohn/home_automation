@@ -1,5 +1,7 @@
+import os
 import pickle
 import socketserver
+import stat
 
 
 class RequestHandler(socketserver.BaseRequestHandler):
@@ -16,4 +18,5 @@ def startExecutor(address, handler):
     def createRequestHandler(*args, **kwargs):
         return RequestHandler(handler, *args, **kwargs)
     server = socketserver.UnixDatagramServer(address, createRequestHandler)
+    os.chmod(address, stat.S_IRUSR | stat.S_IWUSR)
     server.serve_forever()
