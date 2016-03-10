@@ -94,6 +94,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'home_automation',
         'USER': 'root',
+        'ATOMIC_REQUESTS': True
     }
 }
 
