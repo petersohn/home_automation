@@ -21,15 +21,15 @@ class ChoiceEnum(Enum):
 
 
 class Expression(models.Model):
-    text = models.TextField(null=False)
+    value = models.TextField(null=False)
 
 
 class Device(models.Model):
-    name = models.CharField(max_length=200, null=False, db_index=True)
+    name = models.CharField(max_length=200, null=False, db_index=True,
+                            unique=True)
     ip_address = models.GenericIPAddressField(null=False, protocol='both')
     port = models.PositiveIntegerField(null=False)
     version = models.PositiveIntegerField(null=False)
-    # FIXME: auto_now?
     last_seen = models.DateTimeField(null=False, auto_now=True)
 
     objects = DeviceManager()
@@ -38,19 +38,22 @@ class Device(models.Model):
         return self.last_seen >= (django.utils.timezone.now() -
                                   config.device_heartbeat_timeout)
 
+
 class Pin(models.Model):
     class Kind(ChoiceEnum):
         INPUT = 0
         OUTPUT = 1
     device = models.ForeignKey(Device, null=False, on_delete=models.CASCADE)
-    name = models.CharField(null=False, max_length=200, db_index=True)
+    name = models.CharField(null=False, max_length=200, db_index=True,
+                            unique=True)
     kind = models.PositiveSmallIntegerField(null=False, choices=Kind.choices())
-    expression = models.ForeignKey(Expression, null=True, on_delete=models.SET_NULL)
-    # FIXME: unique?
+    expression = models.ForeignKey(Expression, null=True,
+                                   on_delete=models.SET_NULL)
 
 
 class Variable(models.Model):
-    name = models.CharField(null=False, max_length=200, db_index=True)
+    name = models.CharField(null=False, max_length=200, db_index=True,
+                            unique=True)
     value = models.IntegerField(null=False)
 
     def get(self):
@@ -59,10 +62,12 @@ class Variable(models.Model):
     def set(self, value):
         self.value = value
         self.save() # FIXME: save?
+        return self.value
 
     def toggle(self, modulo=2):
         self.value = (self.value + 1) % modulo
         self.save() # FIXME: save?
+        return self.value
 
 
 class InputTrigger(models.Model):
@@ -84,4 +89,4 @@ class Log(models.Model):
     pin = models.ForeignKey(Pin, null=True, on_delete=models.SET_NULL)
     severity = models.PositiveSmallIntegerField(null=False, choices=Severity.choices())
     time = models.DateTimeField(null=False, auto_now_add=True)
-    mesasge = models.TextField(null=False)
+    message = models.TextField(null=False)
