@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import databaseTest
 import senderTest
 import test_globals
 
@@ -14,24 +13,24 @@ def setUpModule():
         connection.commit()
 
 
-class SessionTest(databaseTest.SessionTest):
-    pass
+# class SessionTest(databaseTest.SessionTest):
+    # pass
 
 
-class ExecuteTransactionallyTest(databaseTest.ExecuteTransactionallyTest):
-    pass
+# class ExecuteTransactionallyTest(databaseTest.ExecuteTransactionallyTest):
+    # pass
 
 
-class VariablesTest(databaseTest.VariablesTest):
-    pass
+# class VariablesTest(databaseTest.VariablesTest):
+    # pass
 
 
-class DevicesTest(databaseTest.DevicesTest):
-    pass
+# class DevicesTest(databaseTest.DevicesTest):
+    # pass
 
 
-class LoggerTest(databaseTest.DevicesTest):
-    pass
+# class LoggerTest(databaseTest.DevicesTest):
+    # pass
 
 
 class RequestTest(senderTest.RequestTest):

@@ -1,6 +1,12 @@
-import database
+#!/usr/bin/env python3
 
+import database
+import ExecutorClient
+import ExecutorServer
+
+import argparse
 import http.client
+import os
 import queue
 import sys
 import threading
@@ -27,8 +33,13 @@ class ConnectionInterrupted(Exception):
 
 
 class Connection:
+    if sys.version_info < (3, 5):
+        DisconnectedException = http.client.BadStatusLine
+    else:
+        DisconnectedException = http.client.RemoteDisconnected
+
     def __init__(self, host, port, responseHandler, exceptionHandler,
-            httpConnection):
+                 httpConnection):
         self.host = host
         self.port = port
         self.responseHandler = responseHandler
@@ -52,7 +63,7 @@ class Connection:
 
     def _runThread(self):
         try:
-            connection = self.httpConnection(self.host, self.port, timeout = 10)
+            connection = self.httpConnection(self.host, self.port, timeout=10)
             while True:
                 action = self.queue.get()
                 result = action(connection)
@@ -67,20 +78,20 @@ class Connection:
 
     def _start(self):
         if not self.isRunning():
-            self.thread = threading.Thread(target = self._runThread)
+            self.thread = threading.Thread(target=self._runThread)
             self.thread.start()
 
     def _sendRequest(self, url, connection):
         retries = 5
         while True:
             try:
-                connection.request("GET", url,
-                        headers = {"Connection": "keep-alive"})
+                connection.request(
+                    "GET", url, headers={"Connection": "keep-alive"})
                 response = connection.getresponse()
                 if response.status < 200 or response.status >= 300:
                     raise BadResponse(response.status, response.reason)
                 return response.read().decode("UTF-8")
-            except http.client.RemoteDisconnected:
+            except self.DisconnectedException:
                 if retries == 0:
                     raise
                 retries -= 1
@@ -94,9 +105,9 @@ class Connection:
 
 
 class Request:
-    def __init__(self, deviceName, url, getSession = database.getSession,
-            httpConnection = http.client.HTTPConnection,
-            connection = Connection):
+    def __init__(self, deviceName, url, getSession=database.getSession,
+                 httpConnection=http.client.HTTPConnection,
+                 connection=Connection):
         self.deviceName = deviceName
         self.url = url
         self.getSession = getSession
@@ -108,10 +119,11 @@ class Request:
         deviceAddress = session.getDeviceAddress(self.deviceName)
 
         if deviceAddress not in httpConnections:
-            actualConnection = self.connection(host=deviceAddress[0],
-                    port=deviceAddress[1], responseHandler=responseHandler,
-                    exceptionHandler=exceptionHandler,
-                    httpConnection=self.httpConnection)
+            actualConnection = self.connection(
+                host=deviceAddress[0], port=deviceAddress[1],
+                responseHandler=responseHandler,
+                exceptionHandler=exceptionHandler,
+                httpConnection=self.httpConnection)
             httpConnections[deviceAddress] = actualConnection
         else:
             actualConnection = httpConnections[deviceAddress]
@@ -119,9 +131,8 @@ class Request:
         actualConnection.sendRequest(self.url)
 
 
-
 class ClearDevice:
-    def __init__(self, deviceName, getSession = database.getSession):
+    def __init__(self, deviceName, getSession=database.getSession):
         self.deviceName = deviceName
         self.getSession = getSession
 
@@ -131,9 +142,12 @@ class ClearDevice:
         if deviceAddress in httpConnections:
             httpConnections.pop(deviceAddress).cleanup()
 
+
 def handleException(exception):
-    database.getSession().log("error", "Error sending request: " +
-            exception.__class__.__name__ + ': ' + str(exception))
+    database.getSession().log(
+        "error", "Error sending request: " + exception.__class__.__name__ +
+        ': ' + str(exception))
+
 
 class HandleException:
     def __init__(self, exception):
@@ -142,22 +156,27 @@ class HandleException:
     def __call__(self, httpConnections, responseHandler, exceptionHandler):
         handleException(self.exception)
 
+
 class ExceptionHandler:
-    def __init__(self, queue):
-        self.queue = queue
+    def __init__(self, client):
+        self.client = client
 
     def __call__(self, e):
         handleGenericException()
-        self.queue.put(HandleException(e))
+        self.client.send(HandleException(e))
 
-def runProcess(queue):
-    session = database.getSession()
-    connections = {}
-    while True:
-        request = queue.get()
+
+class Handler:
+    def __init__(self, client):
+        self.client = client
+        self.connections = {}
+
+    def __call__(self, request):
         try:
-            request(connections, responseHandler=lambda x: None,
-                    exceptionHandler=ExceptionHandler(queue))
+            request(self.connections, responseHandler=lambda x: None,
+                    exceptionHandler=ExceptionHandler(self.client))
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
             handleGenericException()
             handleException(e)
@@ -165,4 +184,31 @@ def runProcess(queue):
             handleGenericException()
 
 
+def cleanup(socket):
+    try:
+        os.remove(socket)
+    except OSError:
+        pass
 
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Serve asynchronous requests from web server.")
+    parser.add_argument("--socket", default="/tmp/home_automation.socket",
+                        help="The socket to listen on.")
+    arguments = parser.parse_args()
+
+    client = ExecutorClient.ExecutorClient(arguments.socket)
+    handler = Handler(client)
+    try:
+        ExecutorServer.startExecutor(arguments.socket, handler)
+    except KeyboardInterrupt:
+        print("Interrupted.")
+        cleanup(arguments.socket)
+    except:
+        cleanup(arguments.socket)
+        raise
+
+
+if __name__ == '__main__':
+    main()
