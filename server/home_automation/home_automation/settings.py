@@ -10,7 +10,19 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
+import json
 import os
+
+
+def read_config(config_file):
+    file = open(config_file)
+    config = json.load(file)
+    database = config.get('database', {})
+    if 'name' in database:
+        DATABASES['default']['NAME'] = database['name']
+    if 'user' in database:
+        DATABASES['default']['USER'] = database['user']
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -85,6 +97,8 @@ DATABASES = {
     }
 }
 
+if 'HOME_DJANGO_CONFIG_FILE' in os.environ:
+    read_config(os.environ['HOME_DJANGO_CONFIG_FILE'])
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
