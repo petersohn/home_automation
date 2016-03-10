@@ -15,6 +15,9 @@ import os
 
 
 def read_config(config_file):
+    global DATABASES
+    global EXECUTOR_SOCKET_NAME
+
     file = open(config_file)
     config = json.load(file)
     database = config.get('database', {})
@@ -22,6 +25,8 @@ def read_config(config_file):
         DATABASES['default']['NAME'] = database['name']
     if 'user' in database:
         DATABASES['default']['USER'] = database['user']
+    if 'socket' in config:
+        EXECUTOR_SOCKET_NAME = config['socket']
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
