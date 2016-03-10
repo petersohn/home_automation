@@ -1,4 +1,4 @@
-import settings
+from home_automation import settings
 
 from django.http.response import HttpResponse
 
