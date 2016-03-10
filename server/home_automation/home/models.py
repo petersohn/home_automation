@@ -61,12 +61,12 @@ class Variable(models.Model):
 
     def set(self, value):
         self.value = value
-        self.save() # FIXME: save?
+        self.save()
         return self.value
 
     def toggle(self, modulo=2):
         self.value = (self.value + 1) % modulo
-        self.save() # FIXME: save?
+        self.save()
         return self.value
 
 
@@ -75,8 +75,10 @@ class InputTrigger(models.Model):
         RISING = 0
         FALLING = 1
         BOTH = 2
-    pin = models.ForeignKey(Pin, null=False, on_delete=models.CASCADE, db_index=True)
-    expression = models.ForeignKey(Expression, null=False, on_delete=models.CASCADE)
+    pin = models.ForeignKey(
+        Pin, null=False, on_delete=models.CASCADE, db_index=True)
+    expression = models.ForeignKey(
+        Expression, null=False, on_delete=models.CASCADE)
     edge = models.PositiveSmallIntegerField(null=False, choices=Edge.choices())
 
 
@@ -87,6 +89,7 @@ class Log(models.Model):
         ERROR = 2
     device = models.ForeignKey(Device, null=True, on_delete=models.SET_NULL)
     pin = models.ForeignKey(Pin, null=True, on_delete=models.SET_NULL)
-    severity = models.PositiveSmallIntegerField(null=False, choices=Severity.choices())
+    severity = models.PositiveSmallIntegerField(
+        null=False, choices=Severity.choices())
     time = models.DateTimeField(null=False, auto_now_add=True)
     message = models.TextField(null=False)
