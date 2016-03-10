@@ -3,6 +3,7 @@ from home import config, models, services
 import django.utils.timezone
 from django.test import TestCase
 
+import unittest.mock
 
 class VariableTest(TestCase):
     FOO_NAME = 'Foo'
@@ -13,9 +14,6 @@ class VariableTest(TestCase):
     def setUp(self):
         models.Variable.objects.create(name=self.FOO_NAME, value=self.FOO_VALUE)
         models.Variable.objects.create(name=self.BAR_NAME, value=self.BAR_VALUE)
-
-    def tearDown(self):
-        models.Variable.objects.all().delete()
 
     def test_get_value_of_variable(self):
         foo = models.Variable.objects.get(name=self.FOO_NAME)
@@ -62,10 +60,6 @@ class DeviceTest(TestCase):
             last_seen=django.utils.timezone.now() - (
                 2 * config.device_heartbeat_timeout))
 
-
-    def tearDown(self):
-        models.Device.objects.all().delete()
-
     def test_is_alive(self):
         device1 = models.Device.objects.get(name=self.DEVICE1_NAME)
         self.assertTrue(device1.is_alive())
@@ -87,10 +81,6 @@ class LoggerTest(TestCase):
         self.pin = models.Pin.objects.create(
             name='Pin', device=self.device, kind=models.Pin.Kind.INPUT.value,
             expression=None)
-
-    def tearDown(self):
-        self.device.delete()
-        self.pin.delete()
 
     def test_logger_log(self):
         MESSAGE1 = "Foo"
@@ -123,22 +113,14 @@ class DeviceServiceTest(TestCase):
     DEVICE_NAME = 'Device'
 
     def setUp(self):
-       self.device = models.Device.objects.create(
-           name=self.DEVICE_NAME, ip_address='1.1.1.1', port=9999, version=1)
-       self.true_expression = models.Expression.objects.create(value='True')
-       self.false_expression = models.Expression.objects.create(value='False')
-       self.input_pin = models.Pin.objects.create(
-           name='InputPin', device=self.device,
-           kind=models.Pin.Kind.INPUT.value, expression=None)
-       self.pin = None
-
-    def tearDown(self):
-        self.device.delete()
-        self.true_expression.delete()
-        self.false_expression.delete()
-        self.input_pin.delete()
-        if self.pin is not None:
-            self.pin.delete()
+        self.device = models.Device.objects.create(
+            name=self.DEVICE_NAME, ip_address='1.1.1.1', port=9999, version=1)
+        self.true_expression = models.Expression.objects.create(value='True')
+        self.false_expression = models.Expression.objects.create(value='False')
+        self.input_pin = models.Pin.objects.create(
+            name='InputPin', device=self.device,
+            kind=models.Pin.Kind.INPUT.value, expression=None)
+        self.pin = None
 
     def test_get_intended_pin_state_constant_true(self):
         TRUE_PIN_NAME = 'TruePin'
@@ -149,11 +131,12 @@ class DeviceServiceTest(TestCase):
         result = device_service.get_intended_pin_states(None)
         self.assertEqual({self.DEVICE_NAME: {TRUE_PIN_NAME: True}}, result)
 
-    def test_get_intended_pin_state_constant_true(self):
+    def test_get_intended_pin_state_constant_false(self):
         FALSE_PIN_NAME = 'FalsePin'
         self.pin = models.Pin.objects.create(
             name=FALSE_PIN_NAME, device=self.device,
-            kind=models.Pin.Kind.OUTPUT.value, expression=self.false_expression)
+            kind=models.Pin.Kind.OUTPUT.value,
+            expression=self.false_expression)
         device_service = services.DeviceService()
         result = device_service.get_intended_pin_states(None)
         self.assertEqual({self.DEVICE_NAME: {FALSE_PIN_NAME: False}}, result)
