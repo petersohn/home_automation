@@ -88,6 +88,10 @@ class LoggerTest(TestCase):
             name='Pin', device=self.device, kind=models.Pin.Kind.INPUT.value,
             expression=None)
 
+    def tearDown(self):
+        self.device.delete()
+        self.pin.delete()
+
     def test_logger_log(self):
         MESSAGE1 = "Foo"
         MESSAGE2 = "Bar"
@@ -113,3 +117,43 @@ class LoggerTest(TestCase):
                                 (MESSAGE2, self.device, self.pin)])
         self.assertSetEqual(expected_entries, set(map(
             lambda e: (e.message, e.device, e.pin), models.Log.objects.all())))
+
+
+class DeviceServiceTest(TestCase):
+    DEVICE_NAME = 'Device'
+
+    def setUp(self):
+       self.device = models.Device.objects.create(
+           name=self.DEVICE_NAME, ip_address='1.1.1.1', port=9999, version=1)
+       self.true_expression = models.Expression.objects.create(value='True')
+       self.false_expression = models.Expression.objects.create(value='False')
+       self.input_pin = models.Pin.objects.create(
+           name='InputPin', device=self.device,
+           kind=models.Pin.Kind.INPUT.value, expression=None)
+       self.pin = None
+
+    def tearDown(self):
+        self.device.delete()
+        self.true_expression.delete()
+        self.false_expression.delete()
+        self.input_pin.delete()
+        if self.pin is not None:
+            self.pin.delete()
+
+    def test_get_intended_pin_state_constant_true(self):
+        TRUE_PIN_NAME = 'TruePin'
+        self.pin = models.Pin.objects.create(
+            name=TRUE_PIN_NAME, device=self.device,
+            kind=models.Pin.Kind.OUTPUT.value, expression=self.true_expression)
+        device_service = services.DeviceService()
+        result = device_service.get_intended_pin_states(None)
+        self.assertEqual({self.DEVICE_NAME: {TRUE_PIN_NAME: True}}, result)
+
+    def test_get_intended_pin_state_constant_true(self):
+        FALSE_PIN_NAME = 'FalsePin'
+        self.pin = models.Pin.objects.create(
+            name=FALSE_PIN_NAME, device=self.device,
+            kind=models.Pin.Kind.OUTPUT.value, expression=self.false_expression)
+        device_service = services.DeviceService()
+        result = device_service.get_intended_pin_states(None)
+        self.assertEqual({self.DEVICE_NAME: {FALSE_PIN_NAME: False}}, result)

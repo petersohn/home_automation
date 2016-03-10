@@ -9,35 +9,40 @@ class Logger(object):
 
 
 class DeviceService(object):
-    def get_intended_pin_states(self, device):
-        # FIXME: hacking
-        class Var(object):
-            def get(self, name):
-                v = models.Variable.objects.get(name=name)
-                return v.get()
+    # FIXME: hacking
+    class VariableProxy(object):
+        def get(self, name):
+            v = models.Variable.objects.get(name=name)
+            return v.get()
+        def set(self, name, value):
+            v = models.Variable.objects.get(name=name)
+            v.semodels.t(value)
+        def toggle(self, name, modulo=2):
+            v = models.Variable.objects.get(name=name)
+            v.toggle(modulo)
 
-            def set(self, name, value):
-                v = models.Variable.objects.get(name=name)
-                v.set(value)
+    class DeviceProxy(object):
+        def is_alive(self, name):
+            d = models.Device.objects.get(name=name)
+            return d.is_alive()
 
-            def toggle(self, name, modulo=2):
-                v = models.Variable.objects.get(name=name)
-                v.toggle(modulo)
+    VARIABLE_PROXY = VariableProxy()
+    DEVICE_PROXY = DeviceProxy()
 
-        class Dev(object):
-            def is_alive(self, name):
-                d = models.Device.objects.get(name=name)
-                return d.is_alive()
-
+    def get_intended_pin_states(self, device=None):
+        extra_args = {}
+        if device is not None:
+            extra_args['device'] = device
+        output_pins = models.Pin.objects.select_related(
+            'expression').select_related('device').filter(
+                expression__isnull=False, kind=models.Pin.Kind.OUTPUT.value,
+                **extra_args)
         result = {}
-        output_pins = device.pin_set(kind=models.Pin.Kind.OUTPUT,
-                                     expression_id__isnull=False)
         for output_pin in output_pins:
-            for expression in output_pin.expression_set:
-                result.setdefault(device.name, {})[pin.name] =\
-                        eval(expression.value, {}, {
-                            'var': Var(),
-                            'dev': Dev()})
+            result.setdefault(output_pin.device.name, {})[output_pin.name] = (
+                eval(output_pin.expression.value, {}, {
+                    'var': self.VARIABLE_PROXY,
+                    'dev': self.DEVICE_PROXY}))
         return result
 
 

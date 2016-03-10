@@ -35,9 +35,12 @@ class Device(models.Model):
     objects = DeviceManager()
 
     def is_alive(self):
-        return self.last_seen >= (django.utils.timezone.now() -
-                                  config.device_heartbeat_timeout)
+        return self.last_seen >= self.heartbeat_time_limit()
 
+    @staticmethod
+    def heartbeat_time_limit():
+        now = django.utils.timezone.now()
+        return now - config.device_heartbeat_timeout
 
 class Pin(models.Model):
     class Kind(ChoiceEnum):
