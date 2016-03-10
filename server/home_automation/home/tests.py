@@ -1,5 +1,5 @@
 from django.test import TestCase
-from home.models import Variable
+from home.models import Variable, Device
 
 
 class VariableTest(TestCase):
@@ -41,3 +41,29 @@ class VariableTest(TestCase):
         foo = Variable.objects.get(name=self.FOO_NAME)
         foo.toggle(3)
         self.assertEqual(2, foo.get())
+
+
+class DeviceTest(TestCase):
+    DEVICE_NAME = 'Device1'
+    DEVICE_IP_ADDRESS = '127.0.0.1'
+    DEVICE_PORT = 9999
+    DEVICE_VERSION = 1
+
+    def setUp(self):
+        Device.objects.create(name=self.DEVICE_NAME,
+                              ip_address=self.DEVICE_IP_ADDRESS,
+                              port=self.DEVICE_PORT,
+                              version=self.DEVICE_VERSION)
+
+    def tearDown(self):
+        Device.objects.all().delete()
+
+    def test_is_alive(self):
+        device = Device.objects.get(name=self.DEVICE_NAME)
+        self.assertTrue(device.is_alive())
+
+    def test_count_alive(self):
+        self.assertEqual(1, Device.objects.count_alive())
+
+    def test_count_dead(self):
+        self.assertEqual(0, Device.objects.count_dead())

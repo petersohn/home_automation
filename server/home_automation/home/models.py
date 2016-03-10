@@ -1,6 +1,10 @@
-import inspect
-import home.config
+import home.config as config
+from home.managers import DeviceManager
+
+import django.utils.timezone
 from django.db import models
+
+import inspect
 from enum import Enum
 
 
@@ -28,8 +32,11 @@ class Device(models.Model):
     # FIXME: auto_now?
     last_seen = models.DateTimeField(null=False, auto_now=True)
 
+    objects = DeviceManager()
+
     def is_alive(self):
-        return self.last_seen >= config.device_heartbeat_timeout
+        return self.last_seen >= (django.utils.timezone.now() -
+                                  config.device_heartbeat_timeout)
 
 class Pin(models.Model):
     class Kind(ChoiceEnum):

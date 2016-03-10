@@ -1,4 +1,4 @@
 import datetime
 
 
-davice_heartbeat_timeout = datetime.timedelta(minutes=2)
+device_heartbeat_timeout = datetime.timedelta(minutes=2)
