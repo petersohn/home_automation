@@ -28,6 +28,12 @@ class ExpressionEvaluator(object):
             d = models.Device.objects.get(name=name)
             return d.is_alive()
 
+        def count_alive(self):
+            return models.Device.objects.count_alive()
+
+        def count_dead(self):
+            return models.Device.objects.count_dead()
+
     VARIABLE_PROXY = VariableProxy()
     DEVICE_PROXY = DeviceProxy()
 
