@@ -53,6 +53,10 @@ i {
     margin-top: 3px;
 }
 
+table td th {
+    margin-left: 20px;
+    margin-right: 10px;
+}
 .log-content {
     padding-left: 20px;
     padding-top: 3px;
