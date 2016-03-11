@@ -230,15 +230,22 @@
                 </div>
                 <!-- /.row -->
 
+{% if device_list %}
+  {% for device in device_list %}
                 <div class="row">
                     <div class="col-lg-3 col-md-6">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">
+                        {% if data.is_alive %}
+                        <div class="panel panel-green">
+                        {% else %}
+                        <div class="panel panel-red">
+                        {% endif %}
+                           <div class="panel-heading">
                                 <div class="row">
-                                  <h3>Device</h3>
                                     <div class="col-xs-3">
-                                        <i class="fa fa-comments fa-5x"></i>
+                                        <i class="fa fa-5x" style="float:left;position:relative"></i>
+                                        <img src="{% static "home/chip1.png" %}" style="width: 60px;"/>
                                     </div>
+                                    <div style="float:left;position:relative"><h3>{{ device.name }}</h3></div>
                                     <div class="col-xs-9 text-right">
                                     </div>
                                 </div>
@@ -253,6 +260,8 @@
                             </a>
                         </div>
                     </div>
+  {% endfor %}
+{% endif %}
                     <!--<div class="col-lg-3 col-md-6">
                         <div class="panel panel-green">
                             <div class="panel-heading">
@@ -416,11 +425,11 @@
       })
       $("#logs").hide(0)
       $("#devices").show(0)
-      $("#devices_link").addClass("active")
+      $("#devices_link").parent().addClass("active")
       $(document).ready(function() {
-          $(".navbar-nav li a").click(function(){      //Click on a navigation item
-          $(".nav-tabs li").removeClass("active"); //Remove Active style of item
-          $(".tab-pane").removeClass("active");    //Hide the tab content
+          $(".navbar-nav li a").click(function(event) { //Click on a navigation item
+          $(".navbar-nav li").removeClass("active");   //Remove Active style of item
+          $(event.target).parent().addClass("active")
         });
       });
    </script>
