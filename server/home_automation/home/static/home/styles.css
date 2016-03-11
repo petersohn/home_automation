@@ -5,6 +5,39 @@ body {
     background: #FFF
 }
 
+div.wrapper {
+    border: 0;
+    padding: 0;
+}
+
+nav {
+    display: block;
+}
+
+.navbar {
+    background-color: #222;
+    border-color: #080808;
+    top: 0;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    position: fixed;
+    right: 0;
+    left: 0;
+    z-index: 1030;
+    min-height: 50px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+}
+
+.navbar-collapse {
+    border-color: #101010;
+    max-height: 340px;
+    display: block !important;
+    height: auto !important;
+    padding-bottom: 0;
+    overflow: visible !important;
+}
+
 div.left {
     position: relative;
     float:left;
@@ -12,4 +45,10 @@ div.left {
     background-color: #aaaaaa;
     height=100%;
     display: block;
+}
+
+i {
+    float: left;
+    margin-right: 10px;
+    margin-top: 3px;
 }

@@ -35,7 +35,7 @@ class IndexView(View):
 
     def get(self, request, *args, **kwargs):
         device_list = models.Device.objects.prefetch_related('pin_set').all()
-        template = loader.get_template('home/index.html')
+        template = loader.get_template('home/AdminTemplate.html')
         context = {
             'device_list': device_list,
         }
