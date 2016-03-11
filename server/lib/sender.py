@@ -41,10 +41,6 @@ class ConnectionInterrupted(Exception):
 
 
 class Connection:
-    if sys.version_info < (3, 5):
-        DisconnectedException = http.client.BadStatusLine
-    else:
-        DisconnectedException = http.client.RemoteDisconnected
 
     def __init__(self, host, port, responseHandler, exceptionHandler,
                  httpConnection):
@@ -90,7 +86,7 @@ class Connection:
             self.thread.start()
 
     def _sendRequest(self, url, connection):
-        retries = 5
+        retries = 2
         while True:
             try:
                 connection.request(
@@ -99,13 +95,14 @@ class Connection:
                 if response.status < 200 or response.status >= 300:
                     raise BadResponse(response.status, response.reason)
                 return response.read().decode("UTF-8")
-            except self.DisconnectedException:
+            except BadResponse:
+                connection.close()
+                raise
+            except:
+                connection.close()
                 if retries == 0:
                     raise
                 retries -= 1
-            except:
-                connection.close()
-                raise
 
     def _cleanup(self, connection):
         connection.close()
