@@ -59,7 +59,10 @@ class Device(models.Model):
         self.save()
 
     def __str__(self):
-        return self.name
+        result = self.name
+        if not self.is_alive():
+            result += " [dead]"
+        return result
 
 
 class Pin(models.Model):
@@ -85,7 +88,7 @@ class Pin(models.Model):
         unique_together = ('device', 'name')
 
     def __str__(self):
-        return self.name
+        return self.device.name + "." + self.name
 
 
 class Variable(models.Model):
