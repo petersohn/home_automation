@@ -88,7 +88,11 @@ class Pin(models.Model):
         unique_together = ('device', 'name')
 
     def __str__(self):
-        return self.device.name + "." + self.name
+        result = (self.device.name + "." + self.name + " (" + str(self.kind) +
+                  ")")
+        if self.expression is not None:
+            result += " [" + str(self.expression) + "]"
+        return result
 
 
 class Variable(models.Model):
