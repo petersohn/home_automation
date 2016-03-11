@@ -15,23 +15,6 @@ scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/../../lib")
 
 class IndexView(View):
-    def __init__(self):
-        if models.Device.objects.all().count() == 0:
-            self.device = models.Device.objects.create(
-                name='Device', ip_address='1.1.1.1', port=9999, version=1)
-            self.true_expression = models.Expression.objects.create(value='True')
-            self.false_expression = models.Expression.objects.create(value='False')
-            self.variable_false_expression = models.Expression.objects.create(
-                value='dev.getFalse()')
-            self.variable_true_expression = models.Expression.objects.create(
-                value='var.getTrue()')
-            self.inacive_pin = models.Pin.objects.create(
-                name='InactivePin', device=self.device,
-                kind=models.Pin.Kind.OUTPUT.value, expression=None)
-            self.pin = models.Pin.objects.create(
-                name='truePin', device=self.device,
-                kind=models.Pin.Kind.OUTPUT.value, expression=self.true_expression)
-
     def get(self, request, *args, **kwargs):
         device_list = models.Device.objects.prefetch_related('pin_set').all()
         log_list = (models.Log.objects.all().order_by('-time').
