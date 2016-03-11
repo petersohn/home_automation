@@ -325,6 +325,50 @@ class DeviceServiceTest(TestCase):
         self.assertSetEqual(expected_entries, set(map(
             lambda e: (e.name, e.kind), added_pins)))
 
+    def test_update_device_and_pins_set_pins_for_multiple_devices(self):
+        NEW_DEVICE1_NAME = "NewDevice1"
+        NEW_DEVICE1_IP = "192.168.1.12"
+        NEW_DEVICE1_PORT = 80
+        NEW_DEVICE2_NAME = "NewDevice2"
+        NEW_DEVICE2_IP = "192.168.1.10"
+        NEW_DEVICE2_PORT = 83
+        NEW_INPUT_PIN1_NAME = "NewInputPin1"
+        NEW_INPUT_PIN2_NAME = "NewInputPin2"
+        NEW_OUTPUT_PIN_NAME = "NewOutputPin"
+
+        device_service = services.DeviceService()
+        initial_device_count = models.Device.objects.count()
+        initial_pin_count = models.Pin.objects.count()
+
+        data = self.create_input_data(
+            NEW_DEVICE1_NAME, NEW_DEVICE1_IP, NEW_DEVICE1_PORT,
+            pins=[(NEW_INPUT_PIN1_NAME, "input"),
+                  (NEW_OUTPUT_PIN_NAME, "output")])
+        device_service.update_device_and_pins(data)
+
+        data = self.create_input_data(
+            NEW_DEVICE2_NAME, NEW_DEVICE2_IP, NEW_DEVICE2_PORT,
+            pins=[(NEW_INPUT_PIN2_NAME, "input"),
+                  (NEW_OUTPUT_PIN_NAME, "output")])
+        device_service.update_device_and_pins(data)
+
+        final_device_count = models.Device.objects.count()
+        final_pin_count = models.Pin.objects.count()
+
+        self.assertEqual(initial_device_count + 2, final_device_count)
+        self.assertEqual(initial_pin_count + 4, final_pin_count)
+        new_device1 = models.Device.objects.get(name=NEW_DEVICE1_NAME)
+        new_device2 = models.Device.objects.get(name=NEW_DEVICE2_NAME)
+        added_pins = models.Pin.objects.filter(
+            device__in=[new_device1, new_device2])
+        expected_entries = set([
+            (new_device1, NEW_INPUT_PIN1_NAME, models.Pin.Kind.INPUT.value),
+            (new_device1, NEW_OUTPUT_PIN_NAME, models.Pin.Kind.OUTPUT.value),
+            (new_device2, NEW_INPUT_PIN2_NAME, models.Pin.Kind.INPUT.value),
+            (new_device2, NEW_OUTPUT_PIN_NAME, models.Pin.Kind.OUTPUT.value)])
+        self.assertSetEqual(expected_entries, set(map(
+            lambda e: (e.device, e.name, e.kind), added_pins)))
+
     def test_update_device_and_pins_reconfigure_pins(self):
         NEW_DEVICE_NAME = "NewDevice"
         NEW_DEVICE_IP = "192.168.1.10"

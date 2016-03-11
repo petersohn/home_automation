@@ -102,7 +102,8 @@ class DeviceService(ExpressionEvaluator):
                 device=device, name=pin['name'], defaults={
                     'name': pin['name'],
                     'kind': models.Pin.Kind.from_string(pin['type']).value})
-        models.Pin.objects.exclude(device=device, name__in=names).delete()
+        models.Pin.objects.filter(device=device).exclude(
+            name__in=names).delete()
 
 
 class TriggerService(ExpressionEvaluator):
