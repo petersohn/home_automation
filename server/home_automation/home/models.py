@@ -124,6 +124,10 @@ class InputTrigger(models.Model):
         Expression, null=False, on_delete=models.CASCADE)
     edge = models.CharField(max_length=1, null=False, choices=Edge.choices())
 
+    def __str__(self):
+        return (str(self.pin) + " --> " + "[" + str(self.expression) +
+                "] (" + str(self.edge) + ")")
+
 
 class Log(models.Model):
     class Severity(ChoiceEnum):
@@ -132,10 +136,11 @@ class Log(models.Model):
         ERROR = '2'
     device = models.ForeignKey(Device, null=True, on_delete=models.SET_NULL)
     pin = models.ForeignKey(Pin, null=True, on_delete=models.SET_NULL)
-    severity = models.CharField(max_length=1,
-        null=False, choices=Severity.choices())
+    severity = models.CharField(
+        max_length=1, null=False, choices=Severity.choices())
     time = models.DateTimeField(null=False, auto_now_add=True)
     message = models.TextField(null=False)
 
     def __str__(self):
-        return self.message
+        return (str(self.time) + ": [" + str(self.severity) + "] " +
+                self.message)
