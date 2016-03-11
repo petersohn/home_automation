@@ -31,10 +31,11 @@ class ExpressionEvaluator(object):
     VARIABLE_PROXY = VariableProxy()
     DEVICE_PROXY = DeviceProxy()
 
-    def evaluate(expression):
-        eval(expression, {}, {
+    def evaluate(self, expression):
+        return eval(expression, {}, {
             'var': self.VARIABLE_PROXY,
             'dev': self.DEVICE_PROXY})
+
 
 def _get_changed_states(initial_states, new_states):
     result = {}
@@ -61,7 +62,7 @@ class DeviceService(ExpressionEvaluator):
         result = {}
         for output_pin in output_pins:
             result.setdefault(output_pin.device.name, {})[output_pin.name] = (
-                evaluate(output_pin.expression.value))
+                self.evaluate(output_pin.expression.value))
         return result
 
     def update_device_and_pins(self, data):
@@ -101,7 +102,7 @@ class DeviceService(ExpressionEvaluator):
                 device=device, name=pin['name'], defaults={
                     'name': pin['name'],
                     'kind': models.Pin.Kind.from_string(pin['type']).value})
-        models.Pin.objects.filter(device=device, name__notin=names).delete()
+        models.Pin.objects.exclude(device=device, name__in=names).delete()
 
 
 class TriggerService(ExpressionEvaluator):

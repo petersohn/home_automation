@@ -123,14 +123,14 @@ class DeviceServiceTest(TestCase):
     SECOND_FALSE_PIN_NAME = 'SecondFalsePin'
 
     def setUp(self):
-       self.device = models.Device.objects.create(
-           name=self.DEVICE_NAME, ip_address='1.1.1.1', port=9999, version=1)
-       self.true_expression = models.Expression.objects.create(value='True')
-       self.false_expression = models.Expression.objects.create(value='False')
-       self.variable_false_expression = models.Expression.objects.create(
-           value='dev.getFalse()')
-       self.variable_true_expression = models.Expression.objects.create(
-           value='var.getTrue()')
+        self.device = models.Device.objects.create(
+            name=self.DEVICE_NAME, ip_address='1.1.1.1', port=9999, version=1)
+        self.true_expression = models.Expression.objects.create(value='True')
+        self.false_expression = models.Expression.objects.create(value='False')
+        self.variable_false_expression = models.Expression.objects.create(
+            value='dev.getFalse()')
+        self.variable_true_expression = models.Expression.objects.create(
+            value='var.getTrue()')
 
     def test_get_intended_pin_state_constant_true(self):
         TRUE_PIN_NAME = 'TruePin'
@@ -254,6 +254,151 @@ class DeviceServiceTest(TestCase):
                               self.SECOND_TRUE_PIN_NAME: True,
                               self.SECOND_FALSE_PIN_NAME: False}},
                          result)
+
+    def create_input_data(
+            self, name, ip, port, input_type="heartbeat", pins=[]):
+        device = {"name": name, "ip": ip, "port": port}
+        pins = [{"name": pin_name, "type": type} for (pin_name, type) in pins]
+        return {"device": device, "pins": pins, "type": input_type}
+
+    def test_update_device_and_pins_add_new_device(self):
+        NEW_DEVICE_NAME = "NewDevice"
+        NEW_DEVICE_IP = "192.168.1.10"
+        NEW_DEVICE_PORT = 80
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT)
+
+        initial_device_count = models.Device.objects.count()
+        device_service = services.DeviceService()
+        device_service.update_device_and_pins(data)
+        final_device_count = models.Device.objects.count()
+
+        self.assertEqual(initial_device_count + 1, final_device_count)
+        added_device = models.Device.objects.get(name=NEW_DEVICE_NAME)
+        self.assertEqual(NEW_DEVICE_NAME, added_device.name)
+        self.assertEqual(NEW_DEVICE_IP, added_device.ip_address)
+        self.assertEqual(NEW_DEVICE_PORT, added_device.port)
+
+    def test_update_device_and_pins_update_existing_device(self):
+        NEW_DEVICE_NAME = self.DEVICE_NAME
+        NEW_DEVICE_IP = "192.168.1.10"
+        NEW_DEVICE_PORT = 80
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT)
+
+        initial_device_count = models.Device.objects.count()
+        device_service = services.DeviceService()
+        device_service.update_device_and_pins(data)
+        final_device_count = models.Device.objects.count()
+
+        self.assertEqual(initial_device_count, final_device_count)
+        added_device = models.Device.objects.get(name=NEW_DEVICE_NAME)
+        self.assertEqual(NEW_DEVICE_NAME, added_device.name)
+        self.assertEqual(NEW_DEVICE_IP, added_device.ip_address)
+        self.assertEqual(NEW_DEVICE_PORT, added_device.port)
+
+    def test_update_device_and_pins_set_pins(self):
+        NEW_DEVICE_NAME = "NewDevice"
+        NEW_DEVICE_IP = "192.168.1.10"
+        NEW_DEVICE_PORT = 80
+        NEW_INPUT_PIN_NAME = "NewInputPin"
+        NEW_OUTPUT_PIN_NAME = "NewOutputPin"
+
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT,
+            pins=[(NEW_INPUT_PIN_NAME, "input"),
+                  (NEW_OUTPUT_PIN_NAME, "output")])
+
+        initial_device_count = models.Device.objects.count()
+        initial_pin_count = models.Pin.objects.count()
+        device_service = services.DeviceService()
+        device_service.update_device_and_pins(data)
+        final_device_count = models.Device.objects.count()
+        final_pin_count = models.Pin.objects.count()
+
+        self.assertEqual(initial_device_count + 1, final_device_count)
+        self.assertEqual(initial_pin_count + 2, final_pin_count)
+        added_device = models.Device.objects.get(name=NEW_DEVICE_NAME)
+        added_pins = models.Pin.objects.filter(device=added_device)
+        expected_entries = set([
+            (NEW_INPUT_PIN_NAME, models.Pin.Kind.INPUT.value),
+            (NEW_OUTPUT_PIN_NAME, models.Pin.Kind.OUTPUT.value)])
+        self.assertSetEqual(expected_entries, set(map(
+            lambda e: (e.name, e.kind), added_pins)))
+
+    def test_update_device_and_pins_reconfigure_pins(self):
+        NEW_DEVICE_NAME = "NewDevice"
+        NEW_DEVICE_IP = "192.168.1.10"
+        NEW_DEVICE_PORT = 80
+        OLD_INPUT_PIN_NAME = "OldInputPin"
+        NEW_INPUT_PIN_NAME = "NewInputPin"
+        NEW_OUTPUT_PIN_NAME = "NewOutputPin"
+
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT,
+            pins=[(OLD_INPUT_PIN_NAME, "input"),
+                  (NEW_OUTPUT_PIN_NAME, "output")])
+
+        device_service = services.DeviceService()
+        device_service.update_device_and_pins(data)
+
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT,
+            pins=[(NEW_INPUT_PIN_NAME, "input"),
+                  (NEW_OUTPUT_PIN_NAME, "output")])
+
+        initial_device_count = models.Device.objects.count()
+        initial_pin_count = models.Pin.objects.count()
+        device_service.update_device_and_pins(data)
+        final_device_count = models.Device.objects.count()
+        final_pin_count = models.Pin.objects.count()
+
+        self.assertEqual(initial_device_count, final_device_count)
+        self.assertEqual(initial_pin_count, final_pin_count)
+        added_device = models.Device.objects.get(name=NEW_DEVICE_NAME)
+        added_pins = models.Pin.objects.filter(device=added_device)
+        expected_entries = set([
+            (NEW_INPUT_PIN_NAME, models.Pin.Kind.INPUT.value),
+            (NEW_OUTPUT_PIN_NAME, models.Pin.Kind.OUTPUT.value)])
+        self.assertSetEqual(expected_entries, set(map(
+            lambda e: (e.name, e.kind), added_pins)))
+
+    def test_update_device_and_pins_do_not_update_pins_on_event(self):
+        NEW_DEVICE_NAME = "NewDevice"
+        NEW_DEVICE_IP = "192.168.1.10"
+        NEW_DEVICE_PORT = 80
+        NEW_INPUT_PIN_NAME = "NewInputPin"
+        NEW_OUTPUT_PIN_NAME = "NewOutputPin"
+
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT,
+            pins=[(NEW_INPUT_PIN_NAME, "input"),
+                  (NEW_OUTPUT_PIN_NAME, "output")])
+
+        device_service = services.DeviceService()
+        device_service.update_device_and_pins(data)
+
+        data = self.create_input_data(
+            NEW_DEVICE_NAME, NEW_DEVICE_IP, NEW_DEVICE_PORT,
+            input_type="event", pins=[(NEW_INPUT_PIN_NAME, "input")])
+
+        initial_device_count = models.Device.objects.count()
+        initial_pin_count = models.Pin.objects.count()
+        device_service = services.DeviceService()
+        device_service.update_device_and_pins(data)
+        final_device_count = models.Device.objects.count()
+        final_pin_count = models.Pin.objects.count()
+
+        self.assertEqual(initial_device_count, final_device_count)
+        self.assertEqual(initial_pin_count, final_pin_count)
+        added_device = models.Device.objects.get(name=NEW_DEVICE_NAME)
+        added_pins = models.Pin.objects.filter(device=added_device)
+        expected_entries = set([
+            (NEW_INPUT_PIN_NAME, models.Pin.Kind.INPUT.value),
+            (NEW_OUTPUT_PIN_NAME, models.Pin.Kind.OUTPUT.value)])
+        self.assertSetEqual(expected_entries, set(map(
+            lambda e: (e.name, e.kind), added_pins)))
+
 
 class TriggerServiceTest(TestCase):
     DEVICE1_NAME = "Device1"

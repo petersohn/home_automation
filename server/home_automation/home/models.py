@@ -55,17 +55,20 @@ class Device(models.Model):
         self.version = data.get('version', 1)
         self.save()
 
+
 class Pin(models.Model):
     class Kind(ChoiceEnum):
         INPUT = 0
         OUTPUT = 1
+
         @staticmethod
         def from_string(string_value):
             if string_value == 'input':
-                return Kind.INPUT
+                return Pin.Kind.INPUT
             elif string_value == 'output':
-                return Kind.OUTPUT
-        raise ValueError('Not a valid Pin Kind')
+                return Pin.Kind.OUTPUT
+            raise ValueError('Not a valid Pin Kind')
+
     device = models.ForeignKey(Device, null=False, on_delete=models.CASCADE)
     name = models.CharField(null=False, max_length=200, db_index=True)
     kind = models.PositiveSmallIntegerField(null=False, choices=Kind.choices())
