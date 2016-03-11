@@ -74,7 +74,7 @@ class DeviceTest(TestCase):
         self.assertEqual(2, models.Device.objects.count_alive())
 
     def test_count_dead(self):
-       self.assertEqual(1, models.Device.objects.count_dead())
+        self.assertEqual(1, models.Device.objects.count_dead())
 
 
 class LoggerTest(TestCase):
