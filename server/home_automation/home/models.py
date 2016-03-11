@@ -23,6 +23,9 @@ class ChoiceEnum(Enum):
 class Expression(models.Model):
     value = models.TextField(null=False)
 
+    def __str__(self):
+        return self.value
+
 
 class Device(models.Model):
     name = models.CharField(max_length=200, null=False, db_index=True,
@@ -55,6 +58,9 @@ class Device(models.Model):
         self.version = data.get('version', 1)
         self.save()
 
+    def __str__(self):
+        return self.name
+
 
 class Pin(models.Model):
     class Kind(ChoiceEnum):
@@ -78,6 +84,9 @@ class Pin(models.Model):
     class Meta:
         unique_together = ('device', 'name')
 
+    def __str__(self):
+        return self.name
+
 
 class Variable(models.Model):
     name = models.CharField(null=False, max_length=200, db_index=True,
@@ -96,6 +105,9 @@ class Variable(models.Model):
         self.value = (self.value + 1) % modulo
         self.save()
         return self.value
+
+    def __str__(self):
+        return self.name + " (" + str(self.value) + ")"
 
 
 class InputTrigger(models.Model):
@@ -121,3 +133,6 @@ class Log(models.Model):
         null=False, choices=Severity.choices())
     time = models.DateTimeField(null=False, auto_now_add=True)
     message = models.TextField(null=False)
+
+    def __str__(self):
+        return self.message

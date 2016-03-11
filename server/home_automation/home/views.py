@@ -43,26 +43,20 @@ class StatusView(View):
 
     # @csrf_exempt
     def post(self, request, *args, **kwargs):
-        sys.stderr.write("begin\n")
         global executor_client
         try:
             data = json.loads(request.body.decode(
                 request.encoding if request.encoding else 'UTF-8'))
             remote_ip_address = request.environ['REMOTE_ADDR']
             data['device'].setdefault('ip', remote_ip_address)
-            sys.stderr.write("update_device_and_pins\n")
             changed_devices = self.device_service.update_device_and_pins(data)
-            sys.stderr.write("handle_changed_devices\n")
             handle_changed_devices(executor_client, changed_devices)
-            sys.stderr.write("done\n")
             device_name = data['device']['name']
             input_type = data.get('type', None)
             if input_type == 'login':
-                sys.stderr.write("login\n")
                 executor_client.send(sender.ClearDevice(device_name))
 
             if input_type == "event":
-                sys.stderr.write("event\n")
                 pins = data['pins']
                 for pin in pins:
                     pin_name = pin["name"]
@@ -73,7 +67,6 @@ class StatusView(View):
                         pin_data, pin_value)
                     handle_changed_devices(executor_client, changedDevices)
 
-            sys.stderr.write("end\n")
             return HttpResponse("", content_type="text/plain")
         except:
             sys.stderr.write(traceback.format_exc() + "\n")
