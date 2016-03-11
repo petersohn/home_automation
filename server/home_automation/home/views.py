@@ -1,9 +1,10 @@
+from home import models
 from home_automation import settings
 from home import models, services
 
 from django.http.response import HttpResponse
 from django.views.generic import View
-# from django.views.decorators.csrf import csrf_exempt
+from django.template import loader
 
 import json
 import os.path
@@ -12,6 +13,35 @@ import traceback
 
 scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/../../lib")
+
+class IndexView(View):
+    def __init__(self):
+        if models.Device.objects.all().count() == 0:
+            self.device = models.Device.objects.create(
+                name='Device', ip_address='1.1.1.1', port=9999, version=1)
+            self.true_expression = models.Expression.objects.create(value='True')
+            self.false_expression = models.Expression.objects.create(value='False')
+            self.variable_false_expression = models.Expression.objects.create(
+                value='dev.getFalse()')
+            self.variable_true_expression = models.Expression.objects.create(
+                value='var.getTrue()')
+            self.inacive_pin = models.Pin.objects.create(
+                name='InactivePin', device=self.device,
+                kind=models.Pin.Kind.OUTPUT.value, expression=None)
+            self.pin = models.Pin.objects.create(
+                name='truePin', device=self.device,
+                kind=models.Pin.Kind.OUTPUT.value, expression=self.true_expression)
+
+
+    def get(self, request, *args, **kwargs):
+        device_list = models.Device.objects.prefetch_related('pin_set').all()
+        template = loader.get_template('home/index.html')
+        context = {
+            'device_list': device_list,
+        }
+        return HttpResponse(template.render(context, request))
+
+##---------------------------------------------------------------------------##
 
 import actions
 import ExecutorClient
