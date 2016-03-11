@@ -3,5 +3,5 @@ from home.views import StatusView
 
 
 urlpatterns = [
-    url(r'^device/status', StatusView.as_view(), name='status'),
+    url(r'^device/status(/?)', StatusView.as_view(), name='status'),
 ]

@@ -7,7 +7,6 @@ import unittest.mock
 from unittest.mock import call
 
 
-
 class VariableTest(TestCase):
     FOO_NAME = 'Foo'
     BAR_NAME = 'Bar'
