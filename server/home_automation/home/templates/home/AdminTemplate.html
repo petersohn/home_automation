@@ -345,6 +345,23 @@
                               </h3>
                             </div>
                             <div class="panel-body">
+                              {% if log_list %}
+                                <table class="log-content" width="100%">
+                                <tr>
+                                  <th>Time</th>
+                                  <th>Severity</th>
+                                  <th>Message</th>
+                                {% for log in log_list %}
+                                <tr class="{{ log.severity }}">
+                                  <td>{{ log.time }}</td>
+                                  <td>{{ log.severity }}</td>
+                                  <td>{{ log.message }}</td>
+                                </tr>
+                                {% endfor %}
+                                </table>
+                              {% else %}
+                                <p>No logs.</p>
+                              {% endif %}
                             </div>
                         </div>
                     </div>

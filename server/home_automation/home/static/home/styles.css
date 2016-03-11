@@ -52,3 +52,25 @@ i {
     margin-right: 10px;
     margin-top: 3px;
 }
+
+.log-content {
+    padding-left: 20px;
+    padding-top: 3px;
+    border: solid 1px #222222;
+}
+
+th.log-content {
+    background-color: #AAAAAA;
+}
+
+.INFO {
+    background-color: #66AAFF;
+}
+
+.WARNING {
+    background-color: #E09F0C;
+}
+
+.ERROR {
+    background-color: #F46666;
+}
