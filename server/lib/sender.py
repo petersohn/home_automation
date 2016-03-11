@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import database
 import ExecutorClient
 import ExecutorServer
 
@@ -11,6 +10,15 @@ import queue
 import sys
 import threading
 import traceback
+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(scriptDirectory + "/../home_automation")
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'home_automation.settings')
+
+import django
+django.setup()
+
+from home import models, services
 
 
 class BadResponse(Exception):
@@ -104,19 +112,22 @@ class Connection:
         raise ConnectionInterrupted
 
 
+def _getDeviceAddress(device_name):
+    return models.Device.objects.get(name=device_name).ip_address
+
+
 class Request:
-    def __init__(self, deviceName, url, getSession=database.getSession,
+    def __init__(self, deviceName, url, getDeviceAddress=_getDeviceAddress,
                  httpConnection=http.client.HTTPConnection,
                  connection=Connection):
         self.deviceName = deviceName
         self.url = url
-        self.getSession = getSession
+        self.getDeviceAddress = getDeviceAddress
         self.httpConnection = httpConnection
         self.connection = connection
 
     def __call__(self, httpConnections, responseHandler, exceptionHandler):
-        session = self.getSession()
-        deviceAddress = session.getDeviceAddress(self.deviceName)
+        deviceAddress = self.getDeviceAddress(self.deviceName)
 
         if deviceAddress not in httpConnections:
             actualConnection = self.connection(
@@ -132,21 +143,21 @@ class Request:
 
 
 class ClearDevice:
-    def __init__(self, deviceName, getSession=database.getSession):
+    def __init__(self, deviceName, getDeviceAddress=_getDeviceAddress):
         self.deviceName = deviceName
-        self.getSession = getSession
+        self.getDeviceAddress = getDeviceAddress
 
     def __call__(self, httpConnections, responseHandler, exceptionHandler):
-        session = self.getSession()
-        deviceAddress = session.getDeviceAddress(self.deviceName)
+        deviceAddress = self.getDeviceAddress(self.deviceName)
         if deviceAddress in httpConnections:
             httpConnections.pop(deviceAddress).cleanup()
 
 
 def handleException(exception):
-    database.getSession().log(
-        "error", "Error sending request: " + exception.__class__.__name__ +
-        ': ' + str(exception))
+    services.Logger().log(
+        severity=models.Log.Severity.ERROR,
+        message=("Error sending request: " + exception.__class__.__name__ +
+                 ': ' + str(exception)))
 
 
 class HandleException:
