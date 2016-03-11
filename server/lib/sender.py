@@ -95,14 +95,14 @@ class Connection:
                 if response.status < 200 or response.status >= 300:
                     raise BadResponse(response.status, response.reason)
                 return response.read().decode("UTF-8")
-            except BadResponse:
-                connection.close()
-                raise
-            except:
+            except http.client.HTTPException:
                 connection.close()
                 if retries == 0:
                     raise
                 retries -= 1
+            except:
+                connection.close()
+                raise
 
     def _cleanup(self, connection):
         connection.close()
