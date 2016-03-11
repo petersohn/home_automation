@@ -42,16 +42,19 @@ class Device(models.Model):
         now = django.utils.timezone.now()
         return now - config.device_heartbeat_timeout
 
+
 class Pin(models.Model):
     class Kind(ChoiceEnum):
         INPUT = 0
         OUTPUT = 1
     device = models.ForeignKey(Device, null=False, on_delete=models.CASCADE)
-    name = models.CharField(null=False, max_length=200, db_index=True,
-                            unique=True)
+    name = models.CharField(null=False, max_length=200, db_index=True)
     kind = models.PositiveSmallIntegerField(null=False, choices=Kind.choices())
     expression = models.ForeignKey(Expression, null=True,
                                    on_delete=models.SET_NULL)
+
+    class Meta:
+        unique_together = ('device', 'name')
 
 
 class Variable(models.Model):

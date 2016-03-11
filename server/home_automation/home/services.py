@@ -75,17 +75,19 @@ class TriggerService(ExpressionService):
 
         edge = models.InputTrigger.Edge.RISING if pin_value else \
             models.InputTrigger.Edge.FALLING
-        input_triggers = models.InputTrigger.filter(
-            edge__in=[models.InputTrigger.Edge.BOTH, edge],
-            pin=pin).select_related('expression').select_related('pin')
+        input_triggers = (
+            models.InputTrigger.objects.select_related('expression').
+            select_related('pin').select_related('pin__device').filter(
+                edge__in=[models.InputTrigger.Edge.BOTH.value, edge.value],
+                pin=pin))
 
         initial_states = self.device_service.get_intended_pin_states()
         for input_trigger in input_triggers:
             exec(input_trigger.expression.value, {}, {
-                "pin": Pin(input_trigger.device.name, input_trigger.pin.name,
-                           pin_value),
+                "pin": Pin(input_trigger.pin.device.name,
+                           input_trigger.pin.name, pin_value),
                 "var": self.VARIABLE_PROXY,
                 "dev": self.DEVICE_PROXY,
-                "log": self.Logger})
+                "log": Logger()})
         new_states = self.device_service.get_intended_pin_states()
         return _get_changed_states(initial_states, new_states)

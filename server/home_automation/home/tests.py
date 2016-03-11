@@ -4,6 +4,8 @@ import django.utils.timezone
 from django.test import TestCase
 
 import unittest.mock
+from unittest.mock import call
+
 
 
 class VariableTest(TestCase):
@@ -13,8 +15,10 @@ class VariableTest(TestCase):
     BAR_VALUE = 3
 
     def setUp(self):
-        models.Variable.objects.create(name=self.FOO_NAME, value=self.FOO_VALUE)
-        models.Variable.objects.create(name=self.BAR_NAME, value=self.BAR_VALUE)
+        models.Variable.objects.create(
+            name=self.FOO_NAME, value=self.FOO_VALUE)
+        models.Variable.objects.create(
+            name=self.BAR_NAME, value=self.BAR_VALUE)
 
     def test_get_value_of_variable(self):
         foo = models.Variable.objects.get(name=self.FOO_NAME)
@@ -250,3 +254,104 @@ class DeviceServiceTest(TestCase):
                               self.SECOND_TRUE_PIN_NAME: True,
                               self.SECOND_FALSE_PIN_NAME: False}},
                          result)
+
+class TriggerServiceTest(TestCase):
+    DEVICE1_NAME = "Device1"
+    DEVICE2_NAME = "Device2"
+    INPUT_PIN_NAME = "Pin1"
+    OUTPUT_PIN_NAME = "Pin2"
+
+    def setUp(self):
+        self.device1 = models.Device.objects.create(
+            name=self.DEVICE1_NAME, ip_address='1.2.3.4', port=8080,
+            version=1)
+        self.device2 = models.Device.objects.create(
+            name=self.DEVICE2_NAME, ip_address='1.1.1.1', port=8080,
+            version=1)
+        self.input_pin_1 = models.Pin.objects.create(
+            device=self.device1, name=self.INPUT_PIN_NAME,
+            kind=models.Pin.Kind.INPUT.value, expression=None)
+        self.input_pin_2 = models.Pin.objects.create(
+            device=self.device2, name=self.INPUT_PIN_NAME,
+            kind=models.Pin.Kind.INPUT.value, expression=None)
+        self.output_pin_1 = models.Pin.objects.create(
+            device=self.device1, name=self.OUTPUT_PIN_NAME,
+            kind=models.Pin.Kind.OUTPUT.value, expression=None)
+        self.output_pin_2 = models.Pin.objects.create(
+            device=self.device2, name=self.OUTPUT_PIN_NAME,
+            kind=models.Pin.Kind.OUTPUT.value, expression=None)
+
+        self.mock_device_service = unittest.mock.Mock()
+        self.mock_variable_proxy = unittest.mock.Mock()
+        self.trigger_service = services.TriggerService(
+            self.mock_device_service)
+        self.trigger_service.VARIABLE_PROXY = self.mock_variable_proxy
+
+    def test_process_triggers_trigger_to_the_correct_edge(self):
+        rising_expression = models.Expression.objects.create(
+            value='var.rising_trigger(pin.device, pin.pin, pin.value)')
+        falling_expression = models.Expression.objects.create(
+            value='var.falling_trigger(pin.device, pin.pin, pin.value)')
+        both_expression = models.Expression.objects.create(
+            value='var.both_trigger(pin.device, pin.pin, pin.value)')
+        models.InputTrigger.objects.create(
+            pin=self.input_pin_1, edge=models.InputTrigger.Edge.RISING.value,
+            expression=rising_expression)
+        models.InputTrigger.objects.create(
+            pin=self.input_pin_1, edge=models.InputTrigger.Edge.FALLING.value,
+            expression=falling_expression)
+        models.InputTrigger.objects.create(
+            pin=self.input_pin_1, edge=models.InputTrigger.Edge.BOTH.value,
+            expression=both_expression)
+
+        self.mock_device_service.get_intended_pin_states.return_value = {}
+
+        self.trigger_service.process_triggers(self.input_pin_1, 1)
+        self.trigger_service.process_triggers(self.input_pin_1, 0)
+
+        self.mock_variable_proxy.rising_trigger.assert_has_calls([
+            call(self.DEVICE1_NAME, self.INPUT_PIN_NAME, 1)])
+        self.mock_variable_proxy.falling_trigger.assert_has_calls([
+            call(self.DEVICE1_NAME, self.INPUT_PIN_NAME, 0)])
+        self.mock_variable_proxy.both_trigger.assert_has_calls([
+            call(self.DEVICE1_NAME, self.INPUT_PIN_NAME, 1),
+            call(self.DEVICE1_NAME, self.INPUT_PIN_NAME, 0)])
+        self.assertEqual(
+            1, self.mock_variable_proxy.rising_trigger.call_count)
+        self.assertEqual(
+            1, self.mock_variable_proxy.falling_trigger.call_count)
+        self.assertEqual(
+            2, self.mock_variable_proxy.both_trigger.call_count)
+
+    def test_process_triggers_trigger_to_the_correct_pin(self):
+        expression = models.Expression.objects.create(
+            value='var.trigger()')
+        models.InputTrigger.objects.create(
+            pin=self.input_pin_1, edge=models.InputTrigger.Edge.BOTH.value,
+            expression=expression)
+
+        self.mock_device_service.get_intended_pin_states.return_value = {}
+
+        self.trigger_service.process_triggers(self.input_pin_2, 1)
+
+        self.mock_variable_proxy.trigger.assert_not_called()
+
+    def test_process_triggers_return_with_modified_pins(self):
+        expression = models.Expression.objects.create(value='pass')
+        models.InputTrigger.objects.create(
+            pin=self.input_pin_1, edge=models.InputTrigger.Edge.BOTH.value,
+            expression=expression)
+        self.mock_device_service.get_intended_pin_states.side_effect = [{
+            self.DEVICE1_NAME: {
+                self.OUTPUT_PIN_NAME: 0},
+            self.DEVICE2_NAME: {
+                self.OUTPUT_PIN_NAME: 0}}, {
+            self.DEVICE1_NAME: {
+                self.OUTPUT_PIN_NAME: 0},
+            self.DEVICE2_NAME: {
+                self.OUTPUT_PIN_NAME: 1}}]
+
+        result = self.trigger_service.process_triggers(self.input_pin_1, 1)
+
+        expected_result = {self.DEVICE2_NAME: {self.OUTPUT_PIN_NAME: 1}}
+        self.assertEqual(expected_result, result)
