@@ -70,6 +70,7 @@ class StatusView(View):
         if executor_client is None:
             init()
         self.device_service = services.DeviceService()
+        self.trigger_service = services.TriggerService(self.device_service)
 
     # @csrf_exempt
     def post(self, request, *args, **kwargs):
@@ -93,7 +94,7 @@ class StatusView(View):
                     pin_value = pin["value"]
                     pin_data = models.Pin.objects.get(
                         name=pin_name, device__name=device_name)
-                    changedDevices = self.device_service.process_triggers(
+                    changedDevices = self.trigger_service.process_triggers(
                         pin_data, pin_value)
                     handle_changed_devices(executor_client, changedDevices)
 
