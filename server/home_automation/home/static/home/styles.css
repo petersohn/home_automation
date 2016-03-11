@@ -1,0 +1,15 @@
+body {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: #FFF
+}
+
+div.left {
+    position: relative;
+    float:left;
+    width: 250px;
+    background-color: #aaaaaa;
+    height=100%;
+    display: block;
+}

@@ -67,8 +67,8 @@ class Device(models.Model):
 
 class Pin(models.Model):
     class Kind(ChoiceEnum):
-        INPUT = 0
-        OUTPUT = 1
+        INPUT = '0'
+        OUTPUT = '1'
 
         @staticmethod
         def from_string(string_value):
@@ -80,7 +80,7 @@ class Pin(models.Model):
 
     device = models.ForeignKey(Device, null=False, on_delete=models.CASCADE)
     name = models.CharField(null=False, max_length=200, db_index=True)
-    kind = models.PositiveSmallIntegerField(null=False, choices=Kind.choices())
+    kind = models.CharField(max_length=1, null=False, choices=Kind.choices())
     expression = models.ForeignKey(Expression, null=True,
                                    on_delete=models.SET_NULL)
 
@@ -115,24 +115,24 @@ class Variable(models.Model):
 
 class InputTrigger(models.Model):
     class Edge(ChoiceEnum):
-        RISING = 0
-        FALLING = 1
-        BOTH = 2
+        RISING = '0'
+        FALLING = '1'
+        BOTH = '2'
     pin = models.ForeignKey(
         Pin, null=False, on_delete=models.CASCADE, db_index=True)
     expression = models.ForeignKey(
         Expression, null=False, on_delete=models.CASCADE)
-    edge = models.PositiveSmallIntegerField(null=False, choices=Edge.choices())
+    edge = models.CharField(max_length=1, null=False, choices=Edge.choices())
 
 
 class Log(models.Model):
     class Severity(ChoiceEnum):
-        INFO = 0
-        WARNING = 1
-        ERROR = 2
+        INFO = '0'
+        WARNING = '1'
+        ERROR = '2'
     device = models.ForeignKey(Device, null=True, on_delete=models.SET_NULL)
     pin = models.ForeignKey(Pin, null=True, on_delete=models.SET_NULL)
-    severity = models.PositiveSmallIntegerField(
+    severity = models.CharField(max_length=1,
         null=False, choices=Severity.choices())
     time = models.DateTimeField(null=False, auto_now_add=True)
     message = models.TextField(null=False)
