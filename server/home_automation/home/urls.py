@@ -1,7 +1,7 @@
 from django.conf.urls import url
-from . import views
+from home.views import StatusView
 
 
 urlpatterns = [
-    url(r'^device/status', views.status, name='status'),
+    url(r'^device/status', StatusView.as_view(), name='status'),
 ]

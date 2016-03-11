@@ -42,11 +42,30 @@ class Device(models.Model):
         now = django.utils.timezone.now()
         return now - config.device_heartbeat_timeout
 
+    @staticmethod
+    def create_from_json(data):
+        device = Device.objects.create(
+            name=data['name'], ip_address=data['ip'], port=data['port'],
+            version=data.get('version', 1))
+        return device
+
+    def update_from_json(self, data):
+        self.ip_address = data['ip']
+        self.port = data['port']
+        self.version = data.get('version', 1)
+        self.save()
 
 class Pin(models.Model):
     class Kind(ChoiceEnum):
         INPUT = 0
         OUTPUT = 1
+        @staticmethod
+        def from_string(string_value):
+            if string_value == 'input':
+                return Kind.INPUT
+            elif string_value == 'output':
+                return Kind.OUTPUT
+        raise ValueError('Not a valid Pin Kind')
     device = models.ForeignKey(Device, null=False, on_delete=models.CASCADE)
     name = models.CharField(null=False, max_length=200, db_index=True)
     kind = models.PositiveSmallIntegerField(null=False, choices=Kind.choices())

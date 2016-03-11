@@ -8,7 +8,7 @@ class Logger(object):
             severity=severity.value, message=message, device=device, pin=pin)
 
 
-class ExpressionService(object):
+class ExpressionEvaluator(object):
     # FIXME: hacking
     class VariableProxy(object):
         def get(self, name):
@@ -31,6 +31,10 @@ class ExpressionService(object):
     VARIABLE_PROXY = VariableProxy()
     DEVICE_PROXY = DeviceProxy()
 
+    def evaluate(expression):
+        eval(expression, {}, {
+            'var': self.VARIABLE_PROXY,
+            'dev': self.DEVICE_PROXY})
 
 def _get_changed_states(initial_states, new_states):
     result = {}
@@ -42,13 +46,14 @@ def _get_changed_states(initial_states, new_states):
     return result
 
 
-class DeviceService(ExpressionService):
+class DeviceService(ExpressionEvaluator):
     def get_intended_pin_states(self, device=None):
         extra_args = {}
         if device is not None:
             extra_args['device'] = device
         else:
-            extra_args['device__last_seen__gte'] = models.Device.heartbeat_time_limit()
+            extra_args['device__last_seen__gte'] = (
+                models.Device.heartbeat_time_limit())
         output_pins = models.Pin.objects.select_related(
             'expression').select_related('device').filter(
                 expression__isnull=False, kind=models.Pin.Kind.OUTPUT.value,
@@ -56,13 +61,50 @@ class DeviceService(ExpressionService):
         result = {}
         for output_pin in output_pins:
             result.setdefault(output_pin.device.name, {})[output_pin.name] = (
-                eval(output_pin.expression.value, {}, {
-                    'var': self.VARIABLE_PROXY,
-                    'dev': self.DEVICE_PROXY}))
+                evaluate(output_pin.expression.value))
         return result
 
+    def update_device_and_pins(self, data):
+        input_type = data.get('type', None)
+        is_login = input_type is not None and input_type == 'login'
+        initial_state = self.get_intended_pin_states() if not is_login else {}
+        device_data = data['device']
+        device, is_created = models.Device.objects.get_or_create(
+            name=device_data['name'], defaults={
+                'name': device_data['name'], 'ip_address': device_data['ip'],
+                'port': device_data['port'],
+                'version': device_data.get('version', 1)})
 
-class TriggerService(ExpressionService):
+        if is_created:
+            Logger.log(models.Log.Severity.INFO, 'Found new device',
+                       device=device)
+        else:
+            device.update_from_json(device_data)
+            if not device.is_alive():
+                Logger.log(models.Log.Severity.INFO, 'Lost device reappeared',
+                           device=device)
+            elif is_login:
+                Logger.log(models.Log.Severity.WARNING, 'Device is restarted',
+                           device=device)
+
+        if input_type != 'event':
+            self.update_pins(device, data['pins'])
+
+        new_state = self.get_intended_pin_states()
+        return _get_changed_states(initial_state, new_state)
+
+    def update_pins(self, device, pins):
+        names = []
+        for pin in pins:
+            names.append(pin['name'])
+            models.Pin.objects.update_or_create(
+                device=device, name=pin['name'], defaults={
+                    'name': pin['name'],
+                    'kind': models.Pin.Kind.from_string(pin['type']).value})
+        models.Pin.objects.filter(device=device, name__notin=names).delete()
+
+
+class TriggerService(ExpressionEvaluator):
     def __init__(self, device_service=DeviceService()):
         self.device_service = device_service
 
