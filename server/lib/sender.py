@@ -113,7 +113,8 @@ class Connection:
 
 
 def _getDeviceAddress(device_name):
-    return models.Device.objects.get(name=device_name).ip_address
+    device = models.Device.objects.get(name=device_name)
+    return (device.ip_address, device.port)
 
 
 class Request:
