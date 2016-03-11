@@ -47,6 +47,8 @@ class DeviceService(ExpressionService):
         extra_args = {}
         if device is not None:
             extra_args['device'] = device
+        else:
+            extra_args['device__last_seen__gte'] = models.Device.heartbeat_time_limit()
         output_pins = models.Pin.objects.select_related(
             'expression').select_related('device').filter(
                 expression__isnull=False, kind=models.Pin.Kind.OUTPUT.value,
