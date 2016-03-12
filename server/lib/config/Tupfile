@@ -1,7 +1,0 @@
-
-include_rules
-
-include $(GEN_PYTHON_TUP)
-
-: foreach *.py.template |> !gen_python |> %B
-
