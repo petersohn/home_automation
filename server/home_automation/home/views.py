@@ -14,9 +14,13 @@ import traceback
 scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/../../lib")
 
+
 class IndexView(View):
     def get(self, request, *args, **kwargs):
-        device_list = models.Device.objects.prefetch_related('pin_set').all()
+        device_list = (
+            models.Device.objects.prefetch_related('pin_set').all().
+            order_by('name'))
+
         log_list = (models.Log.objects.all().order_by('-time').
                     select_related('device').select_related('pin')[:20])
         template = loader.get_template('home/AdminTemplate.html')
