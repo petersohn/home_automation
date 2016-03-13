@@ -234,7 +234,7 @@
   {% for device in device_list %}
                 <div class="row">
                     <div class="col-lg-3 col-md-6">
-                        {% if data.is_alive %}
+                        {% if device.is_alive %}
                         <div class="panel panel-green">
                         {% else %}
                         <div class="panel panel-red">
@@ -346,7 +346,7 @@
     <table style="width: 100%;">
       <tr>
         <th><h3>
-        {{ device.name }}</h3></th><th>{{ device.ip_address }}:{{ device.port }}</th><th>{{ device.version }}</th></tr>
+        {{ device.name }}</h3></th><th>{{ device.ip_address }}:{{ device.port }}</th><th>{{ device.is_alive }}</th></tr>
      {% for pin in device.pin_set.all %}
         <tr class=""><td style="padding-right: 10px;">{{ pin.name }}</td><td>{{ pin.kind }}</td>
           <td>{{ pin.expression }}</td></tr>
