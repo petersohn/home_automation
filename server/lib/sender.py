@@ -180,6 +180,10 @@ class Handler:
         self.client = client
         self.connections = {}
 
+    def __del__(self):
+        for connection in self.connections.values():
+            connection.cleanup()
+
     def __call__(self, request):
         try:
             request(self.connections, responseHandler=lambda x: None,
