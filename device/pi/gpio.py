@@ -3,14 +3,15 @@
 
 import RPi.GPIO as GPIO
 
+
 def setupPins(pins, changeHandler):
     for pin in pins:
         GPIO.setup(pin.number, GPIO.OUT if pin.output else GPIO.IN)
         pin.value = GPIO.input(pin.number)
         if not pin.output:
-            GPIO.add_event_detect(pin.number, GPIO.BOTH,
-                    callback = (lambda pin: changeHandler()),
-                    bouncetime = 100)
+            GPIO.add_event_detect(
+                pin.number, GPIO.BOTH, callback=(lambda pin: changeHandler()),
+                bouncetime=100)
 
 
 def getPinValue(pin):
@@ -28,4 +29,3 @@ class Context:
     def __exit__(self, type, value, traceback):
         GPIO.cleanup()
         return None
-
