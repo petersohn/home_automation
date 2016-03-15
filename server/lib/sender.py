@@ -10,6 +10,7 @@ import queue
 import sys
 import threading
 import traceback
+import urllib
 
 scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/../home_automation")
@@ -90,7 +91,8 @@ class Connection:
         while True:
             try:
                 connection.request(
-                    "GET", url, headers={"Connection": "keep-alive"})
+                    "GET", urllib.parse.quote(url),
+                    headers={"Connection": "keep-alive"})
                 response = connection.getresponse()
                 if response.status < 200 or response.status >= 300:
                     raise BadResponse(response.status, response.reason)

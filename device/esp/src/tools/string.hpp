@@ -50,9 +50,9 @@ String readBuffer(Stream& stream, int size) {
 }
 
 inline
-bool hexToString(const String& s, long& value) {
+bool hexToString(const char* s, size_t length, long& value) {
     value = 0;
-    for (size_t i = 0; i < s.length(); ++i) {
+    for (size_t i = 0; i < length; ++i) {
         value *= 16;
         if (s[i] >= '0' && s[i] <= '9') {
             value += s[i] - '0';
@@ -65,6 +65,11 @@ bool hexToString(const String& s, long& value) {
         }
     }
     return true;
+}
+
+inline
+bool hexToString(const String& s, long& value) {
+    return hexToString(s.c_str(), s.length(), value);
 }
 
 inline
