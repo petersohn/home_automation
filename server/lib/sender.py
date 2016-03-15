@@ -87,6 +87,7 @@ class Connection:
             self.thread.start()
 
     def _sendRequest(self, url, connection):
+        sys.stderr.write(self.host + ":" + str(self.port) + url + "\n")
         retries = 2
         while True:
             try:
@@ -96,6 +97,8 @@ class Connection:
                 response = connection.getresponse()
                 if response.status < 200 or response.status >= 300:
                     raise BadResponse(response.status, response.reason)
+                sys.stderr.write(
+                        self.host + ":" + str(self.port) + ": Request sent\n")
                 return response.read().decode("UTF-8")
             except http.client.HTTPException:
                 connection.close()
