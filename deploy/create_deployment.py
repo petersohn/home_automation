@@ -3,6 +3,7 @@
 import argparse
 import git
 import os
+import re
 import sys
 import tarfile
 import tempfile
@@ -10,7 +11,11 @@ from urllib.request import Request, urlopen
 import zipfile
 
 
-STATIC_FILES_DIR = "server/home_automation/home/static/home"
+SERVER_DIR = "server"
+DATA_DIR = "deploy/data"
+DJANGO_PROJECT_DIR = SERVER_DIR + "/home_automation"
+STATIC_FILES_DIR = DJANGO_PROJECT_DIR + "/home/static/home"
+INSTALLATION_DIR = "home/home_automation"
 
 
 def download_file(url):
@@ -60,24 +65,83 @@ def download_dependencies():
         "jquery-ui-themes-1.11.4", STATIC_FILES_DIR, "jquery-ui-themes")
 
 
+def calculate_prefix(path):
+    basename = os.path.basename(path)
+    return re.sub("^(.*)\\.((tar.*)|tgz)", "\\1", basename)
+
+
 def create_archive(filename):
-    pass
+    compression = ""
+    match = re.search("\\.tar\\.(\w+)$", filename)
+    if match is not None:
+        compression = match.group(1)
+    elif filename.endswith(".tgz"):
+        compression = "gz"
+    return tarfile.open(filename, "w:" + compression)
 
 
-def add_upgrade_files(archive):
-    pass
+def add_server_files(archive, repo):
+    def needs_to_be_included(o, d):
+        return o.name.endswith(".py") or o.name.endswith(".html")
+
+    def filter(tarinfo):
+        global INSTALLATION_DIR
+        tarinfo.name = INSTALLATION_DIR + "/" + tarinfo.name
+        return tarinfo
+
+    for object in repo.tree()["server"].traverse(
+            prune=lambda o, d: o.name == "test",
+            predicate=needs_to_be_included):
+        archive.add(object.path, filter=filter)
+    archive.add(STATIC_FILES_DIR, filter=filter)
 
 
-def add_upgrade_script(archive):
-    pass
+def add_config_files(archive):
+    global DATA_DIR
+    archive.addfile(
+        archive.gettarinfo(
+            DATA_DIR + "/lighttpd.conf",
+            arcname="/etc/lighttpd/lighttpd.conf"))
+    archive.addfile(
+        archive.gettarinfo(
+            DATA_DIR + "/home_automation.service",
+            arcname="/usr/lib/systemd/system/home_automation.service"))
 
 
-def add_install_files(archive):
-    pass
+def add_files(archive, prefix, repo):
+    global STATIC_FILES_DIR
+
+    with tempfile.TemporaryFile() as file:
+        inner_archive = tarfile.open(mode="w", fileobj=file)
+        add_server_files(inner_archive, repo)
+        add_config_files(inner_archive)
+        inner_archive.close()
+        file.seek(0)
+        archive.addfile(
+            archive.gettarinfo(
+                arcname=prefix + "/package.tar", fileobj=file),
+            fileobj=file)
 
 
-def add_install_script(archive):
-    pass
+def get_data_dir_filter(prefix):
+    def filter(tarinfo):
+        global DATA_DIR
+        tarinfo.name = tarinfo.name.replace(DATA_DIR, prefix)
+        return tarinfo
+
+    return filter
+
+
+def add_upgrade_files(archive, prefix):
+    filter = get_data_dir_filter(prefix)
+    archive.add(DATA_DIR + "/common.sh", filter=filter)
+    archive.add(DATA_DIR + "/upgrade.sh", filter=filter)
+
+
+def add_install_files(archive, prefix):
+    filter = get_data_dir_filter(prefix)
+    archive.add(DATA_DIR + "/common.sh", filter=filter)
+    archive.add(DATA_DIR + "/install.sh", filter=filter)
 
 
 def main():
@@ -98,18 +162,19 @@ def main():
         help="The name of the output archive. No archive is generated if "
              "--type=download.")
     arguments = parser.parse_args()
+    arguments.output = os.path.abspath(arguments.output)
     repo = git.Repo(search_parent_directories=True)
     os.chdir(repo.working_tree_dir)
 
     download_dependencies()
     if arguments.type != "download":
         archive = create_archive(arguments.output)
-        add_upgrade_files(archive)
+        prefix = calculate_prefix(arguments.output)
+        add_files(archive, prefix, repo)
         if arguments.type == "install":
-            add_install_files(archive)
-            add_install_script(archive)
+            add_install_files(archive, prefix)
         else:
-            add_upgrade_script(archive)
+            add_upgrade_files(archive, prefix)
 
         archive.close()
 
