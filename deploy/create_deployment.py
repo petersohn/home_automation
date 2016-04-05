@@ -108,6 +108,7 @@ def add_data_files(archive):
     add_data_file(
         archive, "home_automation.service", "usr/lib/systemd/system")
     add_data_file(archive, "lighttpd.conf", "etc/lighttpd")
+    add_data_file(archive, "home_automation_manage", "/usr/local/bin")
 
 
 def add_files(archive, prefix, repo):
