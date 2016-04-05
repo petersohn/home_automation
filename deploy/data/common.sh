@@ -2,7 +2,7 @@
 
 set_permissons() {
     chown --recursive root:home_automation /home/home_automation/server
-    chmod --recursive 640 /home/home_automation/server
+    chmod --recursive g-w,o-rwx /home/home_automation/server
 }
 
 unpack_files() {
@@ -11,7 +11,7 @@ unpack_files() {
 
 migrate() {
     python3 /home/home_automation/server/home_automation/manage.py makemigrations home
-    python3 /home/home_automation/server/home_automation/manage.py migrate
+    sudo -u home_automation python3 /home/home_automation/server/home_automation/manage.py migrate
 }
 
 restart_services() {
@@ -20,7 +20,6 @@ restart_services() {
 }
 
 common_tasks() {
-    unpack_files
     set_permissons
     migrate
     restart_services

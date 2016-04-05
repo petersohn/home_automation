@@ -96,16 +96,18 @@ def add_server_files(archive, repo):
     archive.add(STATIC_FILES_DIR, filter=filter)
 
 
-def add_config_files(archive):
+def add_data_file(archive, name, path):
     global DATA_DIR
-    archive.addfile(
-        archive.gettarinfo(
-            DATA_DIR + "/lighttpd.conf",
-            arcname="/etc/lighttpd/lighttpd.conf"))
-    archive.addfile(
-        archive.gettarinfo(
-            DATA_DIR + "/home_automation.service",
-            arcname="/usr/lib/systemd/system/home_automation.service"))
+    filename = DATA_DIR + "/" + name
+    tarinfo = archive.gettarinfo(filename, arcname=path + "/" + name)
+    archive.addfile(tarinfo, fileobj=open(filename, "rb"))
+
+
+def add_data_files(archive):
+    global DATA_DIR
+    add_data_file(
+        archive, "home_automation.service", "usr/lib/systemd/system")
+    add_data_file(archive, "lighttpd.conf", "etc/lighttpd")
 
 
 def add_files(archive, prefix, repo):
@@ -114,7 +116,7 @@ def add_files(archive, prefix, repo):
     with tempfile.TemporaryFile() as file:
         inner_archive = tarfile.open(mode="w", fileobj=file)
         add_server_files(inner_archive, repo)
-        add_config_files(inner_archive)
+        add_data_files(inner_archive)
         inner_archive.close()
         file.seek(0)
         archive.addfile(

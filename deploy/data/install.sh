@@ -7,7 +7,7 @@ create_user() {
 
 setup_psql() {
     sudo -u postgres createuser home_automation
-    sudo -u home_automation psql -c 'create database home_automation'
+    sudo -u postgres psql -c 'create database home_automation owner home_automation'
 }
 
 setup_services() {
@@ -20,5 +20,6 @@ source "$script_dir/common.sh"
 set -e
 create_user
 setup_psql
+unpack_files
 setup_services
 common_tasks

@@ -98,7 +98,7 @@ DATABASES = {
         #'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'home_automation',
-        'USER': 'root',
+        'USER': 'home_automation',
         'ATOMIC_REQUESTS': True
     }
 }
