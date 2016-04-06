@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 
+server_dir=/home/home_automation/server
+
 set_permissons() {
-    chown --recursive root:home_automation /home/home_automation/server
-    chmod --recursive g-w,o-rwx /home/home_automation/server
+    chown --recursive root:home_automation "$server_dir"
+    chmod --recursive g-w,o-rwx "$server_dir"
+}
+
+create_symlinks() {
+    ln -s "$("$script_dir/get_django_path.py")/contrib/admin/static/admin" "$server_dir/home_automation/home/static/"
 }
 
 unpack_files() {
@@ -10,8 +16,8 @@ unpack_files() {
 }
 
 migrate() {
-    python3 /home/home_automation/server/home_automation/manage.py makemigrations home
-    sudo -u home_automation python3 /home/home_automation/server/home_automation/manage.py migrate
+    python3 "$server_dir/home_automation/manage.py" makemigrations home
+    sudo -u home_automation python3 "$server_dir/home_automation/manage.py" migrate
 }
 
 restart_services() {
@@ -21,6 +27,7 @@ restart_services() {
 
 common_tasks() {
     set_permissons
+    create_symlinks
     migrate
     restart_services
 }

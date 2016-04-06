@@ -126,25 +126,28 @@ def add_files(archive, prefix, repo):
             fileobj=file)
 
 
-def get_data_dir_filter(prefix):
+def add_install_file(archive, prefix, name):
     def filter(tarinfo):
         global DATA_DIR
         tarinfo.name = tarinfo.name.replace(DATA_DIR, prefix)
         return tarinfo
 
-    return filter
+    archive.add(DATA_DIR + "/" + name, filter=filter)
+
+
+def add_common_files(archive, prefix):
+    add_install_file(archive, prefix, "common.sh")
+    add_install_file(archive, prefix, "get_django_path.py")
 
 
 def add_upgrade_files(archive, prefix):
-    filter = get_data_dir_filter(prefix)
-    archive.add(DATA_DIR + "/common.sh", filter=filter)
-    archive.add(DATA_DIR + "/upgrade.sh", filter=filter)
+    add_common_files(archive, prefix)
+    add_install_file(archive, prefix, "upgrade.sh")
 
 
 def add_install_files(archive, prefix):
-    filter = get_data_dir_filter(prefix)
-    archive.add(DATA_DIR + "/common.sh", filter=filter)
-    archive.add(DATA_DIR + "/install.sh", filter=filter)
+    add_common_files(archive, prefix)
+    add_install_file(archive, prefix, "install.sh")
 
 
 def main():
