@@ -21,8 +21,14 @@ migrate() {
 }
 
 restart_services() {
+    systemctl daemon-reload
     systemctl restart lighttpd.service
     systemctl restart home_automation.service
+}
+
+verify_installation() {
+    systemctl status lighttpd.service
+    systemctl status home_automation.service
 }
 
 common_tasks() {
@@ -30,4 +36,5 @@ common_tasks() {
     create_symlinks
     migrate
     restart_services
+    verify_installation
 }
