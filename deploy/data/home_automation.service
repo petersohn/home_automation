@@ -8,6 +8,7 @@ Type=simple
 ExecStart=/home/home_automation/server/lib/sender.py
 User=home_automation
 Group=home_automation
+KillSignal=2
 
 [Install]
 WantedBy=lighttpd.service
