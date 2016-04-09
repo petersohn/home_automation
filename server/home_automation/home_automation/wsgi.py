@@ -6,6 +6,7 @@ import sys
 scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/..")
 sys.path.append(scriptDirectory)
+sys.path.append(scriptDirectory + "/../../../python")
 
 from django.core.wsgi import get_wsgi_application
 from flipflop2 import WSGIServer

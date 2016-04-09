@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-import flipflop
 import json
 import os.path
+import sys
 import queue
 import threading
 
@@ -12,6 +12,10 @@ import content
 import gpio
 import pin
 
+scriptDirectory = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(scriptDirectory + "/../../python")
+
+import flipflop2
 
 class Main:
     def __init__(self, params):
