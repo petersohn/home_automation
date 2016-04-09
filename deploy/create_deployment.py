@@ -81,44 +81,73 @@ def create_archive(filename):
     return tarfile.open(filename, "w:" + compression)
 
 
+def repo_file_filter(tarinfo):
+    global INSTALLATION_DIR
+    tarinfo.name = os.path.join(INSTALLATION_DIR, tarinfo.name)
+    return tarinfo
+
+
 def add_server_files(archive, repo):
     def needs_to_be_included(o, d):
         return o.name.endswith(".py") or o.name.endswith(".html")
 
-    def filter(tarinfo):
-        global INSTALLATION_DIR
-        tarinfo.name = os.path.join(INSTALLATION_DIR, tarinfo.name)
-        return tarinfo
-
     for object in repo.tree()["server"].traverse(
             prune=lambda o, d: o.name == "test",
             predicate=needs_to_be_included):
-        archive.add(object.path, filter=filter)
-    archive.add(STATIC_FILES_DIR, filter=filter)
+        archive.add(object.path, filter=repo_file_filter)
+    archive.add(STATIC_FILES_DIR, filter=repo_file_filter)
 
 
-def add_data_file(archive, name, path):
+def add_all_files_from_repo(archive, repo, path):
+    for object in repo.tree()[path].traverse():
+        archive.add(object.path, filter=repo_file_filter)
+
+
+def add_data_file(archive, name, path, fileobj=None):
     global DATA_DIR
-    filename = os.path.join(DATA_DIR, name)
-    tarinfo = archive.gettarinfo(filename, arcname=os.path.join(path, name))
-    archive.addfile(tarinfo, fileobj=open(filename, "rb"))
+    target_path = os.path.join(path, name)
+    if fileobj is None:
+        filename = os.path.join(DATA_DIR, name)
+        tarinfo = archive.gettarinfo(filename, arcname=target_path)
+        archive.addfile(tarinfo, fileobj=open(filename, "rb"))
+    else:
+        tarinfo = archive.gettarinfo(fileobj=fileobj, arcname=target_path)
+        archive.addfile(tarinfo, fileobj=fileobj)
 
 
-def add_data_files(archive):
+def concatenate_data_files(*names):
     global DATA_DIR
+    result = tempfile.TemporaryFile()
+    for name in names:
+        with open(os.path.join(DATA_DIR, name), "rb") as file:
+            result.write(file.read())
+    result.seek(0)
+    return result
+
+
+def add_data_files(archive, device):
     add_data_file(
         archive, "home_automation.service", "usr/lib/systemd/system")
-    add_data_file(archive, "lighttpd.conf", "etc/lighttpd")
     add_data_file(archive, "home_automation_manage", "/usr/local/bin")
+    if device:
+        lighttpd_conf_file = concatenate_data_files(
+            "lighttpd.conf", "lighttpd.conf.device")
+    else:
+        lighttpd_conf_file = None
+    add_data_file(archive, "lighttpd.conf", "etc/lighttpd",
+                  fileobj=lighttpd_conf_file)
 
 
-def add_files(archive, prefix, repo):
+def add_files(archive, prefix, repo, device):
     global STATIC_FILES_DIR
 
     with tempfile.TemporaryFile() as file:
         inner_archive = tarfile.open(mode="w", fileobj=file)
         add_server_files(inner_archive, repo)
-        add_data_files(inner_archive)
+        add_all_files_from_repo(inner_archive, repo, "python")
+        if device:
+            add_all_files_from_repo(inner_archive, repo, "device/pi")
+        add_data_files(inner_archive, device)
         inner_archive.close()
         file.seek(0)
         archive.addfile(
@@ -168,6 +197,9 @@ def main():
         "--output", nargs='?', default="home_automation.tar.gz",
         help="The name of the output archive. No archive is generated if "
              "--type=download.")
+    parser.add_argument(
+        "--device", action='store_true',
+        help="Also install Raspberry Pi device.")
     arguments = parser.parse_args()
     arguments.output = os.path.abspath(arguments.output)
     repo = git.Repo(search_parent_directories=True)
@@ -177,7 +209,7 @@ def main():
     if arguments.type != "download":
         archive = create_archive(arguments.output)
         prefix = calculate_prefix(arguments.output)
-        add_files(archive, prefix, repo)
+        add_files(archive, prefix, repo, arguments.device)
         if arguments.type == "install":
             add_install_files(archive, prefix)
         else:
