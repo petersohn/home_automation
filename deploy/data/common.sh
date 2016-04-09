@@ -8,7 +8,7 @@ set_permissons() {
 }
 
 create_symlinks() {
-    ln -s "$("$script_dir/get_django_path.py")/contrib/admin/static/admin" "$server_dir/home_automation/home/static/"
+    ln -fs "$("$script_dir/get_django_path.py")/contrib/admin/static/admin" "$server_dir/home_automation/home/static/"
 }
 
 unpack_files() {
