@@ -3,6 +3,7 @@
 import argparse
 import git
 import os
+import os.path
 import re
 import sys
 import tarfile
@@ -47,7 +48,7 @@ def download_file(url):
 
 
 def process_zip(name, target_dir, new_name):
-    target_path = target_dir + "/" + new_name
+    target_path = os.path.join(target_dir, new_name)
     if not os.path.exists(target_path):
         with download_file(
                 "http://jqueryui.com/resources/download/" +
@@ -55,7 +56,7 @@ def process_zip(name, target_dir, new_name):
             with zipfile.ZipFile(f) as zip:
                 zip.extractall(target_dir)
                 if new_name is not None:
-                    os.rename(target_dir + "/" + name, target_path)
+                    os.rename(os.path.join(target_dir, name), target_path)
 
 
 def download_dependencies():
@@ -86,7 +87,7 @@ def add_server_files(archive, repo):
 
     def filter(tarinfo):
         global INSTALLATION_DIR
-        tarinfo.name = INSTALLATION_DIR + "/" + tarinfo.name
+        tarinfo.name = os.path.join(INSTALLATION_DIR, tarinfo.name)
         return tarinfo
 
     for object in repo.tree()["server"].traverse(
@@ -98,8 +99,8 @@ def add_server_files(archive, repo):
 
 def add_data_file(archive, name, path):
     global DATA_DIR
-    filename = DATA_DIR + "/" + name
-    tarinfo = archive.gettarinfo(filename, arcname=path + "/" + name)
+    filename = os.path.join(DATA_DIR, name)
+    tarinfo = archive.gettarinfo(filename, arcname=os.path.join(path, name))
     archive.addfile(tarinfo, fileobj=open(filename, "rb"))
 
 
@@ -132,7 +133,7 @@ def add_install_file(archive, prefix, name):
         tarinfo.name = tarinfo.name.replace(DATA_DIR, prefix)
         return tarinfo
 
-    archive.add(DATA_DIR + "/" + name, filter=filter)
+    archive.add(os.path.join(DATA_DIR, name), filter=filter)
 
 
 def add_common_files(archive, prefix):
