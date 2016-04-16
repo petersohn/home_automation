@@ -1,0 +1,30 @@
+{
+    "deviceName": "pi",
+    "port": "8081",
+    "pins": [{
+        "name": "green_led",
+        "output": "true",
+        "number": 3
+    }, {
+        "name": "yellow_led",
+        "output": "true",
+        "number": 5
+    }, {
+        "name": "red_led",
+        "output": "true",
+        "number": 7
+    }, {
+        "name": "button1",
+        "output": "false",
+        "number": 8
+    }, {
+        "name": "button2",
+        "output": "false",
+        "number": 10
+    }, {
+        "name": "button3",
+        "output": "false",
+        "number": 12
+    }]
+}
+
