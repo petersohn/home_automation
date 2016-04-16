@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
-server_dir=/home/home_automation/server
+home_dir=/home/home_automation
+server_dir="$home_dir/server"
+device_dir="$home_dir/device"
+
+set_permissions_to_directory() {
+    chown --recursive root:home_automation "$1"
+    chmod --recursive g-w,o-rwx "$1"
+}
 
 set_permissons() {
-    chown --recursive root:home_automation "$server_dir"
-    chmod --recursive g-w,o-rwx "$server_dir"
+    set_permissions_to_directory "$server_dir"
+    set_permissions_to_directory "$device_dir"
 }
 
 create_symlinks() {

@@ -17,6 +17,7 @@ sys.path.append(scriptDirectory + "/../../python")
 
 import flipflop2
 
+
 class Main:
     def __init__(self, params):
         self.lock = threading.Lock()
@@ -74,7 +75,7 @@ class Main:
                 target=self.runSenderThread, args=(), daemon=True)
             gpio.setupPins(self.pins, self.handlePinChanged)
             senderThread.start()
-            server = flipflop.WSGIServer(self.handleRequest)
+            server = flipflop2.WSGIServer(self.handleRequest)
             server.run()
 
 

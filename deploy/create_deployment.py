@@ -103,16 +103,23 @@ def add_all_files_from_repo(archive, repo, path):
         archive.add(object.path, filter=repo_file_filter)
 
 
+def add_file(archive, source, target):
+    if type(source) is str:
+        tarinfo = archive.gettarinfo(source, arcname=target)
+        archive.addfile(tarinfo, fileobj=open(source, "rb"))
+    else:
+        tarinfo = archive.gettarinfo(fileobj=source, arcname=target)
+        archive.addfile(tarinfo, fileobj=source)
+
+
 def add_data_file(archive, name, path, fileobj=None):
     global DATA_DIR
     target_path = os.path.join(path, name)
     if fileobj is None:
         filename = os.path.join(DATA_DIR, name)
-        tarinfo = archive.gettarinfo(filename, arcname=target_path)
-        archive.addfile(tarinfo, fileobj=open(filename, "rb"))
+        add_file(archive, filename, target_path)
     else:
-        tarinfo = archive.gettarinfo(fileobj=fileobj, arcname=target_path)
-        archive.addfile(tarinfo, fileobj=fileobj)
+        add_file(archive, fileobj, target_path)
 
 
 def concatenate_data_files(*names):
@@ -129,9 +136,11 @@ def add_data_files(archive, device):
     add_data_file(
         archive, "home_automation.service", "usr/lib/systemd/system")
     add_data_file(archive, "home_automation_manage", "/usr/local/bin")
-    if device:
+    if device is not None:
         lighttpd_conf_file = concatenate_data_files(
             "lighttpd.conf", "lighttpd.conf.device")
+        add_file(
+            archive, device, "/home/home_automation/device/pi/config.json")
     else:
         lighttpd_conf_file = None
     add_data_file(archive, "lighttpd.conf", "etc/lighttpd",
@@ -145,7 +154,7 @@ def add_files(archive, prefix, repo, device):
         inner_archive = tarfile.open(mode="w", fileobj=file)
         add_server_files(inner_archive, repo)
         add_all_files_from_repo(inner_archive, repo, "python")
-        if device:
+        if device is not None:
             add_all_files_from_repo(inner_archive, repo, "device/pi")
         add_data_files(inner_archive, device)
         inner_archive.close()
@@ -198,10 +207,13 @@ def main():
         help="The name of the output archive. No archive is generated if "
              "--type=download.")
     parser.add_argument(
-        "--device", action='store_true',
-        help="Also install Raspberry Pi device.")
+        "--device", nargs="?", default=None,
+        help="Also install Raspberry Pi device. Use the argument as the "
+             "config file.")
     arguments = parser.parse_args()
     arguments.output = os.path.abspath(arguments.output)
+    if arguments.device is not None:
+        arguments.device = os.path.abspath(arguments.device)
     repo = git.Repo(search_parent_directories=True)
     os.chdir(repo.working_tree_dir)
 

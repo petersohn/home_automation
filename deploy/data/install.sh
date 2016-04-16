@@ -3,6 +3,7 @@
 create_user() {
     addgroup --system home_automation
     adduser --system --ingroup home_automation home_automation
+    adduser home_automation gpio
 }
 
 setup_psql() {
