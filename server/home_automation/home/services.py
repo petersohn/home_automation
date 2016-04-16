@@ -17,7 +17,7 @@ class ExpressionEvaluator(object):
 
         def set(self, name, value):
             v = models.Variable.objects.get(name=name)
-            v.semodels.t(value)
+            v.set(value)
 
         def toggle(self, name, modulo=2):
             v = models.Variable.objects.get(name=name)
