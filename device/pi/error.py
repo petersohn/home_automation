@@ -4,7 +4,7 @@
 import sys
 import traceback
 
+
 def handleGenericException():
     s = traceback.format_exc()
     sys.stderr.write(s + '\n')
-

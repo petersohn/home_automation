@@ -4,22 +4,20 @@
 import error
 import gpio
 
+
 class Content:
     def __init__(self, deviceName, port, pins):
         self.deviceName = deviceName
         self.port = port
         self.pins = pins
 
-
     def _getDeviceInfo(self):
         return {"name": self.deviceName, "port": self.port, "version": 1}
-
 
     def _getPinInfo(self, pin):
         return {"type": "output" if pin.output else "input",
                 "name": pin.name,
                 "value": gpio.getPinValue(pin)}
-
 
     def _getModifiedPinInfo(self):
         result = []
@@ -33,8 +31,7 @@ class Content:
 
         return result
 
-
-    def getFullStatus(self, type = None):
+    def getFullStatus(self, type=None):
         pinData = []
         for pin in self.pins:
             pinData.append(self._getPinInfo(pin))
@@ -44,7 +41,6 @@ class Content:
 
         return result
 
-
     def getModifiedPinsContent(self, type):
         modifiedPins = self._getModifiedPinInfo()
         if len(modifiedPins) != 0:
@@ -52,7 +48,6 @@ class Content:
                     "type": type}
         else:
             return None
-
 
     def getContent(self, path):
         tokens = path.split("/")
@@ -83,4 +78,3 @@ class Content:
                 return None
 
         return self._getPinInfo(pin)
-

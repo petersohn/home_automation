@@ -79,6 +79,24 @@ bool receiveResponse(Stream& stream, int& statusCode) {
     return false;
 }
 
+inline
+String decodeUrl(const String& s) {
+    String result;
+    for (size_t i = 0; i < s.length(); ++i) {
+        if (s[i] == '%') {
+            long value = 0;
+            if (s.length() > i + 2 &&
+                    tools::hexToString(s.c_str() + i + 1, 2, value)) {
+                result += static_cast<char>(value);
+                i += 2;
+            }
+        } else {
+            result += s[i];
+        }
+    }
+    return result;
+}
+
 template <typename Stream>
 bool receiveRequest(Stream& stream, String& method, String& path) {
     String line = tools::readLine(stream);
@@ -91,7 +109,8 @@ bool receiveRequest(Stream& stream, String& method, String& path) {
         return false;
     }
 
-    path = tools::nextToken(line, ' ', position);
+    String rawPath = tools::nextToken(line, ' ', position);
+    path = decodeUrl(rawPath);
     if (path.length() == 0) {
         return false;
     }

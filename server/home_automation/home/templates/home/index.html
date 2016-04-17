@@ -1,0 +1,32 @@
+{% load static %}
+<html>
+  <head>
+    <link rel="stylesheet" href="{% static "home/styles.css" %}"/>
+    <link rel="stylesheet" href="{% static "home/jquery-ui-themes/themes/vader/jquery-ui.min.css" %}"/>
+    <script src="{% static "home/jquery-ui/external/jquery/jquery.js" %}"></script>
+    <script src="{% static "home/jquery-ui/jquery-ui.min.js" %}"></script>
+  </head>
+  <body class="ui-widget wrapper">
+    <nav class="navbar">
+      <div class="ui-widget navbar-collapse">
+      </div>
+    </nav>
+    <div class="ui-widget" style="float:left; widt: 250px; background-color: #aaaaaa; height=100%">
+{% if device_list %}
+  {% for device in device_list %}
+      <h1 class="ui-widget ui-widget-header"><span class="ui-icon ui-icon-grip-diagonal-se"></span>{{ device.name }}</h1>
+      <ul>
+        {% for pin in device.pin_set.all %}
+          <li class="ui-widget-content">{{ pin.name }}</li>
+        {% endfor %}
+      </ul>
+  {% endfor %}
+{% else %}
+  <p>No devices are available.</p>
+{% endif %}
+    </div>
+  </body>
+  <script>
+    $( "#date" ).datepicker();
+  </script>
+</hml>

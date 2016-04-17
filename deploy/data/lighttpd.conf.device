@@ -1,0 +1,12 @@
+$SERVER["socket"] == ":81" {
+  fastcgi.server = (
+    "" =>
+    (( "host" => "127.0.0.1",
+       "port" => 2050,
+       "bin-path" => "/home/home_automation/device/pi/fcgi.py",
+       "max-procs" => 1,
+       "check-local" => "disable"
+    )),
+  )
+}
+
