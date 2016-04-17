@@ -12,13 +12,16 @@
         - [Development](#development-1)
 - [Configuration](#configuration)
     - [Setting up the web server](#setting-up-the-web-server)
-    - [Setting up the PostgreSQL server](#setting-up-the-postgresql-server)
+    - [Setting up the database server](#setting-up-the-database-server)
     - [Setting up a Raspberry Pi device](#setting-up-a-raspberry-pi-device)
     - [Configuration variables](#configuration-variables)
         - [Environment variables](#environment-variables)
         - [Variables in configuration files](#variables-in-configuration-files)
 - [Building](#building)
+- [Build the device code, but do not upload it](#build-the-device-code-but-do-not-upload-it)
+- [Build everything, but ignore the errors](#build-everything-but-ignore-the-errors)
     - [Permissions of serial devices](#permissions-of-serial-devices)
+- [Automatic deployment](#automatic-deployment)
 - [Tests](#tests)
 
 # Introduction
@@ -83,14 +86,14 @@ same layout.
 
 Other than the usage of GPIO ports and a working network connection, no special
 hardware configuration is required. See
-[here](setting-up-a-raspberry-pi-device) for the software configuration.
+[here](#setting-up-a-raspberry-pi-device) for the software configuration.
 
 ### Server
 
-The server should be a computer capable of running a HTTP server and PostgreSQL
-database server. It can be a low-power machine such as a Raspberry Pi or any
-PC. It should be connected to the same network as the devices. A wired
-connection is recommended.
+The server should be a computer capable of running a HTTP server with Django.
+It can be a low-power machine such as a Raspberry Pi or any PC. It should be
+connected to the same network as the devices. A wired connection is
+recommended.
 
 ### Development
 
@@ -105,12 +108,12 @@ flashing the device.
 
 * OS: Tested under Linux, but it should be work on any OS that can meet the
   other requirements.
-* [PostgreSQL](http://www.postgresql.org) server
-* Web server with FastCGI capability (tested with
+* Database server (tested with [PostgreSQL](http://www.postgresql.org))
+* Web server that works with Django (tested with
   [lighttpd](https://www.lighttpd.net/)).
 * Python 3 (tested with 3.5) with the following modules installed:
-  * [flipflop](https://pypi.python.org/pypi/flipflop) (for FastCGI server).
-  * [psycopg2](http://initd.org/psycopg/) (for PostgreSQL access).
+  * [Django](https://www.djangoproject.com/) and its dependencies
+    * For PostgreSQL, Django uses [psycopg2](http://initd.org/psycopg/).
 
 ### Development
 
@@ -132,11 +135,12 @@ For the purpose of examples, the repository is cloned into
 ## Setting up the web server
 
 The following configurations are required for the web server:
-* Use `server/www` as the document root.
-* Use `server/fcgi.py` as FastCGI server.
-* Use FastCGI for all `.py` files.
-* Make `index.py` files automatically completed (e.g. the URL `/` should point
-  to `/index.py`).
+* Use `server/home_automation/home` as the document root.
+* Use `server/home_automation/home_automation/wsgi.py` as FastCGI server.
+* Use FastCGI for all files not in `/static/.
+  * Disable checking of the availability of files on the filesystem.
+* Make `index.html` files automatically completed (e.g. the URL `/` should point
+  to `/index.html`).
 * It is recommended to allow connection keep-alive with a high (> 1 min)
   timeout, because opening new connections every time wastes the resources of
   the devices. Because TCP connections remain in TIME_WAIT after closing, it
@@ -145,26 +149,26 @@ The following configurations are required for the web server:
 An example `lighttpd.conf` file can be found
 [here](example_config/lighttpd.conf).
 
-## Setting up the PostgreSQL server
+The web server requires [JQuery UI](http://jqueryui.com/) to be present in
+`server/home_automation/home/static/home` under `jquery-ui` and
+`jquery-ui-themes` directories. These can be automatically downloaded using the
+[automatic deployment script](#automatic-deployment).
 
-The server requires a connection to an arbitrary PostgreSQL database The
-connection parameters for this database can be configured (see [Configuration
-variables](#configuration-variables)). The contents of the database can be set
-up with the `server/sql/tables.sql` file. For example:
+## Setting up the database server
 
-```bash
-postgres@machine:~$ psql postgres <<<'create database home_automation;'
-postgres@machine:~$ psql home_automation -f /home/username/workspace/home_automation/server/sql/tables.sql
+Django requires a connection to a database. The default settings can be changed
+in `server/home/home_automation/home_automation/settings.py`, or by setting the
+environment variable `HOME_DJANGO_CONFIG_FILE` to a JSON file with the
+following contents:
+
+```
+{
+    "name": "name-of-the-database",
+    "user": "database-role-to-use"
+}
 ```
 
-Additionally, in order to run the tests for the database binding, it is
-recommended to have access to the `postgres` database in order to create
-databases. In typical PostgreSQL installations, it can be achived by either
-creating a role with the same name as your Linux user with SUPERUSER or
-CREATEDB privileges, or running the tests as `postgres` Linux user. See [the
-PostgreSQL
-documentation](http://www.postgresql.org/docs/9.4/interactive/user-manag.html)
-for more details.
+See the Django documentation for more information about database connection.
 
 ## Setting up a Raspberry Pi device
 
@@ -180,7 +184,8 @@ An example `lighttpd.conf` file can be found
 [here](example_config/lighttpd.conf).
 
 The configuration for the device is done a `config.json` file. It must be
-located next to the `fcgi.py`.
+located next to the `fcgi.py`. [Here](example_config/pi_config.json) is an
+example for such a config file.
 * The `port` parameter must be the same as the port configured in the web
   server.
 * The `server` parameter controls the connection to the server. If the server
@@ -196,7 +201,7 @@ The configuration of the environment is done through two ways:
 * Environemet variables for options that affect how the build is done but not
   the build code directly.
 * Configuration files written in JSON for options that affect the code itself.
-  These options are are used to generate C++/Python source files by tup.
+  These options are are used to generate C++ source files by tup.
 
 ### Environment variables
 
@@ -229,13 +234,17 @@ default `load_environment.sh`), which can be sourced to recover the environment,
 so that there is no need to set each of them manually every time a new shell is
 started.
 
-Additionally, the following is used by the server test:
-* `TEST_SERVER_ADDRESS`: The address (host:port) used for connecting to the web
-  server. It is optional and defaults to `127.0.0.1:8080`.
+Additionally, the following is used by the server at runtime:
+* `HOME_DJANGO_CONFIG_FILE`: The config file for Django that contains database
+  connection information. It is optional if the default server connection
+  settings work. See [Setting up the database
+  server](#setting-up-the-database-server) for more details.
 
 ### Variables in configuration files
 
-Some configuration variables are built into the code. The directories `device/src/config` and `server/lib/config` contains template files that are are converted to real C++/Python source files by tup using these variables.
+Some configuration variables are built into the code. The directory
+`device/src/config` contains template files that are are converted to real C++
+source files by tup using these variables.
 
 These variables are stored in one or more JSON files. These files should
 contain an object whose keys are the configuration variable names and the
@@ -289,11 +298,8 @@ targets, or run tup with `--keep-going` to avoid stoppin when it fails to
 upload to the device:
 
 ```bash
-# build only the server
-tup server
-
 # Build the device code, but do not upload it
-tup device/sec/main/main.bin
+tup device/esp/src/main/main.bin
 
 # Build everything, but ignore the errors
 tup --keep-going
@@ -323,17 +329,50 @@ sudo chmod 666 /dev/ttyUSB0
 Unfortunately, you have to do it every time you connect the device to the
 computer.
 
+# Automatic deployment
+
+There is an automatic deployment found in `deploy`. The `create_deployment.py`
+script creates a package that automatically installs/upgrades the server and
+optionally the Raspberry Pi device. The installed server has the following
+properties:
+* It listens on port 80 (for the Raspberry Pi device, on port 81).
+* It runs as user and group `home_automation:home_automation`.
+* Deployed files are only writable by root and readable by the server but not
+  other users.
+* The database `home_automation` is used.
+* The service `home_automation` is used for non-webserver related tasks by the
+  server.
+
+Requirements on the target machine:
+* Linux that uses `systemd` for service management.
+* Debian's `adduser` command.
+* All [prerequisites](#server-1) installed.
+  * The PostgreSQL server must be up and running and the `postgres` Linux user
+    must be able to have superuser access.
+  * The lighttpd should have a service installed as `lighttpd.service`.
+
+The following is done at installation:
+* The Linux user is created.
+* The database is created.
+* Files are copied to the user's home directory and the appropriate permissions
+  are set.
+* `lighttpd.conf` file is overwritten with the one provided by the package.
+* Database migration is done by Django.
+* The `home_automation` service is created.
+* The lighttpd service is restarted.
+
+The upgrade does the same except for the user and database creation.
+
 # Tests
 
-The server has some tests implemented in Python's `unittest`. This can be found
-in `server/test`. The tests can be run by the `server/test/runTest.sh` script,
-which in addition to running the tests, creates a unique database, runs the
-tests, then drops the database. Arguments are passed to Python's unit test
-runner, as described in [the
-documentation](https://docs.python.org/2/library/unittest.html#command-line-options).
+The server has some tests implemented in Django's test framework, which is
+based on Python's `unittest`. This can be found in
+`server/home_automation/home/tests.py`. The tests can be run by the Django
+manage script (`server/home_automation/manage.py`) with the `test` command.
+Note that a database connectivity is required for the tests (no set up database
+is required though).
 
-The tests can also be run manually. In this case an empty database (without any
-tables in it) must be provided to it. In this case, the following parameters
-are mandatory:
-* `--connectString`: Connect string used to access the database.
-* `--testServerAddress`: Address (host:port) of the running web server.
+```bash
+python3 ./manage.py test
+```
+
