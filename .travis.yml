@@ -1,0 +1,22 @@
+language: cpp
+
+before_install:
+    - sudo apt-get update -qq
+
+install:
+    - sudo apt-get install -qq python3-pip lighttpd postgresql
+    - sudo pip install django psycopg2 gitpython
+
+script:
+    - ./deploy/create_deployment.py --type=upgrade --device ../custom/pi_config.json
+    - mkdir -p custom/install
+    - cd custom/install
+    - tar -xf ../../home_automation.tar.gz
+    - sudo ./home_automation/install.sh
+
+notifications:
+    email:
+        - kangirigungi@gmail.com
+    on_success: change
+    on_failure: always
+
