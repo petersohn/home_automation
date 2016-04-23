@@ -3,7 +3,9 @@
 create_user() {
     addgroup --system home_automation
     adduser --system --ingroup home_automation home_automation
-    adduser home_automation gpio
+    if [[ $has_device == yes ]]; then
+        adduser home_automation gpio
+    fi
 }
 
 setup_psql() {

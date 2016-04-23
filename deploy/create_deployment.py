@@ -5,6 +5,7 @@ import git
 import os
 import os.path
 import re
+import shlex
 import sys
 import tarfile
 import tempfile
@@ -174,19 +175,38 @@ def add_install_file(archive, prefix, name):
     archive.add(os.path.join(DATA_DIR, name), filter=filter)
 
 
-def add_common_files(archive, prefix):
+def add_environment_file(archive, prefix, environment):
+    with tempfile.TemporaryFile() as file:
+        for key, value in environment.items():
+            data = key + "=" + shlex.quote(value) + "\n"
+            file.write(data.encode("UTF-8"))
+        file.seek(0)
+        archive.addfile(
+            archive.gettarinfo(
+                arcname=prefix + "/environment.sh", fileobj=file),
+            fileobj=file)
+
+
+def add_common_files(archive, prefix, environment):
     add_install_file(archive, prefix, "common.sh")
     add_install_file(archive, prefix, "get_django_path.py")
+    add_environment_file(archive, prefix, environment)
 
 
-def add_upgrade_files(archive, prefix):
-    add_common_files(archive, prefix)
+def add_upgrade_files(archive, prefix, environment):
+    add_common_files(archive, prefix, environment)
     add_install_file(archive, prefix, "upgrade.sh")
 
 
-def add_install_files(archive, prefix):
-    add_common_files(archive, prefix)
+def add_install_files(archive, prefix, environment):
+    add_common_files(archive, prefix, environment)
     add_install_file(archive, prefix, "install.sh")
+
+
+def prepare_environment(arguments):
+    result = {}
+    result["has_device"] = "yes" if arguments.device else "no"
+    return result
 
 
 def main():
@@ -222,10 +242,11 @@ def main():
         archive = create_archive(arguments.output)
         prefix = calculate_prefix(arguments.output)
         add_files(archive, prefix, repo, arguments.device)
+        environment = prepare_environment(arguments)
         if arguments.type == "install":
-            add_install_files(archive, prefix)
+            add_install_files(archive, prefix, environment)
         else:
-            add_upgrade_files(archive, prefix)
+            add_upgrade_files(archive, prefix, environment)
 
         archive.close()
 

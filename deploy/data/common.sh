@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source "$script_dir/environment.sh"
+
 home_dir=/home/home_automation
 server_dir="$home_dir/server"
 device_dir="$home_dir/device"
