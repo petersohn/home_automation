@@ -7,7 +7,7 @@ before_install:
     - sudo apt-get update
 
 install:
-    - sudo apt-get install postgresql lighttpd
+    - sudo apt-get install lighttpd
     - pip install django psycopg2 gitpython
 
 script:

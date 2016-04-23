@@ -9,7 +9,7 @@ create_user() {
 }
 
 setup_psql() {
-    sudo -u postgres createuser --no-superuser home_automation
+    sudo -u postgres createuser --no-superuser --createdb --login --no-createrole home_automation
     sudo -u postgres psql -c 'create database home_automation owner home_automation'
 }
 
