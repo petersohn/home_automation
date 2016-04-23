@@ -7,7 +7,7 @@ install:
     - pip install django psycopg2 gitpython
 
 script:
-    - ./deploy/create_deployment.py --type=upgrade --device ../custom/pi_config.json
+    - ./deploy/create_deployment.py --type=install
     - mkdir -p custom/install
     - cd custom/install
     - tar -xf ../../home_automation.tar.gz
