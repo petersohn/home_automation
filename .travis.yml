@@ -1,11 +1,10 @@
-language: cpp
-
-before_install:
-    - sudo apt-get update -qq
+language: python
+python:
+    - 3.4
+    - 3.5
 
 install:
-    - sudo apt-get install -qq python3-pip lighttpd postgresql
-    - sudo pip install django psycopg2 gitpython
+    - pip install django psycopg2 gitpython
 
 script:
     - ./deploy/create_deployment.py --type=upgrade --device ../custom/pi_config.json
