@@ -1,6 +1,9 @@
 sudo: required
 dist: trusty
 services: postgresql
+addons:
+    postgresql:
+        9.4
 
 language: python
 python:
@@ -13,17 +16,13 @@ before_install:
 install:
     - sudo apt-get install -qq lighttpd
     - pip install django psycopg2 gitpython
-    - sudo apt-get install -qq tree
-    - tree /usr/local/lib
-    - find / -name django 2>/dev/null || true
-    - which python
-    - which python3
-    - which pip
+    - pip list
     - echo $PYTHONPATH
     - echo $PATH
+    - echo $LD_LIBRARY_PATH
 
 script:
-    - python3 ./server/home_automation/manage.py test
+    - python3 ./server/home_automation/manage.py test home
     - ./deploy/create_deployment.py --type=install --system=upstart
     - mkdir -p custom/install
     - cd custom/install
