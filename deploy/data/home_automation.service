@@ -1,5 +1,5 @@
 [Unit]
-Description=This is the daemon for home automation.
+Description=the daemon for home automation
 Documentation=https://github.com/petersohn/home_automation
 Wants=postgresql.service
 
