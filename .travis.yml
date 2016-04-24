@@ -12,16 +12,18 @@ before_install:
 
 install:
     - sudo apt-get install -qq lighttpd
-    - sudo pip install django psycopg2 gitpython
+    - pip install django psycopg2 gitpython
     - sudo apt-get install -qq tree
     - tree /usr/local/lib
+    - find / -name django 2>/dev/null || true
     - which python
+    - which python3
     - which pip
     - echo $PYTHONPATH
     - echo $PATH
-    - find / -name django 2>/dev/null
 
 script:
+    - python3 ./server/home_automation/manage.py test
     - ./deploy/create_deployment.py --type=install --system=upstart
     - mkdir -p custom/install
     - cd custom/install
