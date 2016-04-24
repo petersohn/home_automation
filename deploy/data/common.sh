@@ -13,7 +13,10 @@ set_permissions_to_directory() {
 
 set_permissons() {
     set_permissions_to_directory "$server_dir"
-    set_permissions_to_directory "$device_dir"
+
+    if [[ $has_device == yes ]]; then
+        set_permissions_to_directory "$device_dir"
+    fi
 }
 
 create_symlinks() {
