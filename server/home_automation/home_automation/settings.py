@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import json
 import os
+import pwd
 
 
 def read_config(config_file):
@@ -98,7 +99,7 @@ DATABASES = {
         #'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'home_automation',
-        'USER': 'home_automation',
+        'USER': pwd.getpwuid(os.getuid()).pw_name,
         'ATOMIC_REQUESTS': True
     }
 }
