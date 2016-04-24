@@ -29,15 +29,33 @@ migrate() {
     sudo -u home_automation python3 "$server_dir/home_automation/manage.py" migrate
 }
 
+restart_service() {
+    if [[ $system_type == systemd ]]; then
+        systemctl restart "${1}.service"
+    else
+        service "$1" restart
+    fi
+}
+
+check_service() {
+    if [[ $system_type == systemd ]]; then
+        systemctl status "${1}.service"
+    else
+        service "$1" status
+    fi
+}
+
 restart_services() {
-    systemctl daemon-reload
-    systemctl restart lighttpd.service
-    systemctl restart home_automation.service
+    if [[ $system_type == systemd ]]; then
+        systemctl daemon-reload
+    fi
+    restart_services lighttpd
+    restart_services home_automation
 }
 
 verify_installation() {
-    systemctl status lighttpd.service
-    systemctl status home_automation.service
+    check_services lighttpd
+    check_services home_automation
 }
 
 common_tasks() {

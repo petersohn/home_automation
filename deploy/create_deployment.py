@@ -133,31 +133,36 @@ def concatenate_data_files(*names):
     return result
 
 
-def add_data_files(archive, device):
-    add_data_file(
-        archive, "home_automation.service", "usr/lib/systemd/system")
+def add_data_files(archive, arguments):
+    if arguments.system == "systemd":
+        add_data_file(
+            archive, "home_automation.service", "usr/lib/systemd/system")
+    else:
+        add_data_file(
+            archive, "home_automation.conf", "/etc/init")
     add_data_file(archive, "home_automation_manage", "/usr/local/bin")
-    if device is not None:
+    if arguments.device is not None:
         lighttpd_conf_file = concatenate_data_files(
             "lighttpd.conf", "lighttpd.conf.device")
         add_file(
-            archive, device, "/home/home_automation/device/pi/config.json")
+            archive, arguments.device,
+            "/home/home_automation/device/pi/config.json")
     else:
         lighttpd_conf_file = None
     add_data_file(archive, "lighttpd.conf", "etc/lighttpd",
                   fileobj=lighttpd_conf_file)
 
 
-def add_files(archive, prefix, repo, device):
+def add_files(archive, prefix, repo, arguments):
     global STATIC_FILES_DIR
 
     with tempfile.TemporaryFile() as file:
         inner_archive = tarfile.open(mode="w", fileobj=file)
         add_server_files(inner_archive, repo)
         add_all_files_from_repo(inner_archive, repo, "python")
-        if device is not None:
+        if arguments.device is not None:
             add_all_files_from_repo(inner_archive, repo, "device/pi")
-        add_data_files(inner_archive, device)
+        add_data_files(inner_archive, arguments)
         inner_archive.close()
         file.seek(0)
         archive.addfile(
@@ -206,6 +211,7 @@ def add_install_files(archive, prefix, environment):
 def prepare_environment(arguments):
     result = {}
     result["has_device"] = "yes" if arguments.device else "no"
+    result["system_type"] = arguments.system
     return result
 
 
@@ -218,6 +224,11 @@ def main():
         help="The type of the package. 'install' is a full installation "
              "package and 'upgrade' is an upgrade package. 'download' only "
              "downloads dependencies into the local repository.")
+    parser.add_argument(
+        "--system", nargs='?', choices=["systemd", "upstart"],
+        default="systemd",
+        help="The type of service management on the target OS. Supported "
+             "values are 'systemd' (default) or 'upstart'.")
     parser.add_argument(
         "--source", nargs='?', default=".",
         help="The directory to get the files from. It must be a git "
@@ -241,7 +252,7 @@ def main():
     if arguments.type != "download":
         archive = create_archive(arguments.output)
         prefix = calculate_prefix(arguments.output)
-        add_files(archive, prefix, repo, arguments.device)
+        add_files(archive, prefix, repo, arguments)
         environment = prepare_environment(arguments)
         if arguments.type == "install":
             add_install_files(archive, prefix, environment)
