@@ -12,7 +12,14 @@ before_install:
 
 install:
     - sudo apt-get install -qq lighttpd
-    - pip install django psycopg2 gitpython
+    - sudo pip install django psycopg2 gitpython
+    - sudo apt-get install -qq tree
+    - tree /usr/local/lib
+    - which python
+    - which pip
+    - echo $PYTHONPATH
+    - echo $PATH
+    - find / -name django 2>/dev/null
 
 script:
     - ./deploy/create_deployment.py --type=install --system=upstart
