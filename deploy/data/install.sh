@@ -14,7 +14,9 @@ setup_psql() {
 }
 
 setup_services() {
-    systemctl enable home_automation.service
+    if [[ $system_type == systemd ]]; then
+        systemctl enable home_automation.service
+    fi
 }
 
 script_dir=$(readlink -e "$(dirname "$0")")
