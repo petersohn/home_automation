@@ -19,7 +19,7 @@ script:
     - mkdir -p custom/install
     - cd custom/install
     - tar -xf ../../home_automation.tar.gz
-    - sudo ./home_automation/install.sh
+    - sudo bash -x ./home_automation/install.sh
 
 notifications:
     email:
