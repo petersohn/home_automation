@@ -22,13 +22,8 @@ install:
     - echo $LD_LIBRARY_PATH
 
 script:
-    - python3 ./server/home_automation/manage.py makemigrations
-    - python3 ./server/home_automation/manage.py test home
-    - ./deploy/create_deployment.py --type=install --system=upstart
-    - mkdir -p custom/install
-    - cd custom/install
-    - tar -xf ../../home_automation.tar.gz
-    - sudo bash -x ./home_automation/install.sh
+    - ./.travis/run-test.sh
+    - ./.travis/deploy.sh
 
 notifications:
     email:
