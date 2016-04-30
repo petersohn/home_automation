@@ -19,6 +19,9 @@ install:
     - pip list
     - which python
     - which pip
+    - env
+    - find $VIRTUAL_ENV
+    - sudo ./.travis/setup-paths.sh
 
 script:
     - ./.travis/run-test.sh
