@@ -17,9 +17,8 @@ install:
     - sudo apt-get install -qq lighttpd
     - pip install django psycopg2 gitpython
     - pip list
-    - echo $PYTHONPATH
-    - echo $PATH
-    - echo $LD_LIBRARY_PATH
+    - which python
+    - which pip
 
 script:
     - ./.travis/run-test.sh
