@@ -56,6 +56,11 @@ restart_services() {
     restart_service home_automation
 }
 
+check_services() {
+    check_service lighttpd
+    check_service home_automation
+}
+
 verify_installation() {
     check_services lighttpd
     check_services home_automation
