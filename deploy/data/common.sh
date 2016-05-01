@@ -52,8 +52,8 @@ restart_services() {
     if [[ $system_type == systemd ]]; then
         systemctl daemon-reload
     fi
-    restart_services lighttpd
-    restart_services home_automation
+    restart_service lighttpd
+    restart_service home_automation
 }
 
 verify_installation() {
