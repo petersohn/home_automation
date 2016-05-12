@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/petersohn/home_automation.svg?branch=master)](https://travis-ci.org/petersohn/home_automation)
+
 # Table of Contents
 
 - [Introduction](#introduction)
