@@ -23,7 +23,7 @@ class IndexView(View):
 
         log_list = (models.Log.objects.all().order_by('-time').
                     select_related('device').select_related('pin')[:20])
-        template = loader.get_template('home/AdminTemplate.html')
+        template = loader.get_template('home/HomeTemplate.html')
         context = {
             'device_list': device_list,
             'log_list': log_list,
