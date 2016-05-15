@@ -2,5 +2,6 @@
 
 set -ex
 
-python3 ./server/home_automation/manage.py makemigrations
-./deploy/create_deployment.py --type=install --system=upstart
+cd ./server/home_automation
+python3 ./manage.py makemigrations
+python3 ./manage.py test
