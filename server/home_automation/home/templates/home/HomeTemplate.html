@@ -189,7 +189,7 @@
 
     <!-- Morris Charts JavaScript -->
     <script>
-      $("#devices_link, #device_details").click(function() {
+      $("#devices_link").click(function() {
           $("#devices").show(0)
           $("#logs").hide(0)
       })
@@ -197,11 +197,13 @@
           $("#devices").hide(0)
           $("#logs").show(0)
       })
+
       $("#logs").hide(0)
       $("#devices").show(0)
       $("#devices_link").parent().addClass("active")
+
       $(document).ready(function() {
-          $(".navbar-nav li a").click(function(event) { //Click on a navigation item
+        $(".navbar-nav li a").click(function(event) { //Click on a navigation item
           $(".navbar-nav li").removeClass("active");   //Remove Active style of item
           $(event.target).parent().addClass("active")
         });
