@@ -1,0 +1,17 @@
+{% load static %}
+<div class="col-lg-12">
+<h1 class="page-header">
+    Status <small> of Devices</small>
+</h1>
+
+{% if device_list %}
+<ul class="list-inline">
+{% for device in device_list %}
+    <li>
+      <img src="{% if device.is_alive %}{% static "home/led-green-black.svg" %}{% else %}{% static "home/led-red-black.svg" %}{%endif%}" class="led" id="led-{{ device.name }}"/>
+        {{ device.name }}
+    </li>
+{% endfor %}
+</ul>
+{% endif %}
+

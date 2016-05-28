@@ -19,17 +19,23 @@ sys.path.append(scriptDirectory + "/../../lib")
 class IndexView(TemplateView):
     template_name = 'home/HomeTemplate.html'
 
-    def get_context_data(self, **kwargs):
+
+class AjaxView(View):
+    def get(self, request, *args, **kwargs):
         device_list = (
             models.Device.objects.prefetch_related('pin_set').all().
             order_by('name'))
 
         log_list = (models.Log.objects.all().order_by('-time').
                     select_related('device').select_related('pin')[:20])
-        return {
+        context = {
             'device_list': device_list,
             'log_list': log_list,
         }
+        templatePath = 'home/' + request.path.strip('/') + 'Template.html'
+        template = loader.get_template(templatePath)
+        return HttpResponse(template.render(context, request))
+
 
 ##---------------------------------------------------------------------------##
 

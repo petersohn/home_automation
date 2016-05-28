@@ -83,96 +83,11 @@
         </nav>
 
         <div id="page-wrapper">
-
-            <div class="container-fluid">
-              <div class="device-info">
-                <h1 class="page-header">
-                    Status <small> of Devices</small>
-                </h1>
-
-    {% if device_list %}
-                <ul class="list-inline">
-      {% for device in device_list %}
-                    <li>
-                      <img src="{% if device.is_alive %}{% static "home/led-green-black.svg" %}{% else %}{% static "home/led-red-black.svg" %}{%endif%}" class="led" id="led-{{ device.name }}"/>
-                        {{ device.name }}
-                    </li>
-      {% endfor %}
-                </ul>
-    {% endif %}
-              </div>
-
-                    <div id="devices" class="row">
-                        <div class="col-lg-12">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                  <h3 class="panel-title">
-                                    <i class="ui-icon ui-icon-signal-diag"></i> Devices and Pins
-                                  </h3>
-                                </div>
-                                <div class="panel-body">
-    {% if device_list %}
-        <table style="width: 100%;" class="table">
-      {% for device in device_list %}
-            <thead>
-              <tr>
-                <th>{{ device.name }}</th>
-                <th>{{ device.ip_address }}:{{ device.port }}</th>
-                <th>{{ device.is_alive }}</th>
-              </tr>
-            </thead>
-            <tbody>
-         {% for pin in device.pin_set.all %}
-              <tr class=""><td style="padding-right: 10px;">{{ pin.name }}</td><td>{{ pin.kind }}</td>
-                <td>{{ pin.expression }}</td>
-              </tr>
-         {% endfor %}
-            </tbody>
-      {% endfor %}
-        </table>
-    {% else %}
-      <p>No devices are available.</p>
-    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- /.row -->
-
-                    <div id="logs" class="row">
-                        <div class="col-lg-12">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                  <h3 class="panel-title">
-                                    <i class="ui-icon ui-icon-script"></i> Logs
-                                  </h3>
-                                </div>
-                                <div class="panel-body">
-                                  {% if log_list %}
-                                    <table class="log-content" width="100%">
-                                    <tr>
-                                      <th>Time</th>
-                                      <th>Severity</th>
-                                      <th>Device</th>
-                                      <th>Pin</th>
-                                      <th>Message</th>
-                                    {% for log in log_list %}
-                                    <tr class="{{ log.severity }}">
-                                      <td>{{ log.time }}</td>
-                                      <td>{{ log.severity }}</td>
-                                      <td>{% if log.device %}{{ log.device.name }}{% endif %}</td>
-                                      <td>{% if log.pin %}{{ log.pin.name }}{% endif %}</td>
-                                      <td>{{ log.message }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                    </table>
-                                  {% else %}
-                                    <p>No logs.</p>
-                                  {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- /.row -->
-                </div>
+          <div class="container-fluid">
+            <div id="status" class="device-info"></div>
+            <div id="devices" class="row"></div>
+            <div id="logs" class="row"></div>
+          </div>
         </div> <!-- /#page-wrapper -->
 
     </div> <!-- /#wrapper -->
@@ -183,8 +98,19 @@
     <!-- Bootstrap Core JavaScript -->
     <script src="{% static "home/HomeTemplate_files/bootstrap.js" %}"></script>
 
-    <!-- Morris Charts JavaScript -->
     <script>
+      function loadStatus() {
+        $("#status").load("/ajax/Status")
+      }
+
+      function loadDevices() {
+        $("#devices").load("/ajax/Devices")
+      }
+
+      function loadLogs() {
+        $("#logs").load("/ajax/Logs")
+      }
+
       $("#devices_link").click(function() {
         $("#devices").show(0)
         $("#logs").hide(0)
@@ -206,6 +132,10 @@
           $(".navbar-nav li").removeClass("active");   //Remove Active style of item
           $(event.target).parent().addClass("active")
         });
+
+        loadStatus()
+        loadDevices()
+        loadLogs()
       });
    </script>
 
