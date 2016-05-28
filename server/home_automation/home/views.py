@@ -4,6 +4,7 @@ from home import models, services
 
 from django.http.response import HttpResponse
 from django.views.generic import View
+from django.views.generic import TemplateView
 from django.template import loader
 
 import json
@@ -15,20 +16,20 @@ scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/../../lib")
 
 
-class IndexView(View):
-    def get(self, request, *args, **kwargs):
+class IndexView(TemplateView):
+    template_name = 'home/HomeTemplate.html'
+
+    def get_context_data(self, **kwargs):
         device_list = (
             models.Device.objects.prefetch_related('pin_set').all().
             order_by('name'))
 
         log_list = (models.Log.objects.all().order_by('-time').
                     select_related('device').select_related('pin')[:20])
-        template = loader.get_template('home/HomeTemplate.html')
-        context = {
+        return {
             'device_list': device_list,
             'log_list': log_list,
         }
-        return HttpResponse(template.render(context, request))
 
 ##---------------------------------------------------------------------------##
 

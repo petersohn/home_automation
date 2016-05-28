@@ -51,7 +51,7 @@
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand" href="/">
+                    <a class="navbar-brand" href="#" id="bar">
                       <i class="ui-icon ui-icon-home"></i>
                       Home
                     </a>
@@ -94,11 +94,7 @@
                 <ul class="list-inline">
       {% for device in device_list %}
                     <li>
-                        {% if device.is_alive %}
-                        <img src="{% static "home/led-green-black.svg" %}" class="led"/>
-                        {% else %}
-                        <img src="{% static "home/led-red-black.svg" %}" class="led"/>
-                        {% endif %}
+                      <img src="{% if device.is_alive %}{% static "home/led-green-black.svg" %}{% else %}{% static "home/led-red-black.svg" %}{%endif%}" class="led" id="led-{{ device.name }}"/>
                         {{ device.name }}
                     </li>
       {% endfor %}
@@ -190,12 +186,15 @@
     <!-- Morris Charts JavaScript -->
     <script>
       $("#devices_link").click(function() {
-          $("#devices").show(0)
-          $("#logs").hide(0)
+        $("#devices").show(0)
+        $("#logs").hide(0)
       })
       $("#logs_link").click(function() {
-          $("#devices").hide(0)
-          $("#logs").show(0)
+        $("#devices").hide(0)
+        $("#logs").show(0)
+      })
+      $("#bar").click(function() {
+
       })
 
       $("#logs").hide(0)
