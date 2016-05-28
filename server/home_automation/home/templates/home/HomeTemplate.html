@@ -114,10 +114,14 @@
       $("#devices_link").click(function() {
         $("#devices").show(0)
         $("#logs").hide(0)
+        loadStatus()
+        loadDevices()
       })
       $("#logs_link").click(function() {
         $("#devices").hide(0)
         $("#logs").show(0)
+        loadStatus()
+        loadLogs()
       })
       $("#bar").click(function() {
 
@@ -135,7 +139,6 @@
 
         loadStatus()
         loadDevices()
-        loadLogs()
       });
    </script>
 
