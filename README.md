@@ -151,10 +151,10 @@ The following configurations are required for the web server:
 An example `lighttpd.conf` file can be found
 [here](example_config/lighttpd.conf).
 
-The web server requires [JQuery UI](http://jqueryui.com/) to be present in
-`server/home_automation/home/static/home` under `jquery-ui` and
-`jquery-ui-themes` directories. These can be automatically downloaded using the
+The following external dependencies can automatically be installed using the
 [automatic deployment script](#automatic-deployment).
+* [JQuery UI](http://jqueryui.com/)
+* [vis.js](http://visjs.org)
 
 ## Setting up the database server
 
@@ -346,12 +346,13 @@ properties:
   server.
 
 Requirements on the target machine:
-* Linux that uses `systemd` for service management.
+* Linux that uses `systemd` or `upstart` for service management.
 * Debian's `adduser` command.
 * All [prerequisites](#server-1) installed.
   * The PostgreSQL server must be up and running and the `postgres` Linux user
     must be able to have superuser access.
-  * The lighttpd should have a service installed as `lighttpd.service`.
+  * The lighttpd should have a service installed as `lighttpd.service` (with
+    `systemd`) or `lighttpd` (with `upstart`).
 
 The following is done at installation:
 * The Linux user is created.
@@ -364,6 +365,10 @@ The following is done at installation:
 * The lighttpd service is restarted.
 
 The upgrade does the same except for the user and database creation.
+
+This script can also be used for downloading the dependencies without creating
+a package (for running the web server locally). Note that the dependencies are
+always downloaded and are not deleted even after creating a package.
 
 # Tests
 
