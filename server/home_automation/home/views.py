@@ -32,7 +32,7 @@ class AjaxView(View):
             'device_list': device_list,
             'log_list': log_list,
         }
-        templatePath = 'home/' + request.path.strip('/') + 'Template.html'
+        templatePath = 'home/' + request.path.strip('/')
         template = loader.get_template(templatePath)
         return HttpResponse(template.render(context, request))
 

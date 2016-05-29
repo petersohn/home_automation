@@ -1,0 +1,13 @@
+{% load static %}
+[
+  {% if log_list %}
+    {% for log in log_list %}
+      {
+        "start": "{{ log.time|date:"Y-m-d H:i:s" }}",
+        "className": "{{ log.severity }}",
+        "title": "{{ log.severity }}",
+        "content": "{{ log.message }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  {% endif %}
+]

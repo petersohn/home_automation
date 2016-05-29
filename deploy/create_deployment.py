@@ -17,17 +17,21 @@ SERVER_DIR = "server"
 DATA_DIR = "deploy/data"
 DJANGO_PROJECT_DIR = SERVER_DIR + "/home_automation"
 STATIC_FILES_DIR = DJANGO_PROJECT_DIR + "/home/static/home"
+VISJS_DIR = STATIC_FILES_DIR + "/visjs"
 INSTALLATION_DIR = "home/home_automation"
 
 
-def download_file(url):
+def download_file(url, target=tempfile.TemporaryFile()):
     sys.stderr.write("Downloading " + url + "\n")
     with urlopen(Request(url, headers={"User-Agent": "Foobar"})) as response:
         if response.status != 200:
             raise RuntimeError("Got HTTP error: " + response.msg)
-        length = int(response.getheader("Content-Length"))
+        length_header = response.getheader("Content-Length")
+        if length_header is not None:
+            length = int()
+        else:
+            length = None
         amount = 1024 * 4
-        target = tempfile.TemporaryFile()
         downloaded = 0
         if length is not None:
             sys.stderr.write("0.0%\r")
@@ -60,11 +64,23 @@ def process_zip(name, target_dir, new_name):
                     os.rename(os.path.join(target_dir, name), target_path)
 
 
+def download_file_to_target(url, target):
+    if not os.path.exists(target):
+        download_file(url, open(target, mode="wb"))
+
+
 def download_dependencies():
     global STATIC_FILES_DIR
     process_zip("jquery-ui-1.11.4", STATIC_FILES_DIR, "jquery-ui")
     process_zip(
         "jquery-ui-themes-1.11.4", STATIC_FILES_DIR, "jquery-ui-themes")
+    os.makedirs(VISJS_DIR, exist_ok=True)
+    download_file_to_target(
+        "https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.js",
+        os.path.join(VISJS_DIR, "vis.min.js"))
+    download_file_to_target(
+        "https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.css",
+        os.path.join(VISJS_DIR, "vis.min.css"))
 
 
 def calculate_prefix(path):
