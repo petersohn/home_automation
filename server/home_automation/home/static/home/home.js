@@ -9,9 +9,9 @@ function loadDevices() {
 function loadLogs() {
   $.get("/ajax/Logs.json",
     function(data) {
-      console.log(data)
-      $("#logs").empty()
-      var container = document.getElementById("logs")
+      logs = $("#logs")
+      logs.empty()
+      var container = logs.get(0)
       var items = new vis.DataSet(JSON.parse(data))
       var options = {}
 
