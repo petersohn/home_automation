@@ -9,18 +9,18 @@ function loadDevices() {
 function loadLogs() {
   $.get("/ajax/Logs.json",
     function(data) {
-      logs = $("#logs")
-      logs.empty()
-      var container = logs.get(0)
       var items = new vis.DataSet(JSON.parse(data))
-      var options = {}
-
-      var logsTimeline = new vis.Timeline(container, items, options)
+      logsTimeline.setItems(items)
     })
 }
 
-//function createTimeline() {
-//}
+function createTimeline() {
+  var container = $("#logs").get(0)
+  var items = []
+  var options = {}
+
+  logsTimeline = new vis.Timeline(container, items, options)
+}
 
 $("#devices_link").click(function() {
   $("#devices").show(0)
@@ -35,9 +35,7 @@ $("#logs_link").click(function() {
   loadLogs()
 })
 
-$("#bar").click(function() {
-
-})
+var logsTimeline
 
 $("#logs").hide(0)
 $("#devices").show(0)
@@ -49,7 +47,7 @@ $(document).ready(function() {
     $(event.target).parent().addClass("active")
   });
 
-  //createTimeline()
+  createTimeline()
   loadStatus()
   loadDevices()
 
