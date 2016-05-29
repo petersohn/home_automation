@@ -21,14 +21,14 @@ VISJS_DIR = STATIC_FILES_DIR + "/visjs"
 INSTALLATION_DIR = "home/home_automation"
 
 
-def download_file(url, target=tempfile.TemporaryFile()):
+def download_file(url, target):
     sys.stderr.write("Downloading " + url + "\n")
     with urlopen(Request(url, headers={"User-Agent": "Foobar"})) as response:
         if response.status != 200:
             raise RuntimeError("Got HTTP error: " + response.msg)
         length_header = response.getheader("Content-Length")
         if length_header is not None:
-            length = int()
+            length = int(length_header)
         else:
             length = None
         amount = 1024 * 4
@@ -57,7 +57,7 @@ def process_zip(name, target_dir, new_name):
     if not os.path.exists(target_path):
         with download_file(
                 "http://jqueryui.com/resources/download/" +
-                name + ".zip") as f:
+                name + ".zip", tempfile.TemporaryFile()) as f:
             with zipfile.ZipFile(f) as zip:
                 zip.extractall(target_dir)
                 if new_name is not None:
