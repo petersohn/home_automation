@@ -81,6 +81,10 @@ def download_dependencies():
     download_file_to_target(
         "https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.css",
         os.path.join(VISJS_DIR, "vis.min.css"))
+    download_file_to_target(
+        "https://github.com/js-cookie/js-cookie/releases/download/v2.1.2/"
+        "js.cookie-2.1.2.min.js",
+        os.path.join(STATIC_FILES_DIR, "js-cookie.min.js"))
 
 
 def calculate_prefix(path):

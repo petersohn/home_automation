@@ -67,14 +67,23 @@ th.log-content {
     background-color: #AAAAAA;
 }
 
-.vis-item.INFO {
+.INFO {
     background-color: #66AAFF;
 }
 
-.vis-item.WARNING {
+.WARNING {
     background-color: #E09F0C;
 }
 
-.vis-item.ERROR {
+.ERROR {
     background-color: #F46666;
+}
+
+.status-list-element {
+    margin-right: 16px
+}
+
+.ui-tabs .ui-tabs-nav li a span {
+    float: left;
+    margin-right: 5px;
 }

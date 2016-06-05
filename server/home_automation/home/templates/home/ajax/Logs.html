@@ -1,0 +1,25 @@
+{% load static %}
+
+{% if log_list %}
+  <table class="log-content" width="100%">
+    <tr>
+    <th>Time</th>
+    <th>Severity</th>
+    <th>Device</th>
+    <th>Pin</th>
+    <th>Message</th>
+    {% for log in log_list %}
+      <tr class="{{ log.severity }}">
+        <td>{{ log.time }}</td>
+        <td>{{ log.severity }}</td>
+        <td>{% if log.device %}{{ log.device.name }}{% endif %}</td>
+        <td>{% if log.pin %}{{ log.pin.name }}{% endif %}</td>
+        <td>{{ log.message }}</td>
+      </tr>
+    {% endfor %}
+    </tr>
+  </table>
+{% else %}
+  <p>No logs.</p>
+{% endif %}
+

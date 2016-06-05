@@ -1,37 +1,26 @@
 {% load static %}
-<div class="col-lg-12">
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <h3 class="panel-title">
-        <i class="ui-icon ui-icon-signal-diag"></i> Devices and Pins
-      </h3>
-    </div>
-    <div class="panel-body">
+
 {% if device_list %}
-      <table style="width: 100%;" class="table">
+  <table style="width: 100%;" class="table">
   {% for device in device_list %}
-        <thead>
-          <tr>
-            <th>{{ device.name }}</th>
-            <th>{{ device.ip_address }}:{{ device.port }}</th>
-            <th>{{ device.is_alive }}</th>
-          </tr>
-        </thead>
-      <tbody>
-    {% for pin in device.pin_set.all %}
+    <thead>
+      <tr>
+        <th>{{ device.name }}</th>
+        <th>{{ device.ip_address }}:{{ device.port }}</th>
+        <th>{{ device.is_alive }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pin in device.pin_set.all %}
         <tr class="">
           <td style="padding-right: 10px;">{{ pin.name }}</td>
           <td>{{ pin.kind }}</td>
           <td>{{ pin.expression }}</td>
         </tr>
-    {% endfor %}
-      </tbody>
+      {% endfor %}
+    </tbody>
   {% endfor %}
-      </table>
-{% else %}
-      <p>No devices are available.</p>
+  </table>
+  {% else %}
+  <p>No devices are available.</p>
 {% endif %}
-    </div>
-  </div>
-</div>
-
