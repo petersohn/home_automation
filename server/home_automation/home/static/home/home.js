@@ -25,21 +25,16 @@ function createTimeline(data) {
   var logsTimeline = new vis.Timeline(container, data, options)
 }
 
-$("#devices_link").parent().addClass("active")
-
 $(document).ready(function() {
   loadStatus()
   loadDevices()
 
-  $("#menu").tabs()
+  $("#menu").tabs({beforeActivate: function(event, ui) {
+    ui.newPanel.trigger("loadContent")
+  }})
 
-  $("#devices-header").click(function() {
-    loadDevices()
-  })
-
-  $("#logs-header").click(function() {
-    loadLogs()
-  })
+  $("#devices").bind("loadContent", loadDevices)
+  $("#logs").bind("loadContent", loadLogs)
 
   $("#admin-frame").height($(window).height() - 20)
 
