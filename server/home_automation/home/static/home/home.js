@@ -41,6 +41,8 @@ $(document).ready(function() {
     loadLogs()
   })
 
+  $("#admin-frame").height($(window).height() - 20)
+
   setInterval(loadStatus, 10000)
 });
 
