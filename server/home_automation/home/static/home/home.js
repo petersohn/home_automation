@@ -1,14 +1,14 @@
 function loadStatus() {
-  $("#status").load("/ajax/Status.html", function() {
+  $("#status").load("/ajax/status.html", function() {
   })
 }
 
 function loadDevices() {
-  $("#devices").load("/ajax/Devices.html");
+  $("#devices").load("/ajax/devices.html");
 }
 
 function loadLogs() {
-  $("#logs").load("/ajax/Logs.html");
+  $("#logs").load("/ajax/logs.html");
   //$.get("/ajax/Logs.json",
     //function(data) {
       //var items = new vis.DataSet(JSON.parse(data))

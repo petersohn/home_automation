@@ -17,7 +17,7 @@ sys.path.append(scriptDirectory + "/../../lib")
 
 
 class IndexView(TemplateView):
-    template_name = 'home/HomeTemplate.html'
+    template_name = 'home/home.html'
 
 
 class AjaxView(View):

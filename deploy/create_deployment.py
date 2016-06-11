@@ -16,7 +16,7 @@ import zipfile
 SERVER_DIR = "server"
 DATA_DIR = "deploy/data"
 DJANGO_PROJECT_DIR = SERVER_DIR + "/home_automation"
-STATIC_FILES_DIR = DJANGO_PROJECT_DIR + "/home/static/home"
+STATIC_FILES_DIR = DJANGO_PROJECT_DIR + "/home/static/3pp"
 VISJS_DIR = STATIC_FILES_DIR + "/visjs"
 INSTALLATION_DIR = "home/home_automation"
 
@@ -71,6 +71,7 @@ def download_file_to_target(url, target):
 
 def download_dependencies():
     global STATIC_FILES_DIR
+    os.makedirs(STATIC_FILES_DIR, exist_ok=True)
     process_zip("jquery-ui-1.11.4", STATIC_FILES_DIR, "jquery-ui")
     process_zip(
         "jquery-ui-themes-1.11.4", STATIC_FILES_DIR, "jquery-ui-themes")
