@@ -1,3 +1,4 @@
+{% load static %}
 function loadTabData(target, url, tab) {
   target.load(url, function(response, status, xhr) {
     icon = $(tab).find("#warning");
@@ -10,8 +11,7 @@ function loadTabData(target, url, tab) {
 }
 
 function loadStatus() {
-  $("#status").load("/ajax/status.html", function() {
-  })
+  loadTabData($("#status-content"), "/ajax/status.html", $("#status"));
 }
 
 function loadDevices(event, tab) {

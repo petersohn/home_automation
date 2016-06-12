@@ -1,12 +1,12 @@
 {% load static %}
 {% if device_list %}
-<div>
 {% for device in device_list %}
     <span class="status-list-element">
-      <img width="16" height="16" src="{% if device.is_alive %}{% static "home/led-green-black.svg" %}{% else %}{% static "home/led-red-black.svg" %}{%endif%}" class="led" id="led-{{ device.name }}"/>
-        {{ device.name }}
+      <img width="16" height="16" src="{% if device.is_alive %}{% static "home/led-green.svg" %}{% else %}{% static "home/led-red.svg" %}{%endif%}" class="led" id="led-{{ device.name }}"/>
+      <span>{{ device.name }}</span>
     </span>
 {% endfor %}
-</div>
+{% else %}
+<span>No devices found.</span>
 {% endif %}
 

@@ -1,10 +1,11 @@
 from django.conf.urls import url
-from home.views import AjaxView, IndexView, StatusView
+from home import views
 
 
 urlpatterns = [
-    url(r'^device/status(/?)', StatusView.as_view(), name='status'),
-    url(r'^$', IndexView.as_view(), name='Devices'),
-    url(r'ajax/', AjaxView.as_view(), name='Devices'),
-    url(r'^device/status', StatusView.as_view(), name='status'),
+    url(r'^device/status(/?)', views.StatusView.as_view(), name='status'),
+    url(r'^$', views.IndexView.as_view(), name='Devices'),
+    url(r'^home.js$', views.JavascriptView.as_view(), name='Devices'),
+    url(r'ajax/', views.AjaxView.as_view(), name='Devices'),
+    url(r'^device/status', views.StatusView.as_view(), name='status'),
 ]

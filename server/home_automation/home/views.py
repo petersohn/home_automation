@@ -30,6 +30,10 @@ class IndexView(TemplateView):
     template_name = 'home/home.html'
 
 
+class JavascriptView(TemplateView):
+    template_name = 'home/home.js'
+
+
 class AjaxView(View):
     def get(self, request, *args, **kwargs):
         device_list = (
