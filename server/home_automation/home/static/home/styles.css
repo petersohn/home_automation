@@ -37,7 +37,8 @@ th.log-content {
 }
 
 .status-list-element {
-    margin-right: 16px
+    margin-right: 16px;
+    white-space: nowrap;
 }
 
 li a span {
