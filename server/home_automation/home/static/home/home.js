@@ -35,7 +35,9 @@ function createTimeline(data) {
   panel.empty();
 
   var container = panel.get(0);
-  var options = {}
+  var options = {
+    margin: { item: { vertical: 4 }}
+  }
 
   var logsTimeline = new vis.Timeline(container, data, options)
 }
