@@ -67,15 +67,15 @@ th.log-content {
     background-color: #AAAAAA;
 }
 
-.INFO {
+.INFO, .vis-item.INFO {
     background-color: #66AAFF;
 }
 
-.WARNING {
+.WARNING, .vis-item.WARNING {
     background-color: #E09F0C;
 }
 
-.ERROR {
+.ERROR, .vis-item.ERROR {
     background-color: #F46666;
 }
 

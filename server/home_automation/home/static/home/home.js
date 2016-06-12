@@ -20,17 +20,21 @@ function loadDevices(event, tab) {
 
 function loadLogs(event, tab) {
   loadTabData($("#logs"), "/ajax/logs.html", tab);
-  //$.get("/ajax/Logs.json",
-    //function(data) {
-      //var items = new vis.DataSet(JSON.parse(data))
-      //createTimeline()
-    //})
+}
+
+function loadLogTimeline(event, tab) {
+  $.get("/ajax/logs.json",
+    function(data) {
+      var items = new vis.DataSet(data);
+      createTimeline(items);
+    });
 }
 
 function createTimeline(data) {
-  $("#logs").empty()
+  panel = $("#log-timeline");
+  panel.empty();
 
-  var container = $("#logs").get(0)
+  var container = panel.get(0);
   var options = {}
 
   var logsTimeline = new vis.Timeline(container, data, options)
@@ -46,6 +50,7 @@ $(document).ready(function() {
 
   $("#devices").on("loadContent", loadDevices)
   $("#logs").on("loadContent", loadLogs)
+  $("#log-timeline").on("loadContent", loadLogTimeline)
 
   $("#admin-frame").height($(window).height() - 20)
 

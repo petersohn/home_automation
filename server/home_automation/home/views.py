@@ -1,4 +1,3 @@
-from home import models
 from home_automation import settings
 from home import models, services
 
@@ -14,6 +13,17 @@ import traceback
 
 scriptDirectory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(scriptDirectory + "/../../lib")
+
+contentTypes = [
+    (".html", "text/html"),
+    (".json", "application/json")]
+
+
+def getContentType(path):
+    for element in contentTypes:
+        if path.endswith(element[0]):
+            return element[1]
+    return "text/html"
 
 
 class IndexView(TemplateView):
@@ -34,7 +44,9 @@ class AjaxView(View):
         }
         templatePath = 'home/' + request.path.strip('/')
         template = loader.get_template(templatePath)
-        return HttpResponse(template.render(context, request))
+        return HttpResponse(
+            template.render(context, request),
+            content_type=getContentType(request.path))
 
 
 ##---------------------------------------------------------------------------##
