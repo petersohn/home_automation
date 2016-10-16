@@ -11,19 +11,19 @@ function loadTabData(target, url, tab) {
 }
 
 function loadStatus() {
-  loadTabData($("#status-content"), "/ajax/status.html", $("#status"));
+  loadTabData($("#status-content"), "/api/status.html", $("#status"));
 }
 
 function loadDevices(event, tab) {
-  loadTabData($("#devices"), "/ajax/devices.html", tab);
+  loadTabData($("#devices"), "/api/devices.html", tab);
 }
 
 function loadLogs(event, tab) {
-  loadTabData($("#logs"), "/ajax/logs.html", tab);
+  loadTabData($("#logs"), "/api/logs.html", tab);
 }
 
 function loadLogTimeline(event, tab) {
-  $.get("/ajax/logs.json",
+  $.get("/api/logs.json",
     function(data) {
       var items = new vis.DataSet(data);
       createTimeline(items);
