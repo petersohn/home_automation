@@ -2,3 +2,6 @@ custom/
 .tup
 load_environment.sh
 *.compile.json
+.settings
+/Debug/
+/Release/

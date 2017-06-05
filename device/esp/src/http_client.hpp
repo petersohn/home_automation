@@ -2,8 +2,8 @@
 #define HTTP_CLIENT_HPP
 
 #include "config/debug.hpp"
-#include "http/http.hpp"
-#include "tools/string.hpp"
+#include "http.hpp"
+#include "string.hpp"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>

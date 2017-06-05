@@ -2,7 +2,7 @@
 #define HTTP_SERVER_HPP
 
 #include "http.hpp"
-#include "tools/string.hpp"
+#include "string.hpp"
 
 #include <Arduino.h>
 

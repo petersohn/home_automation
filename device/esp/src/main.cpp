@@ -5,9 +5,9 @@
 #include "config/debug.hpp"
 #include "config/device.hpp"
 #include "config/server.hpp"
-#include "http/client.hpp"
-#include "http/server.hpp"
-#include "wifi/wifi.hpp"
+#include "http_client.hpp"
+#include "http_server.hpp"
+#include "wifi.hpp"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>

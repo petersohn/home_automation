@@ -1,5 +1,0 @@
-
-export ESP_CONFIG_FILES
-
-!gen_cpp = |> ^ GENERATE %o^ $(GENERATE) --input %f --output %o --comment // $ESP_CONFIG_FILES |>
-

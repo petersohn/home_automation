@@ -4,6 +4,9 @@ import argparse
 import json
 import string
 import sys
+import os
+import os.path
+
 
 def decode(data):
     if data.__class__ == dict:
@@ -22,16 +25,36 @@ def decode(data):
     return '"' + data + '"'
 
 
+FILE_SUFFIX = ".template"
+
+
+def process_file(path, config, comment):
+    if not path.endswith(FILE_SUFFIX):
+        return
+
+    with open(path) as f:
+        input = f.read()
+
+    with open(path[0:len(path) - len(FILE_SUFFIX)], "w") as output:
+        if comment is not None:
+            output.write(
+                comment + ' WARNING! This is an automatically ' +
+                'generated file. Do not edit.\n\n')
+        template = string.Template(input)
+        result = template.substitute(config)
+        output.write(result)
+
+
 def main():
+    print(sys.argv)
     parser = argparse.ArgumentParser(
             description="Generate files from config files.")
-    parser.add_argument("configFile", nargs='*', type=argparse.FileType('r'),
-            help='Config files.')
-    parser.add_argument("--input", nargs='?', type=argparse.FileType('r'),
-            required=True, help='The input file.')
-    parser.add_argument("--output", nargs='?', type=argparse.FileType('w'),
-            required=True, help='The output file.')
-    parser.add_argument("--comment", nargs='?', help='The line comment string.')
+    parser.add_argument("--configFile", nargs='*', type=argparse.FileType('r'),
+                        help='Config files.')
+    parser.add_argument("--input", nargs='+', type=str, required=True,
+                        help='The path for the input files.')
+    parser.add_argument("--comment", nargs='?',
+                        help='The line comment string.')
     arguments = parser.parse_args()
 
     config = {}
@@ -42,18 +65,16 @@ def main():
     for key, value in config.items():
         config[key] = decode(value)
 
-    input = arguments.input.read()
-    output = arguments.output
-    if arguments.comment is not None:
-        output.write(arguments.comment + ' WARNING! This is an automatically ' +
-                'generated file. Do not edit.\n\n')
-    template = string.Template(input)
-    result = template.substitute(config)
-    output.write(result)
-    output.flush()
+    for path in arguments.input:
+        if os.path.isdir(path):
+            for dirpath, dirnames, filenames in os.walk(path):
+                for filename in filenames:
+                    process_file(
+                        os.path.join(dirpath, filename), config,
+                        arguments.comment)
+        else:
+            process_file(path, config, arguments.comment)
 
 
 if __name__ == "__main__":
     main()
-
-
