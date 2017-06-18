@@ -60,29 +60,35 @@ void setup()
 
 void loop()
 {
+    // DEBUGLN("--- 1 ---");
     if (WiFi.status() != WL_CONNECTED) {
         DEBUGLN("WiFi connection lost.");
         initialize();
     }
 
+    // DEBUGLN("--- 2 ---");
     WiFiClient connection = httpServer.available();
     if (connection) {
         DEBUG("Incoming connection from ");
         DEBUGLN(connection.remoteIP());
         connectionPool.add(connection);
     }
+    // DEBUGLN("--- 3 ---");
     connectionPool.serve(
             [](WiFiClient& client) {
                 http::serve<WiFiClient>(client, getContent);
             });
 
+    // DEBUGLN("--- 4 ---");
     for (InterfaceConfig* interface : getModifiedInterfaces()) {
         sendHomeAssistantUpdate(httpClient, *interface, true);
     }
 
+    // DEBUGLN("--- 5 ---");
     if (nextLoginAttempt != 0 && millis() >= nextLoginAttempt) {
         login();
     }
 
+    // DEBUGLN("--- 6 ---");
     delay(5);
 }

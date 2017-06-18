@@ -21,6 +21,7 @@ bool sendHomeAssistantUpdate(Connection& connection,
     content["state"] = interface.lastValue;
 
     http::RequestInfo requestInfo;
+    requestInfo.method = "POST";
     requestInfo.url = "/api/states/" + interface.name;
     requestInfo.password = globalConfig.serverPassword;
     content.printTo(requestInfo.content);

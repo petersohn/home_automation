@@ -10,46 +10,23 @@ namespace http {
 
 template <typename Stream>
 void sendRequest(Stream& stream, const String& method, const String& path) {
-    DEBUG("---> ");
-    DEBUG(method);
-    DEBUG(' ');
-    DEBUG(path);
-    DEBUGLN(" HTTP/1.1");
-
-    stream.print(method);
-    stream.print(' ');
-    stream.print(path);
-    stream.println(" HTTP/1.1");
+    String s = method + " " + path + " HTTP/1.1\r\n";
+    DEBUG("--> ");
+    DEBUG(s);
+    stream.print(s);
 }
 
 template <typename Stream>
 void sendResponse(Stream& stream, int statusCode, const char* description) {
-    DEBUG("---> HTTP/1.1 ");
-    DEBUG(statusCode);
-    DEBUG(' ');
-    DEBUGLN(description);
-
-    stream.print("HTTP/1.1 ");
-    stream.print(statusCode);
-    stream.print(' ');
-    stream.println(description);
+    String s = "HTTP/1.1 " + String(statusCode) + " " + description + "\r\n";
+    DEBUG("--> ");
+    DEBUG(s);
+    stream.print(s);
 }
 
 template <typename Stream>
-void sendHeader(Stream& stream, const char* name, const char* value) {
-    stream.print(name);
-    stream.print(": ");
-    stream.println(value);
-}
-
-template <typename Stream>
-void sendHeader(Stream& stream, const char* name, const String& value) {
-    sendHeader(stream, name, value.c_str());
-}
-
-template <typename Stream, typename Value>
-void sendHeader(Stream& stream, const char* name, const Value& value) {
-    sendHeader(stream, name, String(value).c_str());
+void sendHeader(Stream& stream, const String& name, const String& value) {
+    stream.print(name + ": " + value + "\r\n");
 }
 
 template <typename Stream>

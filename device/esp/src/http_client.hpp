@@ -53,9 +53,11 @@ bool sendRequest(Connection& connection, const RequestInfo& requestInfo,
     http::sendHeader(connection, "Host", host);
     http::sendHeader(connection, "Connection", connectionHeader);
     http::sendHeader(connection, "Content-Length",
-            requestInfo.content.length());
+            String(requestInfo.content.length()));
     http::sendHeader(connection, "Content-Type", "application/json");
+    http::sendHeader(connection, "Accept", "application/json");
     http::sendHeader(connection, "x-ha-access", requestInfo.password);
+    http::sendHeader(connection, "User-Agent", "curl/7.54.1");
     http::sendHeadersEnd(connection);
     connection.print(requestInfo.content);
 

@@ -3,6 +3,14 @@
 
 #include "Interface.hpp"
 
+namespace {
+
+String getBinaryState(bool value) {
+    return value ? "on" : "off";
+}
+
+} // unnamed namespace
+
 Interface::Result GpioInput::answer(String url) {
     if (url.length() != 0) {
         return {false, "Input pin cannot be set"};
@@ -12,7 +20,7 @@ Interface::Result GpioInput::answer(String url) {
 }
 
 String GpioInput::get() {
-    return String(port.getState());
+    return getBinaryState(port.getState());
 }
 
 Interface::Result GpioOutput::answer(String url) {
@@ -34,7 +42,7 @@ Interface::Result GpioOutput::answer(String url) {
 }
 
 String GpioOutput::get() {
-    return String(port.getState());
+    return getBinaryState(port.getState());
 }
 
 #endif // INTERFACE_CPP

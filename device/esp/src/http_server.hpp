@@ -60,7 +60,7 @@ private:
             const String& content) {
         sendResponse(stream, statusCode, description);
         sendHeader(stream, "Accept", "GET, HEAD");
-        sendHeader(stream, "Content-Length", content.length());
+        sendHeader(stream, "Content-Length", String(content.length()));
         sendHeader(stream, "Content-Type", "application/json");
         sendHeader(stream, "Connection", connection);
         sendHeadersEnd(stream);
