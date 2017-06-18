@@ -26,6 +26,7 @@ static constexpr const char* statusPath = "/device/status/";
 namespace {
 
 bool sendLogin() {
+    DEBUGLN("Sending status to server.");
     bool success = true;
     for (InterfaceConfig& interface : deviceConfig.interfaces) {
         success = sendHomeAssistantUpdate(httpClient, interface, false)
@@ -36,8 +37,10 @@ bool sendLogin() {
 
 void login() {
     if (sendLogin()) {
+        DEBUGLN("Sending status successful.");
         nextLoginAttempt = 0;
     } else {
+        DEBUGLN("Sending status failed.");
         nextLoginAttempt += loginRetryInterval;
     }
 }
@@ -45,6 +48,7 @@ void login() {
 void initialize() {
     wifi::connect(globalConfig.wifiSSID, globalConfig.wifiPassword);
     httpServer.begin();
+    DEBUGLN("attempting login");
     login();
 }
 
@@ -53,6 +57,7 @@ void initialize() {
 void setup()
 {
     Serial.begin(115200);
+    DEBUGLN();
     initConfig();
     DEBUGLN();
 }
@@ -76,10 +81,13 @@ void loop()
             });
 
     for (InterfaceConfig* interface : getModifiedInterfaces()) {
+        DEBUG("Modified interface: ");
+        DEBUGLN(interface->name);
         sendHomeAssistantUpdate(httpClient, *interface, true);
     }
 
     if (nextLoginAttempt != 0 && millis() >= nextLoginAttempt) {
+        DEBUGLN("reattempting login");
         login();
     }
 

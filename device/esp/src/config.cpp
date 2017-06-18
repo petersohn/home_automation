@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "debug.hpp"
 #include "Interface.hpp"
 
 #include <ArduinoJson.h>
@@ -82,6 +83,7 @@ DeviceConfig readDeviceConfig(const char* filename) {
         result.interfaces.emplace_back();
         InterfaceConfig& interfaceConfig = result.interfaces.back();
         PARSE(interface, interfaceConfig, name, String);
+        interfaceConfig.interface = parseInterface(interface);
     }
 
     return result;
@@ -93,8 +95,9 @@ GlobalConfig globalConfig;
 DeviceConfig deviceConfig;
 
 void initConfig() {
-    globalConfig = readGlobalConfig("global_config.json");
-    deviceConfig = readDeviceConfig("device_config.json");
+    SPIFFS.begin();
+    globalConfig = readGlobalConfig("/global_config.json");
+    deviceConfig = readDeviceConfig("/device_config.json");
 }
 
 std::vector<InterfaceConfig*> getModifiedInterfaces() {

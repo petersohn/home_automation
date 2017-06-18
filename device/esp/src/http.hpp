@@ -1,7 +1,7 @@
 #ifndef HTTP_HTTP_HPP
 #define HTTP_HTTP_HPP
 
-#include "config/debug.hpp"
+#include "debug.hpp"
 
 #include "string.hpp"
 
