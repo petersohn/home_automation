@@ -1,7 +1,7 @@
 #ifndef TEST_CLIENT_HPP
 #define TEST_CLIENT_HPP
 
-#include "config/debug.hpp"
+#include "debug.hpp"
 
 #include <Arduino.h>
 

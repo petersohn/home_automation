@@ -1,12 +1,11 @@
-#ifndef TEST_CONTENT_HPP
-#define TEST_CONTENT_HPP
+#ifndef CONTENT_HPP
+#define CONTENT_HPP
 
 #include <Arduino.h>
 
-String getFullStatus(const String& type);
+#include <vector>
+
 
 String getContent(const String& path, const String& content);
 
-String getModifiedPinsContent(const String& type);
-
-#endif // TEST_CONTENT_HPP
+#endif // CONTENT_HPP

@@ -9,7 +9,7 @@ namespace http {
 
 
 template <typename Stream>
-void sendRequest(Stream& stream, const char* method, const char* path) {
+void sendRequest(Stream& stream, const String& method, const String& path) {
     DEBUG("---> ");
     DEBUG(method);
     DEBUG(' ');

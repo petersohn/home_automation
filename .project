@@ -6,16 +6,6 @@
 	</projects>
 	<buildSpec>
 		<buildCommand>
-			<name>org.eclipse.ui.externaltools.ExternalToolBuilder</name>
-			<triggers>auto,full,incremental,</triggers>
-			<arguments>
-				<dictionary>
-					<key>LaunchConfigHandle</key>
-					<value>&lt;project&gt;/.externalToolBuilders/Generate Files.launch</value>
-				</dictionary>
-			</arguments>
-		</buildCommand>
-		<buildCommand>
 			<name>it.baeyens.arduino.core.inoToCpp</name>
 			<arguments>
 			</arguments>
@@ -50,6 +40,11 @@
 			<name>core/variant</name>
 			<type>2</type>
 			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.3.0/variants/generic</location>
+		</link>
+		<link>
+			<name>libraries/ArduinoJson</name>
+			<type>2</type>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/libraries/ArduinoJson/5.10.0</location>
 		</link>
 		<link>
 			<name>libraries/ESP8266WiFi</name>

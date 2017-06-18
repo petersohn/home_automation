@@ -1,15 +1,14 @@
-#include "config/debug.hpp"
+#include "debug.hpp"
 
 #include <ESP8266WiFi.h>
-#include <Arduino.h>
 
 namespace wifi {
 
-void connect(const char* ssid, const char* password) {
+void connect(const String& ssid, const String& password) {
     DEBUG("Connecting to SSID ");
     DEBUG(ssid);
     DEBUGLN("...");
-    WiFi.begin(ssid, password);
+    WiFi.begin(ssid.c_str(), password.c_str());
     while (true) {
         int status = WiFi.status();
         switch (status) {
@@ -25,12 +24,12 @@ void connect(const char* ssid, const char* password) {
             break;
         case WL_CONNECT_FAILED:
             DEBUGLN("\nConnection failed. Trying again.");
-            WiFi.begin(ssid, password);
+            WiFi.begin(ssid.c_str(), password.c_str());
             delay(1000);
             break;
         case WL_NO_SSID_AVAIL:
             DEBUGLN("\nSSID not found. Trying again.");
-            WiFi.begin(ssid, password);
+            WiFi.begin(ssid.c_str(), password.c_str());
             delay(1000);
             break;
         case WL_CONNECTED:
@@ -41,7 +40,7 @@ void connect(const char* ssid, const char* password) {
             DEBUG("\nError: ");
             DEBUG(status);
             DEBUGLN(". Trying again.");
-            WiFi.begin(ssid, password);
+            WiFi.begin(ssid.c_str(), password.c_str());
             delay(1000);
             break;
         }
@@ -50,4 +49,3 @@ void connect(const char* ssid, const char* password) {
 }
 
 } // namespace wifi
-

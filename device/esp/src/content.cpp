@@ -1,6 +1,6 @@
+#include "config.hpp"
 #include "content.hpp"
-
-#include "config/device.hpp"
+#include "debug.hpp"
 #include "http.hpp"
 #include "string.hpp"
 
@@ -20,91 +20,60 @@ String getDeviceInfo() {
     String ipString = String(ip[0]) + '.' + String(ip[1]) + '.' +
             String(ip[2]) + '.' + String(ip[3]);
     return "{ "
-        "\"name\": \"" + String(device::name) + "\", "
+        "\"name\": \"" + String(deviceConfig.name) + "\", "
         "\"ip\": \"" + ipString + "\", "
         "\"port\": 80, "
         "\"memory\": " + String(system_get_free_heap_size()) + ", "
-        "\"version\": 1, "
+        "\"version\": 2, "
         "\"rssi\": " + String(WiFi.RSSI()) + " }";
 }
 
-String getPinInfo(const device::Pin& pin) {
-    String type = (pin.output ? "output" : "input");
-    return "{ "
-        "\"type\": \"" + type + "\", "
-        "\"name\": \"" + String(pin.name) + "\", "
-        "\"value\": " + String(digitalRead(pin.number)) + " }";
+String handleInterface(const InterfaceConfig& interface, const String& path) {
+    auto result = interface.interface->answer(path);
+    if (result.success) {
+        return "{ "
+            "\"name\": \"" + String(interface.name) + "\", "
+            "\"value\": " + result.value + " }";
+    }
+    DEBUGLN(result.value);
+    return "";
 }
 
-String getModifiedPinsInfo() {
-    constexpr int pressThreshold = 100;
-    tools::Join result{", "};
-    unsigned long now = millis();
-    for (device::Pin& pin : device::pins) {
-        if (pin.output) {
-            continue;
-        }
-        bool status = digitalRead(pin.number);
-        if (pin.status != status && (now - pin.lastSeen) > pressThreshold) {
-            pin.status = status;
-            pin.lastSeen = now;
-            result.add(getPinInfo(pin));
-        }
+String getFullStatus() {
+    tools::Join interfaceData{", "};
+    for (const InterfaceConfig& pin : deviceConfig.interfaces) {
+        interfaceData.add(handleInterface(pin, ""));
     }
-    return result.get();
+    String result = "{ \"device\": " + getDeviceInfo() + ", "
+        "\"pins\": [ " + interfaceData.get() + " ]";
+    return result + " }";
 }
 
 } // unnamed namespace
-
-String getFullStatus(const String& type) {
-    tools::Join pinData{", "};
-    for (const device::Pin& pin : device::pins) {
-        pinData.add(getPinInfo(pin));
-    }
-    String result = "{ \"device\": " + getDeviceInfo() + ", "
-        "\"pins\": [ " + pinData.get() + " ]";
-    if (type.length() != 0) {
-        result += ", \"type\": \"" + type + "\"";
-    }
-    return result + " }";
-}
 
 String getContent(const String& path, const String& /*content*/) {
     if (!path.startsWith("/")) {
         return "";
     }
 
-    size_t position = 0;
-    String pinName = tools::nextToken(path, '/', position);
-    if (pinName.length() == 0) {
-        return getFullStatus("");
+    int slashPosition = path.indexOf('/');
+    if (slashPosition == -1) {
+        return getFullStatus();
     }
 
-    auto pin = std::find_if(device::pins.begin(), device::pins.end(),
-            [&pinName](const device::Pin& pin) { return pinName == pin.name; });
-    if (pin == device::pins.end()) {
+    String interfaceName = path.substring(0, slashPosition);
+    if (interfaceName.length() == 0) {
+        return getFullStatus();
+    }
+
+    auto interface = std::find_if(
+            deviceConfig.interfaces.begin(), deviceConfig.interfaces.end(),
+            [&interfaceName](const InterfaceConfig& interface) {
+                return interfaceName == interface.name;
+            });
+    if (interface == deviceConfig.interfaces.end()) {
         return "";
     }
 
-    String value = tools::nextToken(path, '/', position);
-    if (value.length() != 0) {
-        if (!pin->output) {
-            return "";
-        }
-        int logicalValue = value.toInt();
-        digitalWrite(pin->number, logicalValue);
-    }
-    return getPinInfo(*pin);
+    return handleInterface(*interface, path.substring(slashPosition + 1));
 }
-
-String getModifiedPinsContent(const String& type) {
-    String modifiedPins = getModifiedPinsInfo();
-    if (modifiedPins.length() != 0) {
-        return "{ \"device\": " + getDeviceInfo() + ", "
-            "\"pins\": [ " + modifiedPins + " ],"
-            "\"type\": \"" + type + "\" }";
-    } else {
-        return {};
-    }
-}
-

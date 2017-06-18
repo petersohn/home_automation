@@ -1,10 +1,9 @@
 #include "ConnectionPool.hpp"
 #include "client.hpp"
+#include "config.hpp"
 #include "content.hpp"
-#include "config/credentials.hpp"
-#include "config/debug.hpp"
-#include "config/device.hpp"
-#include "config/server.hpp"
+#include "debug.hpp"
+#include "home_assistant.hpp"
 #include "http_client.hpp"
 #include "http_server.hpp"
 #include "wifi.hpp"
@@ -19,52 +18,43 @@ extern "C" {
 static WiFiServer httpServer{80};
 static ConnectionPool<WiFiClient> connectionPool;
 static WiFiClient httpClient;
-static unsigned long nextHeartbeat = 0;
-static String heartbeatType = "login";
+static unsigned long nextLoginAttempt = 0;
 
-static constexpr int heartbeatInterval = 60000;
-static constexpr int heartbeatRetryInterval = 5000;
+static constexpr int loginRetryInterval = 5000;
 static constexpr const char* statusPath = "/device/status/";
 
 namespace {
 
-bool sendHeartbeat(const String& type) {
-    if (!http::connectIfNeeded(httpClient, server::address, server::port)) {
-        return false;
+bool sendLogin() {
+    bool success = true;
+    for (InterfaceConfig& interface : deviceConfig.interfaces) {
+        success = sendHomeAssistantUpdate(httpClient, interface, false)
+                && success;
     }
-    String returnContent;
-    return http::sendRequest(httpClient, "POST", statusPath,
-            getFullStatus(type), returnContent, false);
+    return success;
 }
 
-void heartbeat() {
-    unsigned long now = millis();
-    if (sendHeartbeat(heartbeatType)) {
-        nextHeartbeat = now + heartbeatInterval;
-        heartbeatType = "heartbeat";
+void login() {
+    if (sendLogin()) {
+        nextLoginAttempt = 0;
     } else {
-        nextHeartbeat = now + heartbeatRetryInterval;
+        nextLoginAttempt += loginRetryInterval;
     }
 }
 
 void initialize() {
-    wifi::connect(wifi::credentials::ssid, wifi::credentials::password);
+    wifi::connect(globalConfig.wifiSSID, globalConfig.wifiPassword);
     httpServer.begin();
-    heartbeat();
+    login();
 }
 
 } // unnamed namespace
 
 void setup()
 {
-    DEBUG_INIT;
+    Serial.begin(115200);
+    initConfig();
     DEBUGLN();
-
-    for (device::Pin& pin : device::pins) {
-        pinMode(pin.number, (pin.output ? OUTPUT : INPUT));
-        pin.status = digitalRead(pin.number);
-        pin.lastSeen = millis();
-    }
 }
 
 void loop()
@@ -85,19 +75,12 @@ void loop()
                 http::serve<WiFiClient>(client, getContent);
             });
 
-    String modifiedPinsContent = getModifiedPinsContent("event");
-    if (modifiedPinsContent.length() != 0) {
-        if (http::connectIfNeeded(httpClient, server::address, server::port)) {
-            String returnContent;
-            if (http::sendRequest(httpClient, "POST", statusPath,
-                    modifiedPinsContent, returnContent, false)) {
-                nextHeartbeat = millis() + heartbeatInterval;
-            }
-        }
+    for (InterfaceConfig* interface : getModifiedInterfaces()) {
+        sendHomeAssistantUpdate(httpClient, *interface, true);
     }
 
-    if (millis() > nextHeartbeat) {
-        heartbeat();
+    if (nextLoginAttempt != 0 && millis() >= nextLoginAttempt) {
+        login();
     }
 
     delay(5);

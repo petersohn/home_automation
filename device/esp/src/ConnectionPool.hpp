@@ -1,7 +1,7 @@
 #ifndef TEST_CONNECTIONPOOL_HPP
 #define TEST_CONNECTIONPOOL_HPP
 
-#include "config/debug.hpp"
+#include "debug.hpp"
 
 #include <Arduino.h>
 
