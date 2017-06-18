@@ -56,12 +56,12 @@ String getContent(const String& path, const String& /*content*/) {
         return "";
     }
 
-    int slashPosition = path.indexOf('/');
-    if (slashPosition == -1) {
-        return getFullStatus();
+    int interfaceNameEnd = path.indexOf('/', 1);
+    if (interfaceNameEnd == -1) {
+        interfaceNameEnd = path.length();
     }
 
-    String interfaceName = path.substring(0, slashPosition);
+    String interfaceName = path.substring(1, interfaceNameEnd);
     if (interfaceName.length() == 0) {
         return getFullStatus();
     }
@@ -75,5 +75,5 @@ String getContent(const String& path, const String& /*content*/) {
         return "";
     }
 
-    return handleInterface(*interface, path.substring(slashPosition + 1));
+    return handleInterface(*interface, path.substring(interfaceNameEnd + 1));
 }

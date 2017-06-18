@@ -27,7 +27,7 @@ protected:
 class GpioOutputPort {
 public:
     GpioOutputPort(int pin) : pin(pin) {
-        pinMode(pin, INPUT);
+        pinMode(pin, OUTPUT);
     }
 
     bool getState() {
