@@ -5,3 +5,8 @@ load_environment.sh
 .settings
 /Debug/
 /Release/
+*.o
+*.a
+*.elf
+*.bin
+
