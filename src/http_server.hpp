@@ -22,8 +22,10 @@ public:
             sendError(400, "Bad Request", "Invalid request header");
             return;
         }
-        isGet = (method == "GET");
         isHead = (method == "HEAD");
+        if (isHead) {
+            method = "GET";
+        }
 
         String incomingContent;
         if (!readHeadersAndContent(stream, incomingContent, connection)) {
@@ -32,8 +34,8 @@ public:
             return;
         }
 
-        if (isGet || isHead) {
-            String content = contentProvider(path, incomingContent);
+        if (method == "GET" || method == "POST") {
+            String content = contentProvider(method, path, incomingContent);
             if (content.length() == 0) {
                 sendError(404, "Not Found", "Invalid path: " + path);
             } else {
@@ -77,7 +79,6 @@ private:
     String method;
     String path;
     String connection = "close";
-    bool isGet = false;
     bool isHead = false;
     int statusCode = 0;
 };

@@ -51,7 +51,8 @@ String getFullStatus() {
 
 } // unnamed namespace
 
-String getContent(const String& path, const String& /*content*/) {
+String getContent(const String& method, const String& path,
+        const String& content) {
     if (!path.startsWith("/")) {
         return "";
     }
@@ -75,5 +76,7 @@ String getContent(const String& path, const String& /*content*/) {
         return "";
     }
 
-    return handleInterface(*interface, path.substring(interfaceNameEnd + 1));
+    const String& value = (method == "POST") ? content
+            : path.substring(interfaceNameEnd + 1);
+    return handleInterface(*interface, value);
 }
