@@ -25,6 +25,7 @@ String getDeviceInfo() {
         "\"port\": 80, "
         "\"memory\": " + String(system_get_free_heap_size()) + ", "
         "\"version\": 2, "
+        "\"uptime\": " + String(millis()) + ", "
         "\"rssi\": " + String(WiFi.RSSI()) + " }";
 }
 
