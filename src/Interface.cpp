@@ -29,9 +29,9 @@ Interface::Result GpioOutput::answer(String url) {
     }
 
     bool value;
-    if (url == "1" || url == "on") {
+    if (url == "1" || url.equalsIgnoreCase("on")) {
         value = true;
-    } else if (url == "0" || url == "off") {
+    } else if (url == "0" || url.equalsIgnoreCase("off")) {
         value = false;
     } else {
         return {false, "Invalid value: " + url};
