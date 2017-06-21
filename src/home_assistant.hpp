@@ -9,10 +9,6 @@
 template<typename Connection>
 bool sendHomeAssistantUpdate(Connection& connection,
         InterfaceConfig& interface, bool allowCached) {
-    if (!http::connectIfNeeded(connection, globalConfig.serverAddress,
-            globalConfig.serverPort)) {
-        return false;
-    }
     StaticJsonBuffer<200> buffer;
     JsonObject& content = buffer.createObject();
     if (!allowCached || interface.lastValue.length() == 0) {
@@ -27,9 +23,11 @@ bool sendHomeAssistantUpdate(Connection& connection,
     content.printTo(requestInfo.content);
 
     String response;
-    bool success = sendRequest(connection, requestInfo, response);
+    int statusCode = sendRequestWithRetries(connection, requestInfo, response);
+    DEBUG("Result status = ");
+    DEBUGLN(statusCode);
     DEBUGLN(response);
-    return success;
+    return statusCode >= 200 && statusCode < 300;
 }
 
 #endif // HOME_ASSISTANT_HPP

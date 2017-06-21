@@ -41,7 +41,7 @@ struct RequestInfo {
 };
 
 template <typename Connection>
-bool sendRequest(Connection& connection, const RequestInfo& requestInfo,
+int sendRequest(Connection& connection, const RequestInfo& requestInfo,
         String& response) {
     IPAddress ip = connection.remoteIP();
     String connectionHeader = requestInfo.closeConnection
@@ -63,17 +63,34 @@ bool sendRequest(Connection& connection, const RequestInfo& requestInfo,
     int statusCode = 0;
     if (!http::receiveResponse(connection, statusCode)) {
         connection.stop();
-        return false;
+        return -1;
     }
 
     if (!readHeadersAndContent(connection, response, connectionHeader)) {
         connection.stop();
-        return false;
+        return -1;
     }
     if (connectionHeader != "keep-alive") {
         connection.stop();
     }
-    return statusCode >= 200 && statusCode < 300;
+    return statusCode;
+}
+
+template <typename Connection>
+int sendRequestWithRetries(Connection& connection,
+        const RequestInfo& requestInfo, String& response, int retries = 3) {
+    while (retries-- > 0) {
+        if (!http::connectIfNeeded(connection, globalConfig.serverAddress,
+                globalConfig.serverPort)) {
+            delay(1);
+            continue;
+        }
+        int statusCode = sendRequest(connection, requestInfo, response);
+        if (statusCode >= 0) {
+            return statusCode;
+        }
+    }
+    return -1;
 }
 
 } // namespace http

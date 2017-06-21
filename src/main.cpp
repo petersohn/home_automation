@@ -81,7 +81,9 @@ void loop()
 
     // DEBUGLN("--- 4 ---");
     for (InterfaceConfig* interface : getModifiedInterfaces()) {
-        sendHomeAssistantUpdate(httpClient, *interface, true);
+        if (!sendHomeAssistantUpdate(httpClient, *interface, true)) {
+            nextLoginAttempt = millis() + loginRetryInterval;
+        }
     }
 
     // DEBUGLN("--- 5 ---");
