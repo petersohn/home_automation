@@ -1,25 +1,8 @@
-#ifndef TEST_CLIENT_HPP
-#define TEST_CLIENT_HPP
+#ifndef CLIENT_HPP
+#define CLIENT_HPP
 
-#include "debug.hpp"
+#include <PubSubClient.h>
 
-#include <Arduino.h>
+extern PubSubClient mqttClient;
 
-template<typename Client>
-bool connect(Client& client, const char* address, int port) {
-    if (client.connected()) {
-        return true;
-    }
-    DEBUG("Connecting to ");
-    DEBUG(address);
-    DEBUG(":");
-    DEBUG(port);
-    DEBUGLN("...");
-    if (!client.connect(address, port)) {
-        DEBUGLN("Connection failed.");
-        return false;
-    }
-}
-
-
-#endif // TEST_CLIENT_HPP
+#endif // CLIENT_HPP

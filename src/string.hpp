@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+#include <cstring>
+#include <memory>
+
 namespace tools {
 
 template <typename Stream>
@@ -84,6 +87,15 @@ String nextToken(const String& string, char separator, size_t& position) {
     }
 
     return string.substring(startPos, position);
+}
+
+// Seriously, why doesn't String support this?
+inline
+String toString(const char* characters, std::size_t length) {
+    std::unique_ptr<char[]> buffer{new char[length + 1]};
+    std::memcpy(buffer.get(), characters, length);
+    buffer[length] = 0;
+    return String{buffer.get()};
 }
 
 class Join {

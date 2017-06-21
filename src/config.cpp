@@ -41,21 +41,22 @@ GlobalConfig readGlobalConfig(const char* filename) {
     PARSE(*data.root, result, wifiPassword, String);
     PARSE(*data.root, result, serverAddress, String);
     PARSE(*data.root, result, serverPort, int);
+    PARSE(*data.root, result, serverUsername, String);
     PARSE(*data.root, result, serverPassword, String);
 
     return result;
 }
 
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
-    String type = data.get<String>("type");
-    if (type == "input") {
-        return std::unique_ptr<Interface>{new GpioInput(data.get<int>("pin"))};
-    } else if (type == "output") {
-        return std::unique_ptr<Interface>{new GpioOutput(data.get<int>("pin"))};
-    } else {
-        Serial.println(String("Invalid interface type: ") + type);
-        return {};
-    }
+    // String type = data.get<String>("type");
+    // if (type == "input") {
+    //     return std::unique_ptr<Interface>{new GpioInput(data.get<int>("pin"))};
+    // } else if (type == "output") {
+    //     return std::unique_ptr<Interface>{new GpioOutput(data.get<int>("pin"))};
+    // } else {
+    //     Serial.println(String("Invalid interface type: ") + type);
+    //     return {};
+    // }
 }
 
 DeviceConfig readDeviceConfig(const char* filename) {
@@ -101,13 +102,13 @@ void initConfig() {
 }
 
 std::vector<InterfaceConfig*> getModifiedInterfaces() {
-    std::vector<InterfaceConfig*> result;
-    for (InterfaceConfig& interface : deviceConfig.interfaces) {
-        String value = interface.interface->get();
-        if (interface.lastValue != value) {
-            interface.lastValue = value;
-            result.push_back(&interface);
-        }
-    }
-    return result;
+    // std::vector<InterfaceConfig*> result;
+    // for (InterfaceConfig& interface : deviceConfig.interfaces) {
+    //     String value = interface.interface->get();
+    //     if (interface.lastValue != value) {
+    //         interface.lastValue = value;
+    //         result.push_back(&interface);
+    //     }
+    // }
+    // return result;
 }

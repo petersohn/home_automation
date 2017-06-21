@@ -51,5 +51,10 @@
 			<type>2</type>
 			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.3.0/libraries/ESP8266WiFi</location>
 		</link>
+		<link>
+			<name>libraries/PubSubClient</name>
+			<type>2</type>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/libraries/PubSubClient/2.6.0</location>
+		</link>
 	</linkedResources>
 </projectDescription>
