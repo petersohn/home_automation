@@ -11,21 +11,22 @@ String getBinaryState(bool value) {
 
 } // unnamed namespace
 
-Interface::Result GpioInput::answer(String url) {
+HttpResult GpioInput::answer(DynamicJsonBuffer& /*buffer*/, String url) {
     if (url.length() != 0) {
-        return {false, "Input pin cannot be set"};
+        return {405, "Input pin cannot be set"};
     }
 
-    return {true, String(port.getState())};
+    return {200, port.getState()};
 }
 
 String GpioInput::get() {
     return getBinaryState(port.getState());
 }
 
-Interface::Result GpioOutput::answer(String url) {
+HttpResult GpioOutput::answer(
+        DynamicJsonBuffer& buffer, String url) {
     if (url.length() == 0) {
-        return {true, String(port.getState())};
+        return {200, port.getState()};
     }
 
     bool value;
@@ -34,11 +35,11 @@ Interface::Result GpioOutput::answer(String url) {
     } else if (url == "0" || url.equalsIgnoreCase("off")) {
         value = false;
     } else {
-        return {false, "Invalid value: " + url};
+        return {405, buffer.strdup("Invalid value: " + url)};
     }
 
     port.setState(value);
-    return {true, String(value)};
+    return {200, value};
 }
 
 String GpioOutput::get() {

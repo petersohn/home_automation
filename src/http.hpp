@@ -34,14 +34,6 @@ void sendHeadersEnd(Stream& stream) {
     stream.println();
 }
 
-inline
-String createErrorContent(int statusCode, const char* description,
-        const String& details) {
-    return "{ \"statusCode\": " + String(statusCode) +
-            ", \"description\": \"" + String(description) +
-            "\", \"details\": \"" + details + "\" }";
-}
-
 template <typename Stream>
 bool receiveResponse(Stream& stream, int& statusCode) {
     String line = tools::readLine(stream);

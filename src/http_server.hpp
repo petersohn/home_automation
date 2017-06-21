@@ -6,9 +6,16 @@
 
 #include <Arduino.h>
 
+#include <algorithm>
+
 namespace http {
 
 namespace detail {
+
+struct StatusCode {
+    int code;
+    const char* description;
+};
 
 template <typename Stream>
 class Request {
@@ -17,9 +24,10 @@ public:
 
     template <typename ContentProvider>
     void serve(const ContentProvider& contentProvider) {
+    DynamicJsonBuffer buffer{512};
         if (!receiveRequest(stream, method, path)) {
             isHead = (method == "HEAD");
-            sendError(400, "Bad Request", "Invalid request header");
+            sendError(buffer, 400, "Invalid request header");
             return;
         }
         isHead = (method == "HEAD");
@@ -30,20 +38,17 @@ public:
         String incomingContent;
         if (!readHeadersAndContent(stream, incomingContent, connection)) {
             connection = "close";
-            sendError(400, "Bad Request", "Invalid format");
+            sendError(buffer, 400, "Invalid format");
             return;
         }
 
         if (method == "GET" || method == "POST") {
-            String content = contentProvider(method, path, incomingContent);
-            if (content.length() == 0) {
-                sendError(404, "Not Found", "Invalid path: " + path);
-            } else {
-                sendAnswer(200, "OK", content);
-            }
+            HttpResult result = contentProvider(
+                    buffer, method, path, incomingContent);
+            sendAnswer(result.statusCode, getDescription(statusCode),
+                    result.value.as<JsonObject>());
         } else {
-            sendError(405, "Method Not Allowed", "Invalid method: " +
-                    method);
+            sendError(buffer, 405, "Invalid method: " + method);
         }
     }
 
@@ -52,23 +57,54 @@ public:
     }
 
 private:
-    void sendError(int statusCode, const char* description,
-            const String& details) {
-        sendAnswer(statusCode, description, createErrorContent(
+    static const std::initializer_list<StatusCode> statusCodes;
+
+    JsonObject& createErrorContent(JsonBuffer& buffer, int statusCode,
+            const char* description, const String& details) {
+        JsonObject& result = buffer.createObject();
+
+        result["statusCode"] = statusCode;
+        result["description"] = description;
+        result["details"] = details;
+
+        return result;
+    }
+
+    const char* getDescription(int statusCode) {
+        auto iterator = std::find_if(statusCodes.begin(), statusCodes.end(),
+                [statusCode](const StatusCode& code) {
+                    return code.code == statusCode;
+                });
+        return (iterator == statusCodes.end())
+                ? "" : iterator->description;
+    }
+
+
+    void sendError(JsonBuffer& buffer, int statusCode, const String& details) {
+        const char* description = getDescription(statusCode);
+        sendAnswer(statusCode, description, createErrorContent(buffer,
                 statusCode, description, details));
     }
 
     void sendAnswer(int statusCode, const char* description,
-            const String& content) {
+            JsonVariant content) {
+        String contentString;
+        if (content.is<JsonObject>()) {
+            content.as<JsonObject>().printTo(contentString);
+        } else if (content.is<JsonArray>()) {
+            content.as<JsonArray>().printTo(contentString);
+        } else {
+            contentString = content.as<const char*>();
+        }
         sendResponse(stream, statusCode, description);
         sendHeader(stream, "Accept", "GET, HEAD");
-        sendHeader(stream, "Content-Length", String(content.length()));
+        sendHeader(stream, "Content-Length", String(contentString.length()));
         sendHeader(stream, "Content-Type", "application/json");
         sendHeader(stream, "Connection", connection);
         sendHeadersEnd(stream);
 
         if (!isHead) {
-            stream.print(content);
+            stream.print(contentString);
         }
         if (connection != "keep-alive") {
             stream.stop();
@@ -82,6 +118,15 @@ private:
     bool isHead = false;
     int statusCode = 0;
 };
+
+template <typename Stream>
+const std::initializer_list<StatusCode> Request<Stream>::statusCodes = {
+    StatusCode{200, "OK"},
+    StatusCode{400, "Bad Request"},
+    StatusCode{404, "Not Found"},
+    StatusCode{405, "Method Not Allowed"},
+};
+
 
 } // namespace detail
 

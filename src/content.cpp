@@ -5,7 +5,6 @@
 #include "string.hpp"
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 
 #include <algorithm>
@@ -31,17 +30,18 @@ JsonObject& getDeviceInfo(DynamicJsonBuffer& buffer) {
     return result;
 }
 
-JsonObject* handleInterface(DynamicJsonBuffer& buffer,
+HttpResult handleInterface(DynamicJsonBuffer& buffer,
         const InterfaceConfig& interface, const String& path) {
-    auto answer = interface.interface->answer(path);
-    if (answer.success) {
-        JsonObject& result = buffer.createObject();
-        result["name"] = interface.name;
-        result["value"] = answer.value;
-        return &result;
+    auto answer = interface.interface->answer(buffer, path);
+    JsonObject& result = buffer.createObject();
+    result["name"] = interface.name;
+    result["value"] = answer.value;
+    if (answer.statusCode >= 300) {
+        result["error"] = answer.statusCode;
+        debugJson(answer.value);
     }
-    DEBUGLN(answer.value);
-    return nullptr;
+    answer.value = result;
+    return answer;
 }
 
 JsonObject& getFullStatus(DynamicJsonBuffer& buffer) {
@@ -52,20 +52,19 @@ JsonObject& getFullStatus(DynamicJsonBuffer& buffer) {
     result["interfaces"] = interfaceData;
 
     for (const InterfaceConfig& pin : deviceConfig.interfaces) {
-        JsonObject* object = handleInterface(buffer, pin, "");
-        if (object) {
-            interfaceData.add(*object);
-        }
+        HttpResult object = handleInterface(buffer, pin, "");
+        interfaceData.add(object.value);
     }
 
     return result;
 }
 
-JsonObject* doGetContent(DynamicJsonBuffer& buffer,
-        const String& method, const String& path,
-        const String& content) {
+} // unnamed namespace
+
+HttpResult getContent(DynamicJsonBuffer& buffer, const String& method,
+        const String& path, const String& content) {
     if (!path.startsWith("/")) {
-        return nullptr;
+        return {404, "Empty path not allowed"};
     }
 
     int interfaceNameEnd = path.indexOf('/', 1);
@@ -75,7 +74,7 @@ JsonObject* doGetContent(DynamicJsonBuffer& buffer,
 
     String interfaceName = path.substring(1, interfaceNameEnd);
     if (interfaceName.length() == 0) {
-        return &getFullStatus(buffer);
+        return {200, getFullStatus(buffer)};
     }
 
     auto interface = std::find_if(
@@ -84,26 +83,10 @@ JsonObject* doGetContent(DynamicJsonBuffer& buffer,
                 return interfaceName == interface.name;
             });
     if (interface == deviceConfig.interfaces.end()) {
-        return nullptr;
+        return {404, "Interface not found"};
     }
 
     const String& value = (method == "POST") ? content
             : path.substring(interfaceNameEnd + 1);
     return handleInterface(buffer, *interface, value);
-}
-
-} // unnamed namespace
-
-String getContent(const String& method, const String& path,
-        const String& content) {
-    DynamicJsonBuffer buffer{512};
-    JsonObject* result = doGetContent(buffer, method, path, content);
-
-    if (!result) {
-        return "";
-    }
-
-    String output;
-    result->printTo(output);
-    return output;
 }
