@@ -63,14 +63,14 @@ void GpioOutput::execute(const String& command) {
     DEBUGLN(newValue);
     if (value != newValue) {
         digitalWrite(pin, newValue);
-        newValue = value;
+        value = newValue;
         changed = true;
     }
 }
 
 void GpioOutput::update(Actions action) {
     if (changed) {
-        action.fire(createSimpleJson("value", digitalRead(pin)));
+        action.fire(createSimpleJson<bool>("value", digitalRead(pin)));
         changed = false;
     }
 }
