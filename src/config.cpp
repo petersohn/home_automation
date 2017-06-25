@@ -1,9 +1,12 @@
 #include "config.hpp"
 #include "debug.hpp"
-#include "Interface.hpp"
+#include "GpioInterface.hpp"
+#include "PublishAction.hpp"
 
 #include <ArduinoJson.h>
 #include <FS.h>
+
+#include <algorithm>
 
 #define PARSE(from, to, name, type) (to).name = (from).get<type>(#name)
 
@@ -18,12 +21,12 @@ ParsedData parseFile(const char* filename) {
     ParsedData result;
     File f = SPIFFS.open(filename, "r");
     if (!f) {
-        Serial.println(String("Could not open file: ") + filename);
+        DEBUGLN(String("Could not open file: ") + filename);
         return result;
     }
     result.root = &result.buffer.parseObject(f);
     if (*result.root == JsonObject::invalid()) {
-        Serial.println(String("Could not parse JSON file: ") + filename);
+        DEBUGLN(String("Could not parse JSON file: ") + filename);
         result.root = nullptr;
     }
 
@@ -47,16 +50,108 @@ GlobalConfig readGlobalConfig(const char* filename) {
     return result;
 }
 
+bool getPin(const JsonObject& data, int& value) {
+    JsonVariant rawValue = data["pin"];
+    if (rawValue.is<int>()) {
+        value = rawValue.as<int>();
+        return true;
+    }
+    DEBUGLN("Invalid pin: " + rawValue.as<String>());
+    return false;
+}
+
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
-    // String type = data.get<String>("type");
-    // if (type == "input") {
-    //     return std::unique_ptr<Interface>{new GpioInput(data.get<int>("pin"))};
-    // } else if (type == "output") {
-    //     return std::unique_ptr<Interface>{new GpioOutput(data.get<int>("pin"))};
-    // } else {
-    //     Serial.println(String("Invalid interface type: ") + type);
-    //     return {};
-    // }
+    String type = data.get<String>("type");
+    if (type == "input") {
+        int pin = 0;
+        return getPin(data, pin)
+                ?  std::unique_ptr<Interface>{
+                        new GpioInput(data.get<int>("pin"))}
+                : nullptr;
+    } else if (type == "output") {
+        int pin = 0;
+        return getPin(data, pin)
+                ?  std::unique_ptr<Interface>{
+                        new GpioOutput(data.get<int>("pin"))}
+                : nullptr;
+    } else {
+        DEBUGLN(String("Invalid interface type: ") + type);
+        return {};
+    }
+}
+
+void parseInterfaces(const JsonObject& data,
+        std::vector<InterfaceConfig>& result) {
+    const JsonArray& interfaces = data["interfaces"];
+    if (interfaces == JsonArray::invalid()) {
+        DEBUGLN("Could not parse interfaces.");
+        return;
+    }
+
+    result.reserve(interfaces.size());
+    for (const JsonObject& interface : interfaces) {
+        if (interface == JsonObject::invalid()) {
+            DEBUGLN("Interface configuration must be an array.");
+            continue;
+        }
+
+        auto parsedInterface = parseInterface(interface);
+        if (!parsedInterface) {
+            DEBUGLN("Invalid interface configuration.");
+            continue;
+        }
+
+        result.emplace_back();
+        InterfaceConfig& interfaceConfig = result.back();
+        PARSE(interface, interfaceConfig, name, String);
+        PARSE(interface, interfaceConfig, commandTopic, String);
+        interfaceConfig.interface = std::move(parsedInterface);
+    }
+}
+
+std::unique_ptr<Action> parseAction(const JsonObject& data) {
+    String type = data.get<String>("type");
+    if (type == "publish") {
+        String topic = data["topic"];
+        if (topic.length() == 0) {
+            DEBUGLN("Topic must be given.");
+            return {};
+        }
+        return std::unique_ptr<Action>(new PublishAction{
+                topic, data.get<bool>("retain")});
+    } else {
+        DEBUGLN("Invalid action type: " + type);
+        return {};
+    }
+}
+
+void parseActions(const JsonObject& data,
+        std::vector<InterfaceConfig>& interfaces) {
+    const JsonArray& actions = data["actions"];
+    if (actions == JsonArray::invalid()) {
+        DEBUGLN("Could not parse actions.");
+        return;
+    }
+
+    for (const JsonObject& action : actions) {
+        String interfaceName = action["interface"];
+        auto interface = std::find_if(interfaces.begin(), interfaces.end(),
+                [&interfaceName](const InterfaceConfig& interface) {
+                    return interface.name == interfaceName;
+                });
+        if (interface == interfaces.end()) {
+            DEBUGLN("Could not find interface: " + interfaceName);
+            continue;
+        }
+
+        auto parsedAction = parseAction(action);
+        if (!parsedAction) {
+            DEBUGLN("Invalid action configuration.");
+            continue;
+        }
+
+        interface->actions.push_back(std::move(parsedAction));
+    }
 }
 
 DeviceConfig readDeviceConfig(const char* filename) {
@@ -67,25 +162,11 @@ DeviceConfig readDeviceConfig(const char* filename) {
     }
 
     PARSE(*data.root, result, name, String);
+    PARSE(*data.root, result, availabilityTopic, String);
     PARSE(*data.root, result, debug, bool);
-    const JsonArray& interfaces = (*data.root)["interfaces"];
-    if (interfaces == JsonArray::invalid()) {
-        Serial.println("Could not parse interfaces.");
-        return result;
-    }
 
-    result.interfaces.reserve(interfaces.size());
-    for (const JsonObject& interface : interfaces) {
-        if (interface == JsonObject::invalid()) {
-            Serial.println("Could not parse interface.");
-            continue;
-        }
-
-        result.interfaces.emplace_back();
-        InterfaceConfig& interfaceConfig = result.interfaces.back();
-        PARSE(interface, interfaceConfig, name, String);
-        interfaceConfig.interface = parseInterface(interface);
-    }
+    parseInterfaces(*data.root, result.interfaces);
+    parseActions(*data.root, result.interfaces);
 
     return result;
 }
@@ -99,16 +180,4 @@ void initConfig() {
     SPIFFS.begin();
     globalConfig = readGlobalConfig("/global_config.json");
     deviceConfig = readDeviceConfig("/device_config.json");
-}
-
-std::vector<InterfaceConfig*> getModifiedInterfaces() {
-    // std::vector<InterfaceConfig*> result;
-    // for (InterfaceConfig& interface : deviceConfig.interfaces) {
-    //     String value = interface.interface->get();
-    //     if (interface.lastValue != value) {
-    //         interface.lastValue = value;
-    //         result.push_back(&interface);
-    //     }
-    // }
-    // return result;
 }

@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include "Action.hpp"
 #include "Interface.hpp"
 
 #include <Arduino.h>
@@ -19,12 +20,14 @@ struct GlobalConfig {
 
 struct InterfaceConfig {
     String name;
-    String lastValue;
     std::unique_ptr<Interface> interface;
+    String commandTopic;
+    std::vector<std::unique_ptr<Action>> actions;
 };
 
 struct DeviceConfig {
     String name;
+    String availabilityTopic;
     bool debug = true;
     std::vector<InterfaceConfig> interfaces;
 };
@@ -33,7 +36,5 @@ extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
 void initConfig();
-
-std::vector<InterfaceConfig*> getModifiedInterfaces();
 
 #endif // CONFIG_HPP
