@@ -16,6 +16,7 @@ public:
     void update(Actions action) override;
 
 private:
+    bool startup = true;
     Bounce bounce;
 };
 

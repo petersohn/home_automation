@@ -42,8 +42,9 @@ void GpioInput::execute(const String& /*command*/) {
 }
 
 void GpioInput::update(Actions action) {
-    if (bounce.update()) {
+    if (bounce.update() || startup) {
         action.fire(createSimpleJson("value", bounce.read()));
+        startup = false;
     }
 }
 
