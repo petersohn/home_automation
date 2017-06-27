@@ -1,10 +1,10 @@
 #ifndef ACTION_HPP
 #define ACTION_HPP
 
-#include <Arduino.h>
-
 #include <memory>
 #include <vector>
+
+#include <Arduino.h>
 
 class Action {
 public:

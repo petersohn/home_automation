@@ -8,18 +8,6 @@ String createValue(bool value) {
     return value ? "on" : "off";
 }
 
-bool getBoolValue(const String& input, bool& output) {
-    if (input.equalsIgnoreCase("on") || input.equalsIgnoreCase("true")) {
-        output = true;
-        return true;
-    }
-    if (input.equalsIgnoreCase("off") || input.equalsIgnoreCase("false")) {
-        output = false;
-        return true;
-    }
-    return false;
-}
-
 } // unnamed namespace
 
 void GpioInput::execute(const String& /*command*/) {
@@ -30,6 +18,22 @@ void GpioInput::update(Actions action) {
         action.fire({createValue(bounce.read())});
         startup = false;
     }
+}
+
+bool GpioOutput::getBoolValue(const String& input, bool& output) {
+    if (input.equalsIgnoreCase("on") || input.equalsIgnoreCase("true")) {
+        output = true;
+        return true;
+    }
+    if (input.equalsIgnoreCase("off") || input.equalsIgnoreCase("false")) {
+        output = false;
+        return true;
+    }
+    if (input.equalsIgnoreCase("toggle")) {
+        output = !value;
+        return true;
+    }
+    return false;
 }
 
 void GpioOutput::execute(const String& command) {

@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
 #include "debug.hpp"
 #include "GpioInterface.hpp"
@@ -111,29 +112,64 @@ void parseInterfaces(const JsonObject& data,
     }
 }
 
-std::unique_ptr<Action> parseBareAction(const JsonObject& data) {
+String getMandatoryArgument(const JsonObject& data, const char* name) {
+    String result = data[name];
+    if (result.length() == 0) {
+        DEBUGLN(String(name) + " is mandatory.");
+    }
+    return result;
+}
+
+InterfaceConfig* findInterface(
+        std::vector<InterfaceConfig>& interfaces, const char* name) {
+    auto interface = std::find_if(interfaces.begin(), interfaces.end(),
+            [&name](const InterfaceConfig& interface) {
+                return interface.name == name;
+            });
+    if (interface == interfaces.end()) {
+        DEBUGLN("Could not find interface: " + String(name));
+        return nullptr;
+    }
+    return &*interface;
+}
+
+std::unique_ptr<Action> parseBareAction(const JsonObject& data,
+        std::vector<InterfaceConfig>& interfaces) {
     String type = data.get<String>("type");
     if (type == "publish") {
-        String topic = data["topic"];
+        String topic = getMandatoryArgument(data, "topic");
         if (topic.length() == 0) {
-            DEBUGLN("Topic must be given.");
             return {};
         }
         return std::unique_ptr<Action>(new PublishAction{topic,
                 data.get<String>("template"), data.get<bool>("retain")});
+    } else if (type == "command") {
+        String command = getMandatoryArgument(data, "command");
+        if (command.length() == 0) {
+            return {};
+        }
+
+        auto target = findInterface(interfaces, data["target"]);
+        if (!target) {
+            return {};
+        }
+
+        return std::unique_ptr<Action>(new CommandAction{*target->interface,
+                command});
     } else {
         DEBUGLN("Invalid action type: " + type);
         return {};
     }
 }
 
-std::unique_ptr<Action> parseAction(const JsonObject& data) {
+std::unique_ptr<Action> parseAction(const JsonObject& data,
+        std::vector<InterfaceConfig>& interfaces) {
     String value = data["value"];
     if (value.length() != 0) {
         return std::unique_ptr<Action>{new ConditionalAction{
-                value, parseBareAction(data)}};
+                value, parseBareAction(data, interfaces)}};
     }
-    return parseBareAction(data);
+    return parseBareAction(data, interfaces);
 }
 
 void parseActions(const JsonObject& data,
@@ -146,16 +182,12 @@ void parseActions(const JsonObject& data,
 
     for (const JsonObject& action : actions) {
         String interfaceName = action["interface"];
-        auto interface = std::find_if(interfaces.begin(), interfaces.end(),
-                [&interfaceName](const InterfaceConfig& interface) {
-                    return interface.name == interfaceName;
-                });
-        if (interface == interfaces.end()) {
-            DEBUGLN("Could not find interface: " + interfaceName);
+        auto interface = findInterface(interfaces, action["interface"]);
+        if (!interface) {
             continue;
         }
 
-        auto parsedAction = parseAction(action);
+        auto parsedAction = parseAction(action, interfaces);
         if (!parsedAction) {
             DEBUGLN("Invalid action configuration.");
             continue;
