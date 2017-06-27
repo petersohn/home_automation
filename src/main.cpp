@@ -41,6 +41,8 @@ void onMessageReceived(
     interface->interface->execute(tools::toString((char*)payload, length));
 }
 
+String willMessage;
+
 bool connectIfNeeded() {
     if (mqttClient.connected()) {
         return true;
@@ -53,7 +55,6 @@ bool connectIfNeeded() {
         JsonObject& message = buffer.createObject();
         message["name"] = deviceConfig.name.c_str();
         message["available"] = false;
-        String willMessage;
         message.printTo(willMessage);
         result = mqttClient.connect(
                 deviceConfig.name.c_str(),
