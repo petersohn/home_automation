@@ -1,16 +1,46 @@
 {
     "debug": true,
     "name": "testDevice",
+    "availabilityTopic": "devices/testDevice/availability",
     "interfaces": [
         {
             "type": "output",
-            "name": "binary_sensor.test_device_led",
+            "name": "led",
+            "commandTopic": "devices/testDevice/led/set",
             "pin": 2
         },
         {
             "type": "input",
-            "name": "binary_sensor.test_device_button",
+            "name": "button",
             "pin": 0
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "led",
+            "topic": "devices/testDevice/led/state",
+            "retain": true
+        },
+        {
+            "type": "publish",
+            "interface": "button",
+            "topic": "devices/testDevice/button/state",
+            "retain": true
+        },
+        {
+            "type": "publish",
+            "interface": "button",
+            "topic": "devices/testDevice/button/foobar",
+            "template": "foo %1 bar",
+            "retain": true
+        },
+        {
+            "type": "command",
+            "interface": "button",
+            "target": "led",
+            "command": "toggle",
+            "value": "off"
         }
     ]
 }
