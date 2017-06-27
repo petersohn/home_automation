@@ -120,6 +120,52 @@ private:
     bool first = true;
 };
 
+namespace detail {
+
+template<typename Range>
+void addValue(String& result, const String& reference, const Range& elements) {
+    int value = reference.toInt();
+    // DEBUGLN("reference = " + reference);
+    // DEBUGLN("value = " + String(value));
+    if (value > 0 && value <= elements.size()) {
+        result += elements[value - 1];
+    }
+}
+
+} // namespace detail
+
+template<typename Range>
+String substitute(const String& valueTemplate, const Range& elements) {
+    String result;
+    String reference;
+    bool inReference = false;
+    for (std::size_t i = 0; i < valueTemplate.length(); ++i) {
+        if (inReference) {
+            if (valueTemplate[i] >= '0' && valueTemplate[i] <= '9') {
+                reference += valueTemplate[i];
+            } else {
+                inReference = false;
+                if (reference.length() == 0) {
+                    result += valueTemplate[i];
+                    reference = "";
+                    continue;
+                }
+                detail::addValue(result, reference, elements);
+                reference = "";
+            }
+        }
+        if (!inReference) {
+            if (valueTemplate[i] == '%') {
+                inReference = true;
+            } else {
+                result += valueTemplate[i];
+            }
+        }
+    }
+    detail::addValue(result, reference, elements);
+    return result;
+}
+
 } // namespace tools
 
 #endif // TOOLS_STREAM_HPP

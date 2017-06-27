@@ -1,19 +1,20 @@
 #ifndef PUBLISHACTION_HPP
 #define PUBLISHACTION_HPP
 
-#include <Arduino.h>
-
 #include "Action.hpp"
+
+#include <Arduino.h>
 
 class PublishAction : public Action {
 public:
-    PublishAction(const String& topic, bool retain)
-            : topic(topic), retain(retain) {}
+    PublishAction(const String& topic, const String& valueTemplate, bool retain)
+            : topic(topic), valueTemplate(valueTemplate), retain(retain) {}
 
-    void fire(const String& value);
+    void fire(const std::vector<String>& values);
 
 private:
     String topic;
+    String valueTemplate;
     bool retain;
 };
 

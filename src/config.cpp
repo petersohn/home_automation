@@ -1,4 +1,6 @@
 #include "config.hpp"
+
+#include "ConditionalAction.hpp"
 #include "debug.hpp"
 #include "GpioInterface.hpp"
 #include "PublishAction.hpp"
@@ -109,7 +111,7 @@ void parseInterfaces(const JsonObject& data,
     }
 }
 
-std::unique_ptr<Action> parseAction(const JsonObject& data) {
+std::unique_ptr<Action> parseBareAction(const JsonObject& data) {
     String type = data.get<String>("type");
     if (type == "publish") {
         String topic = data["topic"];
@@ -117,12 +119,21 @@ std::unique_ptr<Action> parseAction(const JsonObject& data) {
             DEBUGLN("Topic must be given.");
             return {};
         }
-        return std::unique_ptr<Action>(new PublishAction{
-                topic, data.get<bool>("retain")});
+        return std::unique_ptr<Action>(new PublishAction{topic,
+                data.get<String>("template"), data.get<bool>("retain")});
     } else {
         DEBUGLN("Invalid action type: " + type);
         return {};
     }
+}
+
+std::unique_ptr<Action> parseAction(const JsonObject& data) {
+    String value = data["value"];
+    if (value.length() != 0) {
+        return std::unique_ptr<Action>{new ConditionalAction{
+                value, parseBareAction(data)}};
+    }
+    return parseBareAction(data);
 }
 
 void parseActions(const JsonObject& data,

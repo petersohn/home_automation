@@ -27,7 +27,7 @@ void GpioInput::execute(const String& /*command*/) {
 
 void GpioInput::update(Actions action) {
     if (bounce.update() || startup) {
-        action.fire(createValue(bounce.read()));
+        action.fire({createValue(bounce.read())});
         startup = false;
     }
 }
@@ -52,7 +52,7 @@ void GpioOutput::execute(const String& command) {
 
 void GpioOutput::update(Actions action) {
     if (changed) {
-        action.fire(createValue(digitalRead(pin)));
+        action.fire({createValue(digitalRead(pin))});
         changed = false;
     }
 }
