@@ -2,35 +2,19 @@
 
 #include "debug.hpp"
 
-#include <ArduinoJson.h>
-
 namespace {
 
-template<typename T>
-String createSimpleJson(const char* key, const T& value) {
-    StaticJsonBuffer<64> buffer;
-    JsonObject& root = buffer.createObject();
-    root[key] = value;
-    String result;
-    root.printTo(result);
-    return result;
+String createValue(bool value) {
+    return value ? "on" : "off";
 }
 
-bool getBoolValue(JsonVariant json, bool& output) {
-    if (json.is<const char*>()) {
-        String s = json.as<String>();
-        if (s.equalsIgnoreCase("on") || s.equalsIgnoreCase("true")) {
-            output = true;
-            return true;
-        }
-        if (s.equalsIgnoreCase("off") || s.equalsIgnoreCase("false")) {
-            output = false;
-            return true;
-        }
-        return false;
+bool getBoolValue(const String& input, bool& output) {
+    if (input.equalsIgnoreCase("on") || input.equalsIgnoreCase("true")) {
+        output = true;
+        return true;
     }
-    if (json.is<bool>() || json.is<int>()) {
-        output = json.as<bool>();
+    if (input.equalsIgnoreCase("off") || input.equalsIgnoreCase("false")) {
+        output = false;
         return true;
     }
     return false;
@@ -43,19 +27,17 @@ void GpioInput::execute(const String& /*command*/) {
 
 void GpioInput::update(Actions action) {
     if (bounce.update() || startup) {
-        action.fire(createSimpleJson("value", bounce.read()));
+        action.fire(createValue(bounce.read()));
         startup = false;
     }
 }
 
 void GpioOutput::execute(const String& command) {
-    StaticJsonBuffer<64> buffer;
-    JsonObject& root = buffer.parseObject(command);
     bool newValue = false;
     DEBUG("Pin: ");
     DEBUG(pin);
     DEBUGLN(": executing command: " + command);
-    if (!getBoolValue(root["value"], newValue)) {
+    if (!getBoolValue(command, newValue)) {
         DEBUGLN("Invalid command.");
         return;
     }
@@ -70,7 +52,7 @@ void GpioOutput::execute(const String& command) {
 
 void GpioOutput::update(Actions action) {
     if (changed) {
-        action.fire(createSimpleJson<bool>("value", digitalRead(pin)));
+        action.fire(createValue(digitalRead(pin)));
         changed = false;
     }
 }
