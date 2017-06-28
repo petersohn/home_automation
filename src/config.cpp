@@ -1,10 +1,13 @@
 #include "config.hpp"
 
+#include "collection.hpp"
 #include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
 #include "debug.hpp"
+#include "DhtSensor.hpp"
 #include "GpioInterface.hpp"
 #include "PublishAction.hpp"
+#include "SensorInterface.hpp"
 
 #include <ArduinoJson.h>
 #include <FS.h>
@@ -63,19 +66,47 @@ bool getPin(const JsonObject& data, int& value) {
     return false;
 }
 
+template<typename T>
+T getJsonWithDefault(JsonVariant data, T defaultValue) {
+    T result = data.as<T>();
+    if (result == T{}) {
+        return defaultValue;
+    }
+    return result;
+}
+
+const std::initializer_list<std::pair<const char*, int>> dhtTypes{
+    {"", DHT22}, {"dht11", DHT11}, {"dht22", DHT22}, {"dht21", DHT21}
+};
+
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
     String type = data.get<String>("type");
     if (type == "input") {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
-                        new GpioInput(data.get<int>("pin"))}
+                        new GpioInput{data.get<int>("pin")}}
                 : nullptr;
     } else if (type == "output") {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
-                        new GpioOutput(data.get<int>("pin"))}
+                        new GpioOutput{data.get<int>("pin")}}
+                : nullptr;
+    } else if (type == "dht") {
+        int pin = 0;
+        auto type = tools::findValue(dhtTypes,
+                data.get<String>("dhtType"));
+        if (!type) {
+            DEBUGLN("Invalid DHT type.");
+            return nullptr;
+        }
+        return getPin(data, pin)
+                ?  std::unique_ptr<Interface>{
+                        new SensorInterface{std::unique_ptr<Sensor>{
+                                new DhtSensor{data.get<int>("pin"), *type}},
+                        getJsonWithDefault(data["interval"], 60) * 1000,
+                        getJsonWithDefault(data["offset"], 0) * 1000}}
                 : nullptr;
     } else {
         DEBUGLN(String("Invalid interface type: ") + type);

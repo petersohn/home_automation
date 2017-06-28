@@ -42,6 +42,11 @@
 			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.3.0/variants/generic</location>
 		</link>
 		<link>
+			<name>libraries/Adafruit_Unified_Sensor</name>
+			<type>2</type>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/libraries/Adafruit_Unified_Sensor/1.0.2</location>
+		</link>
+		<link>
 			<name>libraries/ArduinoJson</name>
 			<type>2</type>
 			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/libraries/ArduinoJson/5.10.0</location>
@@ -50,6 +55,11 @@
 			<name>libraries/Bounce2</name>
 			<type>2</type>
 			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/libraries/Bounce2/2.2.0</location>
+		</link>
+		<link>
+			<name>libraries/DHT_sensor_library</name>
+			<type>2</type>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/libraries/DHT_sensor_library/1.3.0</location>
 		</link>
 		<link>
 			<name>libraries/ESP8266WiFi</name>

@@ -28,6 +28,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.cpp.sketch.input.308348536" name="CPP source files" superClass="it.baeyens.arduino.compiler.cpp.sketch.input"/>
 							</tool>
@@ -42,6 +44,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.c.sketch.input.43283955" name="C Source Files" superClass="it.baeyens.arduino.compiler.c.sketch.input"/>
 							</tool>
@@ -56,6 +60,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.S.sketch.input.1846611768" name="Assembly source files" superClass="it.baeyens.arduino.compiler.S.sketch.input"/>
 							</tool>
@@ -89,12 +95,33 @@
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="it.baeyens.arduino.targetplatform.1498077553" name="Arduino Target" osList="all" superClass="it.baeyens.arduino.targetplatform"/>
 							<builder buildPath="${workspace_loc:/home_automation}/Release" id="it.baeyens.arduino.sketch.builder.18692395" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Arduino sketch builder" superClass="it.baeyens.arduino.sketch.builder"/>
 							<tool id="it.baeyens.arduino.tool.sketch.compiler.cpp.102998073" name="Arduino C++ Compiler" superClass="it.baeyens.arduino.tool.sketch.compiler.cpp">
+								<option id="it.baeyens.arduino.compiler.cpp.sketch.option.incpath.2078907498" superClass="it.baeyens.arduino.compiler.cpp.sketch.option.incpath" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
+								</option>
 								<inputType id="it.baeyens.arduino.compiler.cpp.sketch.input.1817508831" name="CPP source files" superClass="it.baeyens.arduino.compiler.cpp.sketch.input"/>
 							</tool>
 							<tool id="it.baeyens.arduino.tool.compiler.c.1546981606" name="Arduino C Compiler" superClass="it.baeyens.arduino.tool.compiler.c">
+								<option id="it.baeyens.arduino.compiler.c.sketch.option.incpath.1780076943" superClass="it.baeyens.arduino.compiler.c.sketch.option.incpath" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
+								</option>
 								<inputType id="it.baeyens.arduino.compiler.c.sketch.input.298613682" name="C Source Files" superClass="it.baeyens.arduino.compiler.c.sketch.input"/>
 							</tool>
 							<tool id="it.baeyens.arduino.tool.sketch.compiler.s.1907870066" name="Arduino Assembler" superClass="it.baeyens.arduino.tool.sketch.compiler.s">
+								<option id="it.baeyens.arduino.compiler.asm.sketch.option.incpath.2019864048" superClass="it.baeyens.arduino.compiler.asm.sketch.option.incpath" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
+								</option>
 								<inputType id="it.baeyens.arduino.compiler.S.sketch.input.426513253" name="Assembly source files" superClass="it.baeyens.arduino.compiler.S.sketch.input"/>
 							</tool>
 							<tool id="it.baeyens.arduino.tool.ar.1859620670" name="Arduino archiver" superClass="it.baeyens.arduino.tool.ar"/>

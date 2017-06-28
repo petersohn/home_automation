@@ -9,6 +9,7 @@
 class Action {
 public:
     virtual void fire(const std::vector<String>& value) = 0;
+    virtual ~Action() {}
 };
 
 class Actions {
