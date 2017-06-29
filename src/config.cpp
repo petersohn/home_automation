@@ -85,13 +85,13 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
-                        new GpioInput{data.get<int>("pin")}}
+                        new GpioInput{pin}}
                 : nullptr;
     } else if (type == "output") {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
-                        new GpioOutput{data.get<int>("pin")}}
+                        new GpioOutput{pin}}
                 : nullptr;
     } else if (type == "dht") {
         int pin = 0;
@@ -104,7 +104,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
                         new SensorInterface{std::unique_ptr<Sensor>{
-                                new DhtSensor{data.get<int>("pin"), *type}},
+                                new DhtSensor{pin, *type}},
                         getJsonWithDefault(data["interval"], 60) * 1000,
                         getJsonWithDefault(data["offset"], 0) * 1000}}
                 : nullptr;
