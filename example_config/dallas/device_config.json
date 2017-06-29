@@ -1,0 +1,20 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "availabilityTopic": "devices/testDevice/availability",
+    "interfaces": [
+        {
+            "type": "dallasTemperature",
+            "name": "dallas",
+            "interval": 60,
+            "pin": 2
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "dallas",
+            "topic": "devices/testDevice/dht/temperature",
+            "retain": false
+        }
+    ]
+}
