@@ -18,6 +18,9 @@ public:
             : actions(actions) {}
 
     void fire(const std::vector<String>& value) {
+        if (value.empty()) {
+            return;
+        }
         for (const auto& action : actions) {
             action->fire(value);
         }

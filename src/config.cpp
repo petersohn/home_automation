@@ -3,6 +3,7 @@
 #include "collection.hpp"
 #include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
+#include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
 #include "GpioInterface.hpp"
@@ -79,6 +80,15 @@ const std::initializer_list<std::pair<const char*, int>> dhtTypes{
     {"", DHT22}, {"dht11", DHT11}, {"dht22", DHT22}, {"dht21", DHT21}
 };
 
+std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
+        std::unique_ptr<Sensor>&& sensor) {
+    return std::unique_ptr<Interface>{new SensorInterface{
+            std::move(sensor),
+            getJsonWithDefault(data["interval"], 60) * 1000,
+            getJsonWithDefault(data["offset"], 0) * 1000}};
+
+}
+
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
     String type = data.get<String>("type");
     if (type == "input") {
@@ -102,11 +112,14 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
             return nullptr;
         }
         return getPin(data, pin)
-                ?  std::unique_ptr<Interface>{
-                        new SensorInterface{std::unique_ptr<Sensor>{
-                                new DhtSensor{pin, *type}},
-                        getJsonWithDefault(data["interval"], 60) * 1000,
-                        getJsonWithDefault(data["offset"], 0) * 1000}}
+                ?  createSensorInterface(data,
+                        std::unique_ptr<Sensor>(new DhtSensor{pin, *type}))
+                : nullptr;
+    } else if (type == "dallasTemperature") {
+        int pin = 0;
+        return getPin(data, pin)
+                ?  createSensorInterface(data, std::unique_ptr<Sensor>(
+                        new DallasTemperatureSensor{pin}))
                 : nullptr;
     } else {
         DEBUGLN(String("Invalid interface type: ") + type);
