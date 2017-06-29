@@ -28,7 +28,7 @@ struct InterfaceConfig {
 struct DeviceConfig {
     String name;
     String availabilityTopic;
-    bool debug = true;
+    bool debug = false;
     std::vector<InterfaceConfig> interfaces;
 };
 

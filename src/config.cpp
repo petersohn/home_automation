@@ -248,9 +248,14 @@ DeviceConfig readDeviceConfig(const char* filename) {
         return result;
     }
 
+    PARSE(*data.root, result, debug, bool);
+    if (result.debug) {
+        Serial.begin(115200);
+        DEBUGLN();
+        DEBUGLN("Starting up...");
+    }
     PARSE(*data.root, result, name, String);
     PARSE(*data.root, result, availabilityTopic, String);
-    PARSE(*data.root, result, debug, bool);
 
     parseInterfaces(*data.root, result.interfaces);
     parseActions(*data.root, result.interfaces);
@@ -265,6 +270,6 @@ DeviceConfig deviceConfig;
 
 void initConfig() {
     SPIFFS.begin();
-    globalConfig = readGlobalConfig("/global_config.json");
     deviceConfig = readDeviceConfig("/device_config.json");
+    globalConfig = readGlobalConfig("/global_config.json");
 }

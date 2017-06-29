@@ -92,9 +92,6 @@ bool connectIfNeeded() {
 
 void setup()
 {
-    Serial.begin(115200);
-    DEBUGLN();
-    DEBUGLN("Starting up...");
     initConfig();
     mqttClient.setServer(globalConfig.serverAddress.c_str(),
                     globalConfig.serverPort)
