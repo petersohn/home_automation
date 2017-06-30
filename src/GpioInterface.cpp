@@ -4,10 +4,6 @@
 
 namespace {
 
-String createValue(bool value) {
-    return value ? "on" : "off";
-}
-
 } // unnamed namespace
 
 void GpioInput::execute(const String& /*command*/) {
@@ -15,17 +11,19 @@ void GpioInput::execute(const String& /*command*/) {
 
 void GpioInput::update(Actions action) {
     if (bounce.update() || startup) {
-        action.fire({createValue(bounce.read())});
+        action.fire({String(bounce.read())});
         startup = false;
     }
 }
 
 bool GpioOutput::getBoolValue(const String& input, bool& output) {
-    if (input.equalsIgnoreCase("on") || input.equalsIgnoreCase("true")) {
+    if (input == "1" || input.equalsIgnoreCase("on")
+            || input.equalsIgnoreCase("true")) {
         output = true;
         return true;
     }
-    if (input.equalsIgnoreCase("off") || input.equalsIgnoreCase("false")) {
+    if (input == "0" || input.equalsIgnoreCase("off")
+            || input.equalsIgnoreCase("false")) {
         output = false;
         return true;
     }
@@ -56,7 +54,7 @@ void GpioOutput::execute(const String& command) {
 
 void GpioOutput::update(Actions action) {
     if (changed) {
-        action.fire({createValue(digitalRead(pin))});
+        action.fire({String(digitalRead(pin))});
         changed = false;
     }
 }
