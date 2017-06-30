@@ -34,12 +34,12 @@
 		<link>
 			<name>core/core</name>
 			<type>2</type>
-			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.3.0/cores/esp8266</location>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.4.0-rc1/cores/esp8266</location>
 		</link>
 		<link>
 			<name>core/variant</name>
 			<type>2</type>
-			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.3.0/variants/generic</location>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.4.0-rc1/variants/generic</location>
 		</link>
 		<link>
 			<name>libraries/Adafruit_Unified_Sensor</name>
@@ -69,7 +69,7 @@
 		<link>
 			<name>libraries/ESP8266WiFi</name>
 			<type>2</type>
-			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.3.0/libraries/ESP8266WiFi</location>
+			<location>/home/peet/eclipse/cpp-neon/eclipse/arduinoPlugin/packages/esp8266/hardware/esp8266/2.4.0-rc1/libraries/ESP8266WiFi</location>
 		</link>
 		<link>
 			<name>libraries/OneWire</name>

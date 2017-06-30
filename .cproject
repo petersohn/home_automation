@@ -21,17 +21,17 @@
 								<option id="it.baeyens.arduino.compiler.cpp.sketch.option.incpath.293400982" name="Include Paths (-I)" superClass="it.baeyens.arduino.compiler.cpp.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/OneWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DallasTemperature}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.cpp.sketch.input.308348536" name="CPP source files" superClass="it.baeyens.arduino.compiler.cpp.sketch.input"/>
 							</tool>
@@ -39,17 +39,17 @@
 								<option id="it.baeyens.arduino.compiler.c.sketch.option.incpath.1595448103" name="Include Paths (-I)" superClass="it.baeyens.arduino.compiler.c.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/OneWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DallasTemperature}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.c.sketch.input.43283955" name="C Source Files" superClass="it.baeyens.arduino.compiler.c.sketch.input"/>
 							</tool>
@@ -57,17 +57,17 @@
 								<option id="it.baeyens.arduino.compiler.asm.sketch.option.incpath.1243924311" name="Include Paths (-I)" superClass="it.baeyens.arduino.compiler.asm.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Bounce2}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/OneWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DallasTemperature}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.S.sketch.input.1846611768" name="Assembly source files" superClass="it.baeyens.arduino.compiler.S.sketch.input"/>
 							</tool>
