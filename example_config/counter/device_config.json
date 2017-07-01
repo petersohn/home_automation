@@ -1,0 +1,23 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "availabilityTopic": "devices/testDevice/availability",
+    "interfaces": [
+        {
+            "type": "counter",
+            "name": "rain",
+            "interval": 30,
+            "multiplier": 1800,
+            "pin": 0
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "counter",
+            "topic": "devices/testDevice/rain/value",
+            "template": "%1",
+            "retain": false
+        }
+    ]
+}

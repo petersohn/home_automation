@@ -1,3 +1,0 @@
-include_rules
-
-: $(CORE_DIR)/*.compile.json $(ESP8266WIFI_DIR)/*.compile.json $(WIFI_DIR)/*.compile.json $(_CONFIG_DIR)/*.compile.json $(SOURCE_DIR)/main/*.compile.json |> ^ COMPILE_COMMANDS^ ./append_json.py %f |> compile_commands.json

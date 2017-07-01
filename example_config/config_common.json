@@ -1,6 +1,0 @@
-{
-    "ssid": "some_wifi_ssid",
-    "password": "some_wifi_password",
-    "serverAddress": "192.168.1.200",
-    "serverPort": 8080
-}

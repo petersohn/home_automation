@@ -1,0 +1,30 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "availabilityTopic": "devices/testDevice/availability",
+    "interfaces": [
+        {
+            "type": "dht",
+            "name": "dht",
+            "dhtType": "dht22",
+            "interval": 60,
+            "pin": 2
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "dht",
+            "topic": "devices/testDevice/dht/temperature",
+            "template": "%1",
+            "retain": false
+        },
+        {
+            "type": "publish",
+            "interface": "dht",
+            "topic": "devices/testDevice/dht/humidity",
+            "template": "%2",
+            "retain": false
+        }
+    ]
+}
