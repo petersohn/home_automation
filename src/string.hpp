@@ -166,6 +166,25 @@ String substitute(const String& valueTemplate, const Range& elements) {
     return result;
 }
 
+inline
+bool getBoolValue(const String& input, bool& output, bool allowToggle = true) {
+    if (input == "1" || input.equalsIgnoreCase("on")
+            || input.equalsIgnoreCase("true")) {
+        output = true;
+        return true;
+    }
+    if (input == "0" || input.equalsIgnoreCase("off")
+            || input.equalsIgnoreCase("false")) {
+        output = false;
+        return true;
+    }
+    if (allowToggle && input.equalsIgnoreCase("toggle")) {
+        output = !output;
+        return true;
+    }
+    return false;
+}
+
 } // namespace tools
 
 #endif // TOOLS_STREAM_HPP

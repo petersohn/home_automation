@@ -1,6 +1,7 @@
 #include "GpioInterface.hpp"
 
 #include "debug.hpp"
+#include "string.hpp"
 
 namespace {
 
@@ -16,30 +17,12 @@ void GpioInput::update(Actions action) {
     }
 }
 
-bool GpioOutput::getBoolValue(const String& input, bool& output) {
-    if (input == "1" || input.equalsIgnoreCase("on")
-            || input.equalsIgnoreCase("true")) {
-        output = true;
-        return true;
-    }
-    if (input == "0" || input.equalsIgnoreCase("off")
-            || input.equalsIgnoreCase("false")) {
-        output = false;
-        return true;
-    }
-    if (input.equalsIgnoreCase("toggle")) {
-        output = !value;
-        return true;
-    }
-    return false;
-}
-
 void GpioOutput::execute(const String& command) {
-    bool newValue = false;
+    bool newValue = value;
     DEBUG("Pin: ");
     DEBUG(pin);
     DEBUGLN(": executing command: " + command);
-    if (!getBoolValue(command, newValue)) {
+    if (!tools::getBoolValue(command, newValue)) {
         DEBUGLN("Invalid command.");
         return;
     }

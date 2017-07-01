@@ -31,8 +31,6 @@ public:
     void update(Actions action) override;
 
 private:
-    bool getBoolValue(const String& input, bool& output);
-
     int pin;
     bool changed = true;
     bool value = false;

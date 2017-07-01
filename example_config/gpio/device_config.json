@@ -40,7 +40,7 @@
             "interface": "button",
             "target": "led",
             "command": "toggle",
-            "value": "0"
+            "value": "off"
         }
     ]
 }
