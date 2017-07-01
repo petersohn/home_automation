@@ -3,24 +3,34 @@
 #include "debug.hpp"
 
 DallasTemperatureSensor::DallasTemperatureSensor(int pin)
-        : oneWire(pin), sensor(&oneWire) {
-    sensor.begin();
-    ok = sensor.getAddress(address, 0);
-    if (!ok) {
-        DEBUGLN("Failed to initialize temperature sensor.");
-        return;
+        : oneWire(pin), sensors(&oneWire) {
+    sensors.begin();
+    int count = sensors.getDeviceCount();
+    DEBUG("Number of devices: ");
+    DEBUGLN(count);
+    for (int i = 0; i < count; ++i) {
+        addresses.emplace_back();
+        if (!sensors.getAddress(addresses.back().data(), i)) {
+            addresses.pop_back();
+            DEBUG("Failed to initialize temperature sensor at index ");
+            DEBUGLN(i);
+            continue;
+        }
+        sensors.setResolution(addresses.back().data(), 9);
     }
 
-    sensor.setResolution(address, 9);
 }
 
 std::vector<String> DallasTemperatureSensor::measure() {
-    sensor.requestTemperatures();
-    float temperature = sensor.getTempC(address);
-    if (temperature == DEVICE_DISCONNECTED_C) {
-        DEBUGLN("Failed to read temperature.");
-        return {};
+    sensors.requestTemperatures();
+    std::vector<String> result;
+    for (const auto& address : addresses) {
+        float temperature = sensors.getTempC(address.data());
+        if (temperature == DEVICE_DISCONNECTED_C) {
+            DEBUGLN("Failed to read temperature.");
+            continue;
+        }
+        result.emplace_back(temperature);
     }
-
-    return {String{temperature}};
+    return result;
 }

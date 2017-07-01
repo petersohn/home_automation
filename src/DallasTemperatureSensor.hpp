@@ -6,6 +6,9 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+#include <array>
+#include <vector>
+
 class DallasTemperatureSensor : public Sensor {
 public:
     DallasTemperatureSensor(int pin);
@@ -13,10 +16,9 @@ public:
     std::vector<String> measure() override;
 private:
     OneWire oneWire;
-    DallasTemperature sensor;
+    DallasTemperature sensors;
 
-    DeviceAddress address;
-    bool ok;
+    std::vector<std::array<std::uint8_t, 8>> addresses;
 };
 
 #endif // DALLASTEMPERATURESENSOR_HPP
