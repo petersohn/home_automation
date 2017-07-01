@@ -26,8 +26,6 @@ void GpioOutput::execute(const String& command) {
         DEBUGLN("Invalid command.");
         return;
     }
-    DEBUG("Value: ");
-    DEBUGLN(newValue);
     if (value != newValue) {
         digitalWrite(pin, newValue);
         value = newValue;

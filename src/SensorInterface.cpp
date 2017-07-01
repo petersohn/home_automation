@@ -1,5 +1,7 @@
 #include "SensorInterface.hpp"
 
+#include "debug.hpp"
+
 #include <Arduino.h>
 
 void SensorInterface::execute(const String& /*command*/) {

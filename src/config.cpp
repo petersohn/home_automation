@@ -3,6 +3,7 @@
 #include "collection.hpp"
 #include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
+#include "CounterInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
@@ -80,12 +81,18 @@ const std::initializer_list<std::pair<const char*, int>> dhtTypes{
     {"", DHT22}, {"dht11", DHT11}, {"dht22", DHT22}, {"dht21", DHT21}
 };
 
+int getInterval(const JsonObject& data) {
+    return getJsonWithDefault(data["interval"], 60) * 1000;
+}
+
+int getOffset(const JsonObject& data) {
+    return getJsonWithDefault(data["offset"], 0) * 1000;
+}
+
 std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
         std::unique_ptr<Sensor>&& sensor) {
     return std::unique_ptr<Interface>{new SensorInterface{
-            std::move(sensor),
-            getJsonWithDefault(data["interval"], 60) * 1000,
-            getJsonWithDefault(data["offset"], 0) * 1000}};
+            std::move(sensor), getInterval(data), getOffset(data)}};
 
 }
 
@@ -120,6 +127,13 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         return getPin(data, pin)
                 ?  createSensorInterface(data, std::unique_ptr<Sensor>(
                         new DallasTemperatureSensor{pin}))
+                : nullptr;
+    } else if (type == "counter") {
+        int pin = 0;
+        return getPin(data, pin)
+                ?  std::unique_ptr<Interface>(new CounterInterface{
+                        pin, getJsonWithDefault(data["multiplier"], 1.0f),
+                        getInterval(data), getOffset(data)})
                 : nullptr;
     } else {
         DEBUGLN(String("Invalid interface type: ") + type);
@@ -237,8 +251,8 @@ void parseActions(const JsonObject& data,
             continue;
         }
 
-        interface->actions.push_back(std::move(parsedAction));
-    }
+    interface->actions.push_back(std::move(parsedAction));
+}
 }
 
 DeviceConfig readDeviceConfig(const char* filename) {
@@ -250,6 +264,7 @@ DeviceConfig readDeviceConfig(const char* filename) {
 
     PARSE(*data.root, result, debug, bool);
     if (result.debug) {
+        deviceConfig.debug = result.debug;
         Serial.begin(115200);
         DEBUGLN();
         DEBUGLN("Starting up...");
