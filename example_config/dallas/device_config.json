@@ -8,12 +8,14 @@
             "name": "dallas",
             "interval": 60,
             "pin": 2
+        }
     ],
     "actions": [
         {
             "type": "publish",
             "interface": "dallas",
             "topic": "devices/testDevice/dht/temperature",
+            "template": "%1 %2",
             "retain": false
         }
     ]
