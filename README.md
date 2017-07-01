@@ -28,23 +28,16 @@
 
 # Introduction
 
-This is a home automation framework based on the ESP8266 WiFi-enabled
-microcontroller. The microcontrollers (from now on, called *devices*) can
-control one or more appliances (such as lamps) and/or sensors (switches). The
-whole system is coordinated by a central server over HTTP.
-
-The system integrates with [Home Assistant](https://home-assistant.io/).
+This is an IoT framework for the ESP8266 WiFi-enabled microcontroller. The
+microcontrollers (from now on, called *devices*) communicate with the outside
+world through MQTT.
 
 **Note:** The project is still under development. It is not yet tested in any
 real environment.
 
 # Requirements
 
-## Hardware requirements
-
-The system requires a central server and one or more ESP8266 devices.
-
-### ESP8266 Devices
+## Hardware
 
 The ESP8266 requires a stable 3.3V input voltage (according to the
 specifications, it works from 1.7V to 3.6V, but stable power is needed
@@ -70,42 +63,13 @@ It is possible to use additional two GPIO ports. If the serial port is
 disabled, its ports can be used the same way as the other ports. The UTXD port
 is GPIO 1 and URXD is GPIO 3.
 
-### Server
-
-The server can be any machine that can run Home Assistant. It must be connected
-to the same network as the ESP devices. Since encrypted connections are not yet
-supported, the HTTP ports of either Home Assistant or the ESP devices should
-not be reachable from the internet. For secure access to Home Assistant from
-outside, a proxy server is recommended (e.g. Apache, set to listen on HTTPS and
-forward requests to Home Assistant through HTTP on the local network).
-
-### Development
-
-Development can be done on any PC that meets the requirement of the server (it
-is recommended to use the same machine for server and development for testing).
-It needs to have a serial port (or USB if an USB to TTL adapter is used) for
-flashing the device.
-
-## Software requirements
-
-### Server
-
-Home Assistant should be running on the server. Password authentication should
-be turned on (the device always sends the `x-ha-access` header. Status updates
-are sent automatically to the server.
-
-### Development
+## Development
 
 * [ESP8266 toolchain for Eclipse](https://github.com/esp8266/Arduino/blob/master/doc/eclipse/eclipse.rst).
 * [ESP8266 toolchain for Arduino IDE](https://github.com/esp8266/Arduino/)
   with [SPIFFS support](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
 
 # Configuration
-
-The following steps assume that the software described in
-[Software requirements](#software-requirements) are installed properly.
-
-## Configuration files
 
 The configuration of the device is done by uploading the following files to the
 ESP:
@@ -121,6 +85,120 @@ IDE and set it up with the parameters of your ESP device. Follow [these
 instructions](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system)
 to upload the file to the device.
 
-# Building
+The `device_config.json` consists of the following fields:
 
-The program can be compiled and uploaded to the device from Eclipse.
+* `name`: The name of the device.
+* `debug`: Whether debugging through the serial interface is enabled. If set to
+  false, then the TXD port can be used for other purposes. Be aware though that
+  some signals are sent through this port at boot time, so it should be used
+  with care.
+* `availabilityTopic`: The MQTT topic to send a message after boot to indicate
+  that the device is online. A will is also sent to this topic if the device
+  becomes offline.
+* `interfaces`: A list of the interfaces (sensors etc.) used by the device.
+* `actions`: A list of the actions that describe how the device should react to
+  state changes.
+
+## Interfaces
+
+Common parameters to interfaces:
+
+* `name`: The name of the interface.
+* `pin`: The GPIO pin used for this interface,
+* `type`: The type of the interface.
+* `commandTopic`: For interfaces that support commands, these are sent throgu
+  this MQTT topic.
+
+Values reported by interfaces are passed to actions. Some interfaces may report
+multiple values.
+
+The following interface types are supported.
+
+### `input`
+
+Binary input through a GPIO port. Actions are triggered if the state changes.
+
+### `output`
+
+Binary output through a GPIO port. Similarly to input, actions are triggered if
+the state changes.
+
+This interface supports the following commands:
+
+* `0`/`false`/`off`: Set the port value to 0.
+* `1`/`true`/`on`: Set the port value to 1.
+* `toggle`: Toggles the port value.
+
+### Sensors
+
+Sensors send their value periodically. Common parameters used for all sensors:
+
+* `interval`: The polling interval in seconds. Default value: 60.
+* `offset`: An offset to the polling in seconds. It is useful if the
+  measurement takes a long time and there are multiple sensors, to avoid the
+  device blocking for a long time. Note that a measurement is always made right
+  after boot.
+
+#### `counter`
+
+Measures the frequency of a GPIO port switching to 1 state. It can be used, for
+example, for tipping bucket rain gauges. The value is reported as switches per
+second.
+
+Parameters:
+
+* `multiplier`: Multiply the output with this number. It can be a floating
+  point number. For example, if the bucket tips after every 5 ml (=5 cm^3,
+  =5000 mm^3), of water, and the input area of the rain gauge is 100 cm^2
+  (=10000 mm^2), then set this value to 5000 / 10000 = 0.5 to measure rain in
+  mm/s, or 1800 to measure in mm/h.
+
+#### `dht`
+
+DHT11/21/22 temperature and humidity sensor. The first value is the
+temperature, measured in °C. The seconf value is the humidity, measured in %.
+
+Parameters:
+
+* `dhtType`: The type of the sensor (for example, `dht22`).
+
+#### `dallas`
+
+Dallas temperature sensors (e.g. DS18B20). These sensors use the OneWire™
+interface, which means that multiple devices can be attached to the same port.
+One value is reported for each sensor.
+
+## Actions
+
+Actions are fired by interfaces. The purpose of actions is to process the state
+change or value report of the interface.
+
+Common parameters:
+
+* `type`: The type of the action.
+* `interface`: The name of the interface the action is attached to.
+* `value`: If given, fire only if the value of the interface equals this value.
+
+The following action types are supported.
+
+### `publish`
+
+Publish some value through MQTT.
+
+Parameters:
+
+* `topic`: The MQTT topic to publish to.
+* `retain`: Whether the retain flag is to be set. Default is false.
+* `template`: The message to send. The substrings _%n_ are substituted by the
+  _n_th value of the interface. The default is `%1`.
+
+### `command`
+
+Send a direct command to an interface. It works even if the MQTT server is not
+reachable. However Wifi connection still needs to be up.
+
+Parameters:
+
+* `target`: The name of the target interface, where the command is sent.
+* `command`: The command to send to the target interface. Value substitution is
+  done similarly to the `template` parameter of the `publish` action.
