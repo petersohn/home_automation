@@ -31,9 +31,14 @@ public:
     void update(Actions action) override;
 
 private:
+    void toggle();
+
     int pin;
     bool changed = true;
     bool value = false;
+    unsigned long nextBlink = 0;
+    int blinkOn = 0;
+    int blinkOff = 0;
 };
 
 #endif // GPIOINTERFACE_HPP

@@ -25,23 +25,51 @@ void GpioOutput::execute(const String& command) {
 
     std::size_t position = 0;
     String commandName = tools::nextToken(command, ' ', position);
+
     if (commandName.equalsIgnoreCase("toggle")) {
-        newValue = !value;
-        changed = true;
-    } else if (!tools::getBoolValue(commandName, newValue)) {
+        if (nextBlink != 0) {
+            DEBUGLN("Cannot toggle while blinking.");
+        } else {
+            toggle();
+        }
+        return;
+    }
+
+    if (commandName.equalsIgnoreCase("blink")) {
+        blinkOn = tools::nextToken(command, ' ', position).toInt();
+        blinkOff = tools::nextToken(command, ' ', position).toInt();
+        if (blinkOn == 0 || blinkOff == 0) {
+            nextBlink = 0;
+        } else {
+            nextBlink = millis();
+        }
+    }
+
+    if (!tools::getBoolValue(commandName, newValue)) {
         DEBUGLN("Invalid command.");
         return;
     }
+
+    nextBlink = 0;
     if (value != newValue) {
-        digitalWrite(pin, newValue);
-        value = newValue;
-        changed = true;
+        toggle();
     }
 }
 
 void GpioOutput::update(Actions action) {
+    if (nextBlink != 0 && nextBlink <= millis()) {
+        toggle();
+        nextBlink += value ? blinkOn : blinkOff;
+    }
+
     if (changed) {
         action.fire({String(digitalRead(pin))});
         changed = false;
     }
+}
+
+void GpioOutput::toggle() {
+    value = !value;
+    digitalWrite(pin, value);
+    changed = true;
 }
