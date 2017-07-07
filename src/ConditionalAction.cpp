@@ -7,8 +7,8 @@ void ConditionalAction::fire(const std::vector<String>& values) {
         action->fire(values);
     } else {
         bool expected = false, actual = false;
-        if (tools::getBoolValue(value, expected, false)
-                && tools::getBoolValue(values[0], actual, false)
+        if (tools::getBoolValue(value, expected)
+                && tools::getBoolValue(values[0], actual)
                 && expected == actual) {
             action->fire(values);
         }

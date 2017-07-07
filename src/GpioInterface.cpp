@@ -22,7 +22,13 @@ void GpioOutput::execute(const String& command) {
     DEBUG("Pin: ");
     DEBUG(pin);
     DEBUGLN(": executing command: " + command);
-    if (!tools::getBoolValue(command, newValue)) {
+
+    std::size_t position = 0;
+    String commandName = tools::nextToken(command, ' ', position);
+    if (commandName.equalsIgnoreCase("toggle")) {
+        newValue = !value;
+        changed = true;
+    } else if (!tools::getBoolValue(commandName, newValue)) {
         DEBUGLN("Invalid command.");
         return;
     }

@@ -167,7 +167,7 @@ String substitute(const String& valueTemplate, const Range& elements) {
 }
 
 inline
-bool getBoolValue(const String& input, bool& output, bool allowToggle = true) {
+bool getBoolValue(const String& input, bool& output) {
     if (input == "1" || input.equalsIgnoreCase("on")
             || input.equalsIgnoreCase("true")) {
         output = true;
@@ -176,10 +176,6 @@ bool getBoolValue(const String& input, bool& output, bool allowToggle = true) {
     if (input == "0" || input.equalsIgnoreCase("off")
             || input.equalsIgnoreCase("false")) {
         output = false;
-        return true;
-    }
-    if (allowToggle && input.equalsIgnoreCase("toggle")) {
-        output = !output;
         return true;
     }
     return false;
