@@ -32,6 +32,7 @@ public:
 
 private:
     void toggle();
+    void clearBlink();
 
     int pin;
     bool changed = true;

@@ -39,10 +39,11 @@ void GpioOutput::execute(const String& command) {
         blinkOn = tools::nextToken(command, ' ', position).toInt();
         blinkOff = tools::nextToken(command, ' ', position).toInt();
         if (blinkOn == 0 || blinkOff == 0) {
-            nextBlink = 0;
+            clearBlink();
         } else {
             nextBlink = millis();
         }
+        return;
     }
 
     if (!tools::getBoolValue(commandName, newValue)) {
@@ -50,7 +51,8 @@ void GpioOutput::execute(const String& command) {
         return;
     }
 
-    nextBlink = 0;
+    clearBlink();
+
     if (value != newValue) {
         toggle();
     }
@@ -63,7 +65,8 @@ void GpioOutput::update(Actions action) {
     }
 
     if (changed) {
-        action.fire({String(digitalRead(pin))});
+        action.fire({String(digitalRead(pin)),
+                String(blinkOn), String(blinkOff)});
         changed = false;
     }
 }
@@ -71,5 +74,12 @@ void GpioOutput::update(Actions action) {
 void GpioOutput::toggle() {
     value = !value;
     digitalWrite(pin, value);
+    changed = true;
+}
+
+void GpioOutput::clearBlink() {
+    nextBlink = 0;
+    blinkOn = 0;
+    blinkOff = 0;
     changed = true;
 }
