@@ -110,14 +110,17 @@ Binary input through a GPIO port. Actions are triggered if the state changes.
 
 ### `output`
 
-Binary output through a GPIO port. Similarly to input, actions are triggered if
-the state changes.
+Binary output through a GPIO port. Similarly to `input`, actions are triggered if
+the state changes. The values reported are current state, blink on time, blink
+off time.
 
 This interface supports the following commands:
 
-* `0`/`false`/`off`: Set the port value to 0.
-* `1`/`true`/`on`: Set the port value to 1.
-* `toggle`: Toggles the port value.
+* `0`/`false`/`off`: Set the port value to 0. Turns off blinking.
+* `1`/`true`/`on`: Set the port value to 1. Turns off blinking.
+* `toggle`: Toggles the port value. Cannot be used while blinking.
+* `blink <on_time> <off_time>`: Switch the interface on and off periodically.
+  `on_time` and `off_time` are measured in milliseconds.
 
 ### Sensors
 
@@ -146,7 +149,7 @@ Parameters:
 #### `dht`
 
 DHT11/21/22 temperature and humidity sensor. The first value is the
-temperature, measured in °C. The seconf value is the humidity, measured in %.
+temperature, measured in °C. The second value is the humidity, measured in %.
 
 Parameters:
 
