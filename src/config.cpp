@@ -108,7 +108,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
-                        new GpioOutput{pin}}
+                        new GpioOutput{pin, data["default"]}}
                 : nullptr;
     } else if (type == "dht") {
         int pin = 0;

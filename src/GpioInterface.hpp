@@ -22,10 +22,7 @@ private:
 
 class GpioOutput : public Interface {
 public:
-    GpioOutput(int pin) : pin(pin) {
-        pinMode(pin, OUTPUT);
-        digitalWrite(pin, value);
-    }
+    GpioOutput(int pin, bool defaultValue);
 
     void execute(const String& command) override;
     void update(Actions action) override;

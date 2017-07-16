@@ -114,6 +114,9 @@ Binary output through a GPIO port. Similarly to `input`, actions are triggered i
 the state changes. The values reported are current state, blink on time, blink
 off time.
 
+The following additional value is supported:
+* `default`: The default value of the output (a boolean).
+
 This interface supports the following commands:
 
 * `0`/`false`/`off`: Set the port value to 0. Turns off blinking.

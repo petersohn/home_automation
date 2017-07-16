@@ -3,10 +3,6 @@
 #include "debug.hpp"
 #include "string.hpp"
 
-namespace {
-
-} // unnamed namespace
-
 void GpioInput::execute(const String& /*command*/) {
 }
 
@@ -15,6 +11,12 @@ void GpioInput::update(Actions action) {
         action.fire({String(bounce.read())});
         startup = false;
     }
+}
+
+GpioOutput::GpioOutput(int pin, bool defaultValue)
+        : pin(pin), value(defaultValue) {
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, value);
 }
 
 void GpioOutput::execute(const String& command) {
