@@ -20,6 +20,7 @@ private:
     std::unique_ptr<Sensor> sensor;
     int interval;
     long nextExecution;
+    long nextRetry = 0;
 };
 
 #endif // SENSORINTERFACE_HPP

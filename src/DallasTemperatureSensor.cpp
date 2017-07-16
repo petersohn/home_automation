@@ -28,7 +28,7 @@ std::vector<String> DallasTemperatureSensor::measure() {
         float temperature = sensors.getTempC(address.data());
         if (temperature == DEVICE_DISCONNECTED_C) {
             DEBUGLN("Failed to read temperature.");
-            continue;
+            return {};
         }
         result.emplace_back(temperature);
     }

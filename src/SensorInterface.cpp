@@ -9,8 +9,17 @@ void SensorInterface::execute(const String& /*command*/) {
 
 void SensorInterface::update(Actions action) {
     long now = millis();
-    if (now >= nextExecution) {
-        nextExecution += ((now - nextExecution) / interval + 1) * interval;
-        action.fire(sensor->measure());
+    if (now >= nextExecution || nextRetry != 0 && now >= nextRetry) {
+        if (now >= nextExecution) {
+            nextExecution += ((now - nextExecution) / interval + 1) * interval;
+        }
+        auto values = sensor->measure();
+        if (values.empty()) {
+            DEBUGLN("Measurement failed. Trying again.");
+            nextRetry = now + 1000;
+        } else {
+            nextRetry = 0;
+            action.fire(values);
+        }
     }
 }
