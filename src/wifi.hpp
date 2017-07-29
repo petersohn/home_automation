@@ -5,7 +5,7 @@
 
 namespace wifi {
 
-void connect(const String& ssid, const String& password);
+bool connectIfNeeded(const String& ssid, const String& password);
 
 } // namespace wifi
 

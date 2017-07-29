@@ -20,10 +20,6 @@ unsigned long nextConnectionAttempt = 0;
 
 WiFiClient wifiClient;
 
-void initialize() {
-    wifi::connect(globalConfig.wifiSSID, globalConfig.wifiPassword);
-}
-
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
     String topicStr = topic;
@@ -100,14 +96,13 @@ void setup()
 
 void loop()
 {
-    if (WiFi.status() != WL_CONNECTED) {
-        DEBUGLN("WiFi connection lost.");
-        initialize();
-    }
 
-    if (millis() >= nextConnectionAttempt) {
-        if (!connectIfNeeded()) {
-            nextConnectionAttempt = millis() + connectionAttemptInterval;
+    if (wifi::connectIfNeeded(
+            globalConfig.wifiSSID, globalConfig.wifiPassword)) {
+        if (millis() >= nextConnectionAttempt) {
+            if (!connectIfNeeded()) {
+                nextConnectionAttempt = millis() + connectionAttemptInterval;
+            }
         }
     }
 
