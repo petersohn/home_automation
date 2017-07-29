@@ -39,9 +39,15 @@ void onMessageReceived(
 
 String willMessage;
 
-bool connectIfNeeded() {
+enum class ConnectStatus {
+    alreadyConnected,
+    connectionSuccessful,
+    connectionFailed
+};
+
+ConnectStatus connectIfNeeded() {
     if (mqttClient.connected()) {
-        return true;
+        return ConnectStatus::alreadyConnected;
     }
     DEBUGLN("Client status = " + String(mqttClient.state()));
     DEBUGLN("Connecting to MQTT broker...");
@@ -78,10 +84,11 @@ bool connectIfNeeded() {
                 mqttClient.subscribe(interface.commandTopic.c_str());
             }
         }
+        return ConnectStatus::connectionSuccessful;
     } else {
         DEBUGLN("Connection failed.");
+        return ConnectStatus::connectionFailed;
     }
-    return result;
 }
 
 } // unnamed namespace
@@ -100,8 +107,18 @@ void loop()
     if (wifi::connectIfNeeded(
             globalConfig.wifiSSID, globalConfig.wifiPassword)) {
         if (millis() >= nextConnectionAttempt) {
-            if (!connectIfNeeded()) {
+            switch (connectIfNeeded()) {
+            case ConnectStatus::alreadyConnected:
+                break;
+            case ConnectStatus::connectionSuccessful:
+                for (const InterfaceConfig& interface :
+                        deviceConfig.interfaces) {
+                    interface.interface->start();
+                }
+                break;
+            case ConnectStatus::connectionFailed:
                 nextConnectionAttempt = millis() + connectionAttemptInterval;
+                break;
             }
         }
     }

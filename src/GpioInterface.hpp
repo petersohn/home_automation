@@ -12,11 +12,12 @@ public:
         bounce.attach(pin);
     }
 
+    void start() override;
     void execute(const String& command) override;
     void update(Actions action) override;
 
 private:
-    bool startup = true;
+    bool startup = false;
     Bounce bounce;
 };
 
@@ -24,6 +25,7 @@ class GpioOutput : public Interface {
 public:
     GpioOutput(int pin, bool defaultValue);
 
+    void start() override;
     void execute(const String& command) override;
     void update(Actions action) override;
 
@@ -32,8 +34,8 @@ private:
     void clearBlink();
 
     int pin;
-    bool changed = true;
-    bool value = false;
+    bool changed = false;
+    bool value;
     unsigned long nextBlink = 0;
     int blinkOn = 0;
     int blinkOff = 0;

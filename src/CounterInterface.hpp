@@ -10,6 +10,8 @@
 class CounterInterface : public Interface {
 public:
     CounterInterface(int pin, float multiplier, int interval, int offset);
+
+    void start() override;
     void execute(const String& command) override;
     void update(Actions action) override;
 

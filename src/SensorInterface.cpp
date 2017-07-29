@@ -4,12 +4,19 @@
 
 #include <Arduino.h>
 
+void SensorInterface::start() {
+    // When connected to the network, all sensors make a measurement.
+    // Afterwards, measurements are shifted by offset.
+    nextExecution = millis() - offset;
+}
+
 void SensorInterface::execute(const String& /*command*/) {
 }
 
 void SensorInterface::update(Actions action) {
     long now = millis();
-    if (now >= nextExecution || nextRetry != 0 && now >= nextRetry) {
+    if ((nextExecution != 0 && now >= nextExecution)
+            || (nextRetry != 0 && now >= nextRetry)) {
         if (now >= nextExecution) {
             nextExecution += ((now - nextExecution) / interval + 1) * interval;
         }

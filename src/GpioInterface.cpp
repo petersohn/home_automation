@@ -3,6 +3,10 @@
 #include "debug.hpp"
 #include "string.hpp"
 
+void GpioInput::start() {
+    startup = true;
+}
+
 void GpioInput::execute(const String& /*command*/) {
 }
 
@@ -11,6 +15,10 @@ void GpioInput::update(Actions action) {
         action.fire({String(bounce.read())});
         startup = false;
     }
+}
+
+void GpioOutput::start() {
+    changed = true;
 }
 
 GpioOutput::GpioOutput(int pin, bool defaultValue)

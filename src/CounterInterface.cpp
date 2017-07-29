@@ -41,7 +41,12 @@ auto CounterInterface::createCounterSensor(
     return result;
 }
 
-void CounterInterface::execute(const String& /*command*/) {
+void CounterInterface::start() {
+    sensorInterface.start();
+}
+
+void CounterInterface::execute(const String& command) {
+    sensorInterface.execute(command);
 }
 
 void CounterInterface::update(Actions action) {
