@@ -8,6 +8,7 @@
 #include <ESP8266WiFi.h>
 
 #include <algorithm>
+#include <limits>
 
 extern "C" {
 #include "user_interface.h"
@@ -15,8 +16,12 @@ extern "C" {
 
 namespace {
 
+constexpr unsigned long timeLimit =
+        std::numeric_limits<unsigned long>::max() - 60000;
 constexpr unsigned connectionAttemptInterval = 1000;
+
 unsigned long nextConnectionAttempt = 0;
+
 
 WiFiClient wifiClient;
 
@@ -103,6 +108,11 @@ void setup()
 
 void loop()
 {
+    if (millis() >= timeLimit) {
+        DEBUGLN("Approaching timer overflow. Rebooting.");
+        mqttClient.disconnect();
+        ESP.restart();
+    }
 
     if (wifi::connectIfNeeded(
             globalConfig.wifiSSID, globalConfig.wifiPassword)) {
