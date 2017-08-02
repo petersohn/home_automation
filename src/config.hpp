@@ -29,6 +29,7 @@ struct DeviceConfig {
     String name;
     String availabilityTopic;
     bool debug = false;
+    int debugPort = 2534;
     std::vector<InterfaceConfig> interfaces;
 };
 

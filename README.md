@@ -81,7 +81,13 @@ The `device_config.json` consists of the following fields:
 * `debug`: Whether debugging through the serial interface is enabled. If set to
   false, then the TXD port can be used for other purposes. Be aware though that
   some signals are sent through this port at boot time, so it should be used
-  with care.
+  with care. **Note:** It only controls serial debugging. Network debugging is
+  controlled by `debugPort`.
+* `debugPort`: The port by which debugging is done. A client can connect to
+  this TCP port (e.g. with `netcat`), and debug messages are sent to the
+  client. If the value is 0, no network debugging is done. The default value is
+  2534. **Note:** Network debugging is enabled if this parameter is nonzero,
+  regardless of the value of the `debug` parameter.
 * `availabilityTopic`: The MQTT topic to send a message after boot to indicate
   that the device is online. A will is also sent to this topic if the device
   becomes offline.

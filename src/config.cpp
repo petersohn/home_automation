@@ -16,14 +16,29 @@
 
 #include <algorithm>
 
-#define PARSE(from, to, name, type) (to).name = (from).get<type>(#name)
-
 namespace {
 
 struct ParsedData {
     DynamicJsonBuffer buffer{512};
     const JsonObject* root = nullptr;
 };
+
+template<typename T>
+void parseTo(const JsonObject& jsonObject, T& target, const char* name) {
+    auto value = jsonObject.get<JsonVariant>(name);
+    if (value.is<T>()) {
+        target = value.as<T>();
+    }
+}
+
+void parseTo(const JsonObject& jsonObject, String& target, const char* name) {
+    auto value = jsonObject.get<const char*>(name);
+    if (value) {
+        target = value;
+    }
+}
+
+#define PARSE(from, to, name) parseTo((from), (to).name, #name)
 
 ParsedData parseFile(const char* filename) {
     ParsedData result;
@@ -48,12 +63,12 @@ GlobalConfig readGlobalConfig(const char* filename) {
         return result;
     }
 
-    PARSE(*data.root, result, wifiSSID, String);
-    PARSE(*data.root, result, wifiPassword, String);
-    PARSE(*data.root, result, serverAddress, String);
-    PARSE(*data.root, result, serverPort, int);
-    PARSE(*data.root, result, serverUsername, String);
-    PARSE(*data.root, result, serverPassword, String);
+    PARSE(*data.root, result, wifiSSID);
+    PARSE(*data.root, result, wifiPassword);
+    PARSE(*data.root, result, serverAddress);
+    PARSE(*data.root, result, serverPort);
+    PARSE(*data.root, result, serverUsername);
+    PARSE(*data.root, result, serverPassword);
 
     return result;
 }
@@ -164,8 +179,8 @@ void parseInterfaces(const JsonObject& data,
 
         result.emplace_back();
         InterfaceConfig& interfaceConfig = result.back();
-        PARSE(interface, interfaceConfig, name, String);
-        PARSE(interface, interfaceConfig, commandTopic, String);
+        PARSE(interface, interfaceConfig, name);
+        PARSE(interface, interfaceConfig, commandTopic);
         interfaceConfig.interface = std::move(parsedInterface);
     }
 }
@@ -262,15 +277,24 @@ DeviceConfig readDeviceConfig(const char* filename) {
         return result;
     }
 
-    PARSE(*data.root, result, debug, bool);
+    PARSE(*data.root, result, debug);
     if (result.debug) {
         deviceConfig.debug = result.debug;
         Serial.begin(115200);
-        debugln();
-        debugln("Starting up...");
     }
-    PARSE(*data.root, result, name, String);
-    PARSE(*data.root, result, availabilityTopic, String);
+
+    PARSE(*data.root, result, debugPort);
+    if (result.debugPort != 0) {
+        wifiDebugger.reset(new WiFiDebugger(result.debugPort));
+    }
+
+    debugln();
+    debugln("Starting up...");
+    debug("Debug port = ");
+    debugln(result.debugPort);
+
+    PARSE(*data.root, result, name);
+    PARSE(*data.root, result, availabilityTopic);
 
     parseInterfaces(*data.root, result.interfaces);
     parseActions(*data.root, result.interfaces);

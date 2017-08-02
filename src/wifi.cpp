@@ -21,6 +21,9 @@ bool connectIfNeeded(const String& ssid, const String& password) {
             debug("\nConnection to wifi successful. IP address = ");
             debugln(WiFi.localIP());
             connecting = false;
+            if (wifiDebugger) {
+                wifiDebugger->begin();
+            }
         }
         return true;
     }
