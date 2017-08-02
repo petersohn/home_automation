@@ -100,6 +100,7 @@ ConnectStatus connectIfNeeded() {
 
 void setup()
 {
+    WiFi.mode(WIFI_STA);
     initConfig();
     mqttClient.setServer(globalConfig.serverAddress.c_str(),
                     globalConfig.serverPort)
