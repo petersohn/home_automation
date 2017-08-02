@@ -22,7 +22,7 @@ void SensorInterface::update(Actions action) {
         }
         auto values = sensor->measure();
         if (values.empty()) {
-            DEBUGLN("Measurement failed. Trying again.");
+            debugln("Measurement failed. Trying again.");
             nextRetry = now + 1000;
         } else {
             nextRetry = 0;

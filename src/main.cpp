@@ -28,14 +28,14 @@ WiFiClient wifiClient;
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
     String topicStr = topic;
-    DEBUGLN("Message received on topic " + topicStr);
+    debugln("Message received on topic " + topicStr);
     auto interface = std::find_if(
             deviceConfig.interfaces.begin(), deviceConfig.interfaces.end(),
             [&topicStr](const InterfaceConfig& interface) {
                 return interface.commandTopic == topicStr;
             });
     if (interface == deviceConfig.interfaces.end()) {
-        DEBUGLN("Could not find appropriate interface.");
+        debugln("Could not find appropriate interface.");
         return;
     }
 
@@ -54,8 +54,8 @@ ConnectStatus connectIfNeeded() {
     if (mqttClient.connected()) {
         return ConnectStatus::alreadyConnected;
     }
-    DEBUGLN("Client status = " + String(mqttClient.state()));
-    DEBUGLN("Connecting to MQTT broker...");
+    debugln("Client status = " + String(mqttClient.state()));
+    debugln("Connecting to MQTT broker...");
     bool result = false;
     if (deviceConfig.availabilityTopic.length() != 0) {
         StaticJsonBuffer<64> buffer;
@@ -83,7 +83,7 @@ ConnectStatus connectIfNeeded() {
                 globalConfig.serverPassword.c_str());
     }
     if (result) {
-        DEBUGLN("Connection successful.");
+        debugln("Connection successful.");
         for (const InterfaceConfig& interface : deviceConfig.interfaces) {
             if (interface.commandTopic.length() != 0) {
                 mqttClient.subscribe(interface.commandTopic.c_str());
@@ -91,7 +91,7 @@ ConnectStatus connectIfNeeded() {
         }
         return ConnectStatus::connectionSuccessful;
     } else {
-        DEBUGLN("Connection failed.");
+        debugln("Connection failed.");
         return ConnectStatus::connectionFailed;
     }
 }
@@ -110,7 +110,7 @@ void setup()
 void loop()
 {
     if (millis() >= timeLimit) {
-        DEBUGLN("Approaching timer overflow. Rebooting.");
+        debugln("Approaching timer overflow. Rebooting.");
         mqttClient.disconnect();
         ESP.restart();
     }

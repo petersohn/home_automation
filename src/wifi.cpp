@@ -18,8 +18,8 @@ bool connectIfNeeded(const String& ssid, const String& password) {
     int status = WiFi.status();
     if (status == WL_CONNECTED) {
         if (connecting) {
-            DEBUG("\nConnection to wifi successful. IP address = ");
-            DEBUGLN(WiFi.localIP());
+            debug("\nConnection to wifi successful. IP address = ");
+            debugln(WiFi.localIP());
             connecting = false;
         }
         return true;
@@ -31,9 +31,9 @@ bool connectIfNeeded(const String& ssid, const String& password) {
     }
 
     if (!connecting) {
-        DEBUG("Connecting to SSID ");
-        DEBUG(ssid);
-        DEBUGLN("...");
+        debug("Connecting to SSID ");
+        debug(ssid);
+        debugln("...");
         WiFi.begin(ssid.c_str(), password.c_str());
         connecting = true;
         nextAttempt = now;
@@ -42,31 +42,31 @@ bool connectIfNeeded(const String& ssid, const String& password) {
 
     switch (status) {
     case WL_NO_SHIELD:
-        DEBUGLN("Device error.");
+        debugln("Device error.");
         // never retry
         nextAttempt = static_cast<unsigned long>(-1);
         break;
     case WL_IDLE_STATUS:
     case WL_DISCONNECTED:
-        DEBUGLN("Waiting for wifi connection...");
+        debugln("Waiting for wifi connection...");
         nextAttempt += checkInterval;
         break;
     case WL_CONNECT_FAILED:
-        DEBUGLN("\nConnection failed. Trying again.");
+        debugln("\nConnection failed. Trying again.");
         connecting = false;
         nextAttempt += retryInterval;
         break;
     case WL_NO_SSID_AVAIL:
-        DEBUGLN("\nSSID not found. Trying again.");
+        debugln("\nSSID not found. Trying again.");
         connecting = false;
         nextAttempt += retryInterval;
         break;
     case WL_CONNECTED:
         break;
     default:
-        DEBUG("\nError: ");
-        DEBUG(status);
-        DEBUGLN(". Trying again.");
+        debug("\nError: ");
+        debug(status);
+        debugln(". Trying again.");
         connecting = false;
         nextAttempt += retryInterval;
         break;

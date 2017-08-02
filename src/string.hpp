@@ -125,8 +125,8 @@ namespace detail {
 template<typename Range>
 void addValue(String& result, const String& reference, const Range& elements) {
     int value = reference.toInt();
-    // DEBUGLN("reference = " + reference);
-    // DEBUGLN("value = " + String(value));
+    // debugln("reference = " + reference);
+    // debugln("value = " + String(value));
     if (value > 0 && value <= elements.size()) {
         result += elements[value - 1];
     }

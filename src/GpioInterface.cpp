@@ -29,16 +29,16 @@ GpioOutput::GpioOutput(int pin, bool defaultValue)
 
 void GpioOutput::execute(const String& command) {
     bool newValue = value;
-    DEBUG("Pin: ");
-    DEBUG(pin);
-    DEBUGLN(": executing command: " + command);
+    debug("Pin: ");
+    debug(pin);
+    debugln(": executing command: " + command);
 
     std::size_t position = 0;
     String commandName = tools::nextToken(command, ' ', position);
 
     if (commandName.equalsIgnoreCase("toggle")) {
         if (nextBlink != 0) {
-            DEBUGLN("Cannot toggle while blinking.");
+            debugln("Cannot toggle while blinking.");
         } else {
             toggle();
         }
@@ -57,7 +57,7 @@ void GpioOutput::execute(const String& command) {
     }
 
     if (!tools::getBoolValue(commandName, newValue)) {
-        DEBUGLN("Invalid command.");
+        debugln("Invalid command.");
         return;
     }
 

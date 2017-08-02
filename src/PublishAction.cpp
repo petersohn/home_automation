@@ -4,12 +4,12 @@
 #include "string.hpp"
 
 void PublishAction::fire(const std::vector<String>& values) {
-    DEBUGLN("Publishing to " + topic);
+    debugln("Publishing to " + topic);
     String value = valueTemplate.length() == 0 ? values[0]
             : tools::substitute(valueTemplate, values);
     if (mqttClient.publish(topic.c_str(), value.c_str(), retain)) {
-        DEBUGLN("Success.");
+        debugln("Success.");
     } else {
-        DEBUGLN("Failure.");
+        debugln("Failure.");
     }
 }

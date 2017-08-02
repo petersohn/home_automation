@@ -1,13 +1,24 @@
-#ifndef DEBUG_HPP
-#define DEBUG_HPP
+#ifndef debug_HPP
+#define debug_HPP
 
 #include "config.hpp"
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-#define DEBUG(...) if (::deviceConfig.debug) ::Serial.print(__VA_ARGS__)
-#define DEBUGLN(...) if (::deviceConfig.debug) ::Serial.println(__VA_ARGS__)
+template<typename T>
+void debug(const T& value) {
+    if (deviceConfig.debug) {
+        Serial.print(value);
+    }
+}
+
+template<typename T = char*>
+void debugln(const T& value = "") {
+    if (deviceConfig.debug) {
+        Serial.println(value);
+    }
+}
 
 inline void debugJson(JsonVariant value) {
     if (!deviceConfig.debug) {
@@ -20,4 +31,4 @@ inline void debugJson(JsonVariant value) {
     array.prettyPrintTo(Serial);
 }
 
-#endif // DEBUG_HPP
+#endif // debug_HPP
