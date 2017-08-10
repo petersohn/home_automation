@@ -62,7 +62,17 @@ ConnectStatus connectIfNeeded() {
         JsonObject& message = buffer.createObject();
         message["name"] = deviceConfig.name.c_str();
         message["available"] = false;
+        willMessage = "";
         message.printTo(willMessage);
+        debug("Connecting to ");
+        debug(globalConfig.serverAddress);
+        debug(":");
+        debug(globalConfig.serverPort);
+        debug(" as ");
+        debugln(globalConfig.serverUsername);
+        mqttClient.setServer(globalConfig.serverAddress.c_str(),
+                        globalConfig.serverPort)
+                .setCallback(onMessageReceived).setClient(wifiClient);
         result = mqttClient.connect(
                 deviceConfig.name.c_str(),
                 globalConfig.serverUsername.c_str(),
@@ -102,9 +112,6 @@ void setup()
 {
     WiFi.mode(WIFI_STA);
     initConfig();
-    mqttClient.setServer(globalConfig.serverAddress.c_str(),
-                    globalConfig.serverPort)
-            .setCallback(onMessageReceived).setClient(wifiClient);
 }
 
 void loop()
