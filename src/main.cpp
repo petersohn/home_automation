@@ -51,7 +51,7 @@ void loop()
 
     if (wifi::connectIfNeeded(
             globalConfig.wifiSSID, globalConfig.wifiPassword)) {
-        mqtt::connectIfNeeded();
+        mqtt::loop();
     }
 
     for (const InterfaceConfig& interface : deviceConfig.interfaces) {

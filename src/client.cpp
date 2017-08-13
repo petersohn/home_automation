@@ -15,8 +15,10 @@ enum class ConnectStatus {
 };
 
 constexpr unsigned connectionAttemptInterval = 1000;
+constexpr unsigned statusSendInterval = 60000;
 
 unsigned long nextConnectionAttempt = 0;
+unsigned long nextStatusSend = 0;
 WiFiClient wifiClient;
 String willMessage;
 
@@ -37,7 +39,21 @@ void onMessageReceived(
     interface->interface->execute(tools::toString((char*)payload, length));
 }
 
-ConnectStatus doConnectIfNeeded() {
+String getStatusMessage(bool available, std::int32_t rssi,
+        const IPAddress ip, unsigned long uptime) {
+    StaticJsonBuffer<128> buffer;
+    JsonObject& message = buffer.createObject();
+    message["name"] = deviceConfig.name.c_str();
+    message["available"] = available;
+    message["ip"] = ip.toString();
+    message["uptime"] = uptime;
+    message["rssi"] = rssi;
+    String result;
+    message.printTo(result);
+    return result;
+}
+
+ConnectStatus connectIfNeeded() {
     if (mqtt::client.connected()) {
         return ConnectStatus::alreadyConnected;
     }
@@ -45,12 +61,7 @@ ConnectStatus doConnectIfNeeded() {
     debugln("Connecting to MQTT broker...");
     bool result = false;
     if (deviceConfig.availabilityTopic.length() != 0) {
-        StaticJsonBuffer<64> buffer;
-        JsonObject& message = buffer.createObject();
-        message["name"] = deviceConfig.name.c_str();
-        message["available"] = false;
-        willMessage = "";
-        message.printTo(willMessage);
+        willMessage = getStatusMessage(false, 0, IPAddress{}, 0);
         debug("Connecting to ");
         debug(globalConfig.serverAddress);
         debug(":");
@@ -66,13 +77,6 @@ ConnectStatus doConnectIfNeeded() {
                 globalConfig.serverPassword.c_str(),
                 deviceConfig.availabilityTopic.c_str(), 0, true,
                 willMessage.c_str());
-        if (result) {
-            String loginMessage;
-            message["available"] = true;
-            message.printTo(loginMessage);
-            mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
-                    loginMessage.c_str(), true);
-        }
     } else {
         result = mqtt::client.connect(
                 deviceConfig.name.c_str(),
@@ -93,22 +97,38 @@ ConnectStatus doConnectIfNeeded() {
     }
 }
 
+void sendStatusMessage() {
+    auto now = millis();
+    if (deviceConfig.availabilityTopic.length() != 0 && now >= nextStatusSend) {
+        debug("Sending status message");
+        String message = getStatusMessage(true, WiFi.RSSI(), WiFi.localIP(),
+                millis());
+        mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
+                message.c_str(), true);
+        nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
+                * statusSendInterval;
+    }
+}
+
 } // unnamed namespace
 
 namespace mqtt {
 
 PubSubClient client;
 
-bool connectIfNeeded() {
+bool loop() {
     if (millis() >= nextConnectionAttempt) {
-        switch (doConnectIfNeeded()) {
+        switch (connectIfNeeded()) {
         case ConnectStatus::alreadyConnected:
+            sendStatusMessage();
             break;
         case ConnectStatus::connectionSuccessful:
             for (const InterfaceConfig& interface :
                     deviceConfig.interfaces) {
                 interface.interface->start();
             }
+            nextStatusSend = millis();
+            sendStatusMessage();
             break;
         case ConnectStatus::connectionFailed:
             nextConnectionAttempt = millis() + connectionAttemptInterval;

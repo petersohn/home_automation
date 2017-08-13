@@ -7,7 +7,7 @@ namespace mqtt {
 
 extern PubSubClient client;
 
-bool connectIfNeeded();
+bool loop();
 
 } // namespace mqtt
 
