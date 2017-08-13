@@ -3,6 +3,12 @@
 
 #include <PubSubClient.h>
 
-extern PubSubClient mqttClient;
+namespace mqtt {
+
+extern PubSubClient client;
+
+bool connectIfNeeded();
+
+} // namespace mqtt
 
 #endif // CLIENT_HPP
