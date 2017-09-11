@@ -1,4 +1,4 @@
-#include "GpioInterface.hpp"
+#include "GpioOutput.hpp"
 
 #include "debug.hpp"
 #include "rtc.hpp"
@@ -9,21 +9,7 @@ namespace {
 constexpr int rtcSetMask = 2;
 constexpr int rtcValueMask = 1;
 
-};
-
-void GpioInput::start() {
-    startup = true;
-}
-
-void GpioInput::execute(const String& /*command*/) {
-}
-
-void GpioInput::update(Actions action) {
-    if (bounce.update() || startup) {
-        action.fire({String(bounce.read())});
-        startup = false;
-    }
-}
+} // unnamed namespace
 
 void GpioOutput::start() {
     changed = true;

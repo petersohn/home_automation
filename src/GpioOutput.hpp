@@ -1,25 +1,9 @@
-#ifndef GPIOINTERFACE_HPP
-#define GPIOINTERFACE_HPP
+#ifndef GPIOOUTPUT_HPP
+#define GPIOOUTPUT_HPP
 
 #include "Interface.hpp"
 
-#include <Bounce2.h>
-
-class GpioInput : public Interface {
-public:
-    GpioInput(int pin) {
-        pinMode(pin, INPUT);
-        bounce.attach(pin);
-    }
-
-    void start() override;
-    void execute(const String& command) override;
-    void update(Actions action) override;
-
-private:
-    bool startup = false;
-    Bounce bounce;
-};
+#include <Arduino.h>
 
 class GpioOutput : public Interface {
 public:
@@ -43,4 +27,4 @@ private:
     int blinkOff = 0;
 };
 
-#endif // GPIOINTERFACE_HPP
+#endif // GPIOOUTPUT_HPP

@@ -7,7 +7,8 @@
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
-#include "GpioInterface.hpp"
+#include "GpioInput.hpp"
+#include "GpioOutput.hpp"
 #include "PublishAction.hpp"
 #include "SensorInterface.hpp"
 
