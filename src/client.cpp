@@ -48,6 +48,7 @@ String getStatusMessage(bool available, std::int32_t rssi,
     message["ip"] = ip.toString();
     message["uptime"] = uptime;
     message["rssi"] = rssi;
+    message["freeMemory"] = ESP.getFreeHeap();
     String result;
     message.printTo(result);
     return result;
