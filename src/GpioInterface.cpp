@@ -1,7 +1,15 @@
 #include "GpioInterface.hpp"
 
 #include "debug.hpp"
+#include "rtc.hpp"
 #include "string.hpp"
+
+namespace {
+
+constexpr int rtcSetMask = 2;
+constexpr int rtcValueMask = 1;
+
+};
 
 void GpioInput::start() {
     startup = true;
@@ -22,9 +30,13 @@ void GpioOutput::start() {
 }
 
 GpioOutput::GpioOutput(int pin, bool defaultValue)
-        : pin(pin), value(defaultValue) {
+        : pin(pin), rtcId(rtcNext()) {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, value);
+    RtcData rtcData = rtcGet(rtcId);
+    value = ((rtcData & rtcSetMask) == 0)
+            ? defaultValue : rtcData & rtcValueMask;
+    setValue();
 }
 
 void GpioOutput::execute(const String& command) {
@@ -83,7 +95,7 @@ void GpioOutput::update(Actions action) {
 
 void GpioOutput::toggle() {
     value = !value;
-    digitalWrite(pin, value);
+    setValue();
     changed = true;
 }
 
@@ -92,4 +104,13 @@ void GpioOutput::clearBlink() {
     blinkOn = 0;
     blinkOff = 0;
     changed = true;
+}
+
+void GpioOutput::setValue() {
+    digitalWrite(pin, value);
+    RtcData rtcData = rtcSetMask;
+    if (value) {
+        rtcData |= rtcValueMask;
+    }
+    rtcSet(rtcId, rtcData);
 }

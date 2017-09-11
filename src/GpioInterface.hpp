@@ -31,9 +31,11 @@ public:
 
 private:
     void toggle();
+    void setValue();
     void clearBlink();
 
     int pin;
+    unsigned rtcId;
     bool changed = false;
     bool value;
     unsigned long nextBlink = 0;
