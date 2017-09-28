@@ -21,6 +21,7 @@ unsigned long nextConnectionAttempt = 0;
 unsigned long nextStatusSend = 0;
 WiFiClient wifiClient;
 String willMessage;
+bool restarted = true;
 
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
@@ -39,16 +40,18 @@ void onMessageReceived(
     interface->interface->execute(tools::toString((char*)payload, length));
 }
 
-String getStatusMessage(bool available, std::int32_t rssi,
-        const IPAddress ip, unsigned long uptime) {
+String getStatusMessage(bool available, bool restarted) {
     StaticJsonBuffer<128> buffer;
     JsonObject& message = buffer.createObject();
     message["name"] = deviceConfig.name.c_str();
     message["available"] = available;
-    message["ip"] = ip.toString();
-    message["uptime"] = uptime;
-    message["rssi"] = rssi;
-    message["freeMemory"] = ESP.getFreeHeap();
+    if (available) {
+        message["restarted"] = restarted;
+        message["ip"] = WiFi.localIP().toString();
+        message["uptime"] = millis();
+        message["rssi"] = WiFi.RSSI();
+        message["freeMemory"] = ESP.getFreeHeap();
+    }
     String result;
     message.printTo(result);
     return result;
@@ -62,7 +65,7 @@ ConnectStatus connectIfNeeded() {
     debugln("Connecting to MQTT broker...");
     bool result = false;
     if (deviceConfig.availabilityTopic.length() != 0) {
-        willMessage = getStatusMessage(false, 0, IPAddress{}, 0);
+        willMessage = getStatusMessage(false, false);
         debug("Connecting to ");
         debug(globalConfig.serverAddress);
         debug(":");
@@ -98,12 +101,11 @@ ConnectStatus connectIfNeeded() {
     }
 }
 
-void sendStatusMessage() {
+void sendStatusMessage(bool restarted) {
     auto now = millis();
     if (deviceConfig.availabilityTopic.length() != 0 && now >= nextStatusSend) {
         debug("Sending status message");
-        String message = getStatusMessage(true, WiFi.RSSI(), WiFi.localIP(),
-                millis());
+        String message = getStatusMessage(true, restarted);
         mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
                 message.c_str(), true);
         nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
@@ -121,7 +123,7 @@ bool loop() {
     if (millis() >= nextConnectionAttempt) {
         switch (connectIfNeeded()) {
         case ConnectStatus::alreadyConnected:
-            sendStatusMessage();
+            sendStatusMessage(false);
             break;
         case ConnectStatus::connectionSuccessful:
             for (const InterfaceConfig& interface :
@@ -129,7 +131,8 @@ bool loop() {
                 interface.interface->start();
             }
             nextStatusSend = millis();
-            sendStatusMessage();
+            sendStatusMessage(restarted);
+            restarted = false;
             break;
         case ConnectStatus::connectionFailed:
             nextConnectionAttempt = millis() + connectionAttemptInterval;
