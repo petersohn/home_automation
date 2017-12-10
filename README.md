@@ -95,6 +95,18 @@ The `device_config.json` consists of the following fields:
 * `actions`: A list of the actions that describe how the device should react to
   state changes.
 
+The `global_config.json` contains parameters that are specific to the
+environment, not the device itself. Usually, if there are multiple devices,
+they share the same `global_config.json`. The parameters are the following:
+
+* `wifiSSID`, `wifiPassword`: The credentials used to log in to the WiFi
+  network.
+* `servers`: The parameters for the MQTT servers. It is a list of structures,
+  one element for each server. If multiple servers are used, then connection is
+  made to one of them. If connection to one server fails, the connection fails
+  over to another server. The paramters are `address`, `port`, `username` and
+  `password`.
+
 ## Interfaces
 
 Common parameters to interfaces:
