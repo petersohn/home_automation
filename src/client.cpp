@@ -57,48 +57,52 @@ String getStatusMessage(bool available, bool restarted) {
     return result;
 }
 
+bool tryToConnect(const ServerConfig& server) {
+    debug("Connecting to ");
+    debug(server.address);
+    debug(":");
+    debug(server.port);
+    debug(" as ");
+    debugln(server.username);
+    bool result = false;
+    if (deviceConfig.availabilityTopic.length() != 0) {
+        willMessage = getStatusMessage(false, false);
+        mqtt::client.setServer(server.address.c_str(), server.port)
+                .setCallback(onMessageReceived).setClient(wifiClient);
+        result = mqtt::client.connect(
+                deviceConfig.name.c_str(),
+                server.username.c_str(),
+                server.password.c_str(),
+                deviceConfig.availabilityTopic.c_str(), 0, true,
+                willMessage.c_str());
+    } else {
+        result = mqtt::client.connect(
+                deviceConfig.name.c_str(),
+                server.username.c_str(),
+                server.password.c_str());
+    }
+    return result;
+}
+
 ConnectStatus connectIfNeeded() {
     if (mqtt::client.connected()) {
         return ConnectStatus::alreadyConnected;
     }
     debugln("Client status = " + String(mqtt::client.state()));
     debugln("Connecting to MQTT broker...");
-    bool result = false;
-    if (deviceConfig.availabilityTopic.length() != 0) {
-        willMessage = getStatusMessage(false, false);
-        debug("Connecting to ");
-        debug(globalConfig.serverAddress);
-        debug(":");
-        debug(globalConfig.serverPort);
-        debug(" as ");
-        debugln(globalConfig.serverUsername);
-        mqtt::client.setServer(globalConfig.serverAddress.c_str(),
-                        globalConfig.serverPort)
-                .setCallback(onMessageReceived).setClient(wifiClient);
-        result = mqtt::client.connect(
-                deviceConfig.name.c_str(),
-                globalConfig.serverUsername.c_str(),
-                globalConfig.serverPassword.c_str(),
-                deviceConfig.availabilityTopic.c_str(), 0, true,
-                willMessage.c_str());
-    } else {
-        result = mqtt::client.connect(
-                deviceConfig.name.c_str(),
-                globalConfig.serverUsername.c_str(),
-                globalConfig.serverPassword.c_str());
-    }
-    if (result) {
-        debugln("Connection successful.");
-        for (const InterfaceConfig& interface : deviceConfig.interfaces) {
-            if (interface.commandTopic.length() != 0) {
-                mqtt::client.subscribe(interface.commandTopic.c_str());
+    for (const ServerConfig& server : globalConfig.servers) {
+        if (tryToConnect(server)) {
+            debugln("Connection successful.");
+            for (const InterfaceConfig& interface : deviceConfig.interfaces) {
+                if (interface.commandTopic.length() != 0) {
+                    mqtt::client.subscribe(interface.commandTopic.c_str());
+                }
             }
+            return ConnectStatus::connectionSuccessful;
         }
-        return ConnectStatus::connectionSuccessful;
-    } else {
-        debugln("Connection failed.");
-        return ConnectStatus::connectionFailed;
     }
+    debugln("Connection failed.");
+    return ConnectStatus::connectionFailed;
 }
 
 void sendStatusMessage(bool restarted) {

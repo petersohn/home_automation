@@ -57,6 +57,24 @@ ParsedData parseFile(const char* filename) {
     return result;
 }
 
+ServerConfig parseServerConfig(const JsonObject& data) {
+    ServerConfig result;
+    PARSE(data, result, address);
+    PARSE(data, result, port);
+    PARSE(data, result, username);
+    PARSE(data, result, password);
+    return result;
+}
+
+ServerConfig parseSingleServerConfig(const JsonObject& data) {
+    ServerConfig result;
+    result.address = data.get<String>("serverAddress");
+    result.port = data.get<uint16_t>("serverPort");
+    result.username = data.get<String>("serverUsername");
+    result.password = data.get<String>("serverPassword");
+    return result;
+}
+
 GlobalConfig readGlobalConfig(const char* filename) {
     GlobalConfig result;
     ParsedData data = parseFile(filename);
@@ -66,10 +84,18 @@ GlobalConfig readGlobalConfig(const char* filename) {
 
     PARSE(*data.root, result, wifiSSID);
     PARSE(*data.root, result, wifiPassword);
-    PARSE(*data.root, result, serverAddress);
-    PARSE(*data.root, result, serverPort);
-    PARSE(*data.root, result, serverUsername);
-    PARSE(*data.root, result, serverPassword);
+
+    JsonArray& servers = data.root->get<JsonVariant>("servers");
+    if (servers == JsonArray::invalid()) {
+        debugln("No servers config. "
+                "Attempting old-style single-server config.");
+        result.servers.push_back(parseSingleServerConfig(*data.root));
+    } else {
+        for (auto server : servers) {
+            result.servers.push_back(parseServerConfig(
+                    server.as<JsonObject>()));
+        }
+    }
 
     return result;
 }

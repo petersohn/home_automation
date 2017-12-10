@@ -9,13 +9,17 @@
 #include <memory>
 #include <vector>
 
+struct ServerConfig {
+    String address;
+    uint16_t port = 0;
+    String username;
+    String password;
+};
+
 struct GlobalConfig {
     String wifiSSID;
     String wifiPassword;
-    String serverAddress;
-    uint16_t serverPort = 0;
-    String serverUsername;
-    String serverPassword;
+    std::vector<ServerConfig> servers;
 };
 
 struct InterfaceConfig {
