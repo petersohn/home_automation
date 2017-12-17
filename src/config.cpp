@@ -4,6 +4,7 @@
 #include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
 #include "CounterInterface.hpp"
+#include "MqttInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
@@ -177,6 +178,11 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                         pin, getJsonWithDefault(data["multiplier"], 1.0f),
                         getInterval(data), getOffset(data)})
                 : nullptr;
+    } else if (type == "mqtt") {
+        String topic = data["topic"];
+        return topic.length() != 0
+               ? std::unique_ptr<Interface>(new MqttInterface{topic})
+               : nullptr;
     } else {
         debugln(String("Invalid interface type: ") + type);
         return {};

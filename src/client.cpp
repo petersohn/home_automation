@@ -5,6 +5,7 @@
 #include "string.hpp"
 
 #include <algorithm>
+#include <vector>
 
 namespace {
 
@@ -23,21 +24,25 @@ WiFiClient wifiClient;
 String willMessage;
 bool restarted = true;
 
+using Subscription = std::pair<String, std::function<void(const String&)>>;
+
+std::vector<Subscription> subscriptions;
+
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
     String topicStr = topic;
     debugln("Message received on topic " + topicStr);
-    auto interface = std::find_if(
-            deviceConfig.interfaces.begin(), deviceConfig.interfaces.end(),
-            [&topicStr](const InterfaceConfig& interface) {
-                return interface.commandTopic == topicStr;
+    auto iterator = std::find_if(
+            subscriptions.begin(), subscriptions.end(),
+            [&topicStr](const Subscription& element) {
+                return element.first == topicStr;
             });
-    if (interface == deviceConfig.interfaces.end()) {
-        debugln("Could not find appropriate interface.");
+    if (iterator == subscriptions.end()) {
+        debugln("No subscription for topic.");
         return;
     }
-
-    interface->interface->execute(tools::toString((char*)payload, length));
+    String message = tools::toString((const char*)payload, length);
+    iterator->second(message);
 }
 
 String getStatusMessage(bool available, bool restarted) {
@@ -98,6 +103,9 @@ ConnectStatus connectIfNeeded() {
                     mqtt::client.subscribe(interface.commandTopic.c_str());
                 }
             }
+            for (const auto& element : subscriptions) {
+                mqtt::client.subscribe(element.first.c_str());
+            }
             return ConnectStatus::connectionSuccessful;
         }
     }
@@ -142,6 +150,25 @@ bool loop() {
             nextConnectionAttempt = millis() + connectionAttemptInterval;
             break;
         }
+    }
+}
+
+void subscribe(const String& topic,
+        std::function<void(const String&)> callback) {
+    subscriptions.emplace_back(topic, callback);
+    if (client.connected()) {
+        client.subscribe(topic.c_str());
+    }
+}
+
+void unsubscribe(const String& topic) {
+    subscriptions.erase(std::remove_if(
+            subscriptions.begin(), subscriptions.end(),
+            [&topic](const Subscription& element) {
+                return element.first == topic;
+            }), subscriptions.end());
+    if (client.connected()) {
+        client.unsubscribe(topic.c_str());
     }
 }
 
