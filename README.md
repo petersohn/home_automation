@@ -8,6 +8,7 @@
     - [Interfaces](#interfaces)
         - [`input`](#input)
         - [`output`](#output)
+        - [`mqtt`](#mqtt)
         - [Sensors](#sensors)
             - [`counter`](#counter)
             - [`dht`](#dht)
@@ -142,6 +143,14 @@ This interface supports the following commands:
 * `toggle`: Toggles the port value. Cannot be used while blinking.
 * `blink <on_time> <off_time>`: Switch the interface on and off periodically.
   `on_time` and `off_time` are measured in milliseconds.
+
+### `mqtt`
+
+Subscribes to an MQTT topic. This interface uses no GPIO pin on the device,
+only MQTT.
+
+The following additional value is supported:
+* `topic`: The topic to subscribe to.
 
 ### Sensors
 

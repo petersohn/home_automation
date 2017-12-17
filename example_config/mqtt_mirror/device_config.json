@@ -1,0 +1,21 @@
+{
+    "debug": true,
+    "name": "mqtt_mirror",
+    "availabilityTopic": "devices/mqtt_mirror/availability",
+    "interfaces": [
+        {
+            "type": "mqtt",
+            "name": "in",
+            "topic": "mirror/in"
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "in",
+            "topic": "mirror/out",
+            "retain": false
+        }
+    ]
+}
+
