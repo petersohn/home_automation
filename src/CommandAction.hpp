@@ -8,13 +8,13 @@
 
 class CommandAction : public Action {
 public:
-    CommandAction(Interface& interface, const String& command)
-            : interface(interface), command(command) {}
+    CommandAction(Interface& target, const String& command)
+            : target(target), command(command) {}
 
-    void fire(const std::vector<String>& values);
+    void fire(const InterfaceConfig& interface);
 
 private:
-    Interface& interface;
+    Interface& target;
     String command;
 };
 

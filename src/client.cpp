@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "debug.hpp"
+#include "Interface.hpp"
 #include "string.hpp"
 
 #include <algorithm>

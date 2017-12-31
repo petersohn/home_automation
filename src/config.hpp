@@ -1,13 +1,13 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include "Action.hpp"
-#include "Interface.hpp"
-
 #include <Arduino.h>
 
 #include <memory>
 #include <vector>
+
+class Interface;
+class Action;
 
 struct ServerConfig {
     String address;
@@ -27,6 +27,7 @@ struct InterfaceConfig {
     std::unique_ptr<Interface> interface;
     String commandTopic;
     std::vector<std::unique_ptr<Action>> actions;
+    std::vector<String> storedValue;
 };
 
 struct DeviceConfig {
@@ -40,6 +41,7 @@ struct DeviceConfig {
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
+InterfaceConfig* findInterface(const String& name);
 void initConfig();
 
 #endif // CONFIG_HPP

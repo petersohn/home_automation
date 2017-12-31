@@ -1,6 +1,8 @@
+#include "Action.hpp"
 #include "client.hpp"
 #include "config.hpp"
 #include "debug.hpp"
+#include "Interface.hpp"
 #include "wifi.hpp"
 
 #include <Arduino.h>
@@ -54,8 +56,8 @@ void loop()
         mqtt::loop();
     }
 
-    for (const InterfaceConfig& interface : deviceConfig.interfaces) {
-        interface.interface->update(Actions{interface.actions});
+    for (InterfaceConfig& interface : deviceConfig.interfaces) {
+        interface.interface->update(Actions{interface});
     }
 
     mqtt::client.loop();

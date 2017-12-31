@@ -2,6 +2,6 @@
 
 #include "string.hpp"
 
-void CommandAction::fire(const std::vector<String>& values) {
-    interface.execute(tools::substitute(command, values));
+void CommandAction::fire(const InterfaceConfig& interface) {
+    target.execute(tools::substitute(command, interface.storedValue));
 }

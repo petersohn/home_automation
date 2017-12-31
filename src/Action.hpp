@@ -1,6 +1,8 @@
 #ifndef ACTION_HPP
 #define ACTION_HPP
 
+#include "config.hpp"
+
 #include <memory>
 #include <vector>
 
@@ -8,25 +10,25 @@
 
 class Action {
 public:
-    virtual void fire(const std::vector<String>& value) = 0;
+    virtual void fire(const InterfaceConfig& interface) = 0;
     virtual ~Action() {}
 };
 
 class Actions {
 public:
-    Actions(const std::vector<std::unique_ptr<Action>>& actions)
-            : actions(actions) {}
+    Actions(InterfaceConfig& interface) : interface(interface) {}
 
-    void fire(const std::vector<String>& value) {
-        if (value.empty()) {
+    void fire(const std::vector<String>& values) {
+        interface.storedValue = values;
+        if (values.empty()) {
             return;
         }
-        for (const auto& action : actions) {
-            action->fire(value);
+        for (const auto& action : interface.actions) {
+            action->fire(interface);
         }
     }
 private:
-    const std::vector<std::unique_ptr<Action>>& actions;
+    InterfaceConfig& interface;
 };
 
 #endif // ACTION_HPP

@@ -10,7 +10,7 @@ public:
     PublishAction(const String& topic, const String& valueTemplate, bool retain)
             : topic(topic), valueTemplate(valueTemplate), retain(retain) {}
 
-    void fire(const std::vector<String>& values);
+    void fire(const InterfaceConfig& interface);
 
 private:
     String topic;

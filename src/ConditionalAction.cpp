@@ -2,15 +2,16 @@
 
 #include "string.hpp"
 
-void ConditionalAction::fire(const std::vector<String>& values) {
-    if (values[0] == value) {
-        action->fire(values);
+void ConditionalAction::fire(const InterfaceConfig& interface) {
+    const String& toCompare = interface.storedValue[0];
+    if (toCompare == value) {
+        action->fire(interface);
     } else {
         bool expected = false, actual = false;
         if (tools::getBoolValue(value, expected)
-                && tools::getBoolValue(values[0], actual)
+                && tools::getBoolValue(toCompare, actual)
                 && expected == actual) {
-            action->fire(values);
+            action->fire(interface);
         }
     }
 }

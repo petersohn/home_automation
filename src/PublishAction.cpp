@@ -3,10 +3,10 @@
 #include "debug.hpp"
 #include "string.hpp"
 
-void PublishAction::fire(const std::vector<String>& values) {
+void PublishAction::fire(const InterfaceConfig& interface) {
     debugln("Publishing to " + topic);
-    String value = valueTemplate.length() == 0 ? values[0]
-            : tools::substitute(valueTemplate, values);
+    String value = valueTemplate.length() == 0 ? interface.storedValue[0]
+            : tools::substitute(valueTemplate, interface.storedValue);
     if (mqtt::client.publish(topic.c_str(), value.c_str(), retain)) {
         debugln("Success.");
     } else {

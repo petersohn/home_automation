@@ -12,7 +12,7 @@ public:
     ConditionalAction(const String& value, std::unique_ptr<Action>&& action)
             : value(value), action(std::move(action)) {}
 
-    void fire(const std::vector<String>& values);
+    void fire(const InterfaceConfig& interface);
 
 private:
     String value;
