@@ -14,7 +14,7 @@ constexpr int retryInterval = 5000;
 
 } // unnamed namespace
 
-bool connectIfNeeded(const String& ssid, const String& password) {
+bool connectIfNeeded(const std::string& ssid, const std::string& password) {
     int status = WiFi.status();
     if (status == WL_CONNECTED) {
         if (connecting) {

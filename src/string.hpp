@@ -1,108 +1,23 @@
 #ifndef TOOLS_STREAM_HPP
 #define TOOLS_STREAM_HPP
 
-#include <Arduino.h>
-
+#include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <string>
+
+#include <Arduino.h>
 
 namespace tools {
 
-template <typename Stream>
-String readLine(Stream& stream) {
-    String result;
-    while (true) {
-        while (stream.connected() && !stream.available()) {
-            yield();
-        }
-        if (!stream.connected()) {
-            return result;
-        }
-
-        char ch = stream.read();
-        if (ch == '\r') {
-            continue;
-        }
-
-        if (ch == '\n') {
-            return result;
-        }
-
-        result += ch;
-    }
-}
-
-template <typename Stream>
-String readBuffer(Stream& stream, int size) {
-    String result;
-    while (size > 0) {
-        while (stream.connected() && !stream.available()) {
-            yield();
-        }
-        if (!stream.connected()) {
-            return result;
-        }
-
-        unsigned char buffer[1000];
-        int amount = stream.read(buffer, (size > 999 ? 999 : size));
-        buffer[amount] = 0;
-        result += reinterpret_cast<char*>(buffer);
-        size -= amount;
-    }
-    return result;
-}
-
-inline
-bool hexToString(const char* s, size_t length, long& value) {
-    value = 0;
-    for (size_t i = 0; i < length; ++i) {
-        value *= 16;
-        if (s[i] >= '0' && s[i] <= '9') {
-            value += s[i] - '0';
-        } else if (s[i] >= 'a' || s[i] <= 'f') {
-            value += s[i] - 'a' + 10;
-        } else if (s[i] >= 'A' || s[i] <= 'F') {
-            value += s[i] - 'A' + 10;
-        } else {
-            return false;
-        }
-    }
-    return true;
-}
-
-inline
-bool hexToString(const String& s, long& value) {
-    return hexToString(s.c_str(), s.length(), value);
-}
-
-inline
-String nextToken(const String& string, char separator, size_t& position) {
-    while (position < string.length() && string[position] == separator) {
-        ++position;
-    }
-
-    size_t startPos = position;
-    while (position < string.length() && string[position] != separator) {
-        ++position;
-    }
-
-    return string.substring(startPos, position);
-}
-
-// Seriously, why doesn't String support this?
-inline
-String toString(const char* characters, std::size_t length) {
-    std::unique_ptr<char[]> buffer{new char[length + 1]};
-    std::memcpy(buffer.get(), characters, length);
-    buffer[length] = 0;
-    return String{buffer.get()};
-}
+std::string nextToken(const std::string& string, char separator,
+        size_t& position);
 
 class Join {
 public:
     Join(const char* separator) : separator(separator) {}
 
-    void add(const String& value) {
+    void add(const std::string& value) {
         if (first) {
             first = false;
         } else {
@@ -111,22 +26,22 @@ public:
         result += value;
     }
 
-    const String& get() const {
+    const std::string& get() const {
         return result;
     }
+
 private:
     const char* separator;
-    String result;
+    std::string result;
     bool first = true;
 };
 
 namespace detail {
 
 template<typename Range>
-void addValue(String& result, const String& reference, const Range& elements) {
-    int value = reference.toInt();
-    // debugln("reference = " + reference);
-    // debugln("value = " + String(value));
+void addValue(std::string& result, const std::string& reference,
+        const Range& elements) {
+    int value = std::atoi(reference.c_str());
     if (value > 0 && value <= elements.size()) {
         result += elements[value - 1];
     }
@@ -135,9 +50,10 @@ void addValue(String& result, const String& reference, const Range& elements) {
 } // namespace detail
 
 template<typename Range>
-String substitute(const String& valueTemplate, const Range& elements) {
-    String result;
-    String reference;
+std::string substitute(const std::string& valueTemplate,
+        const Range& elements) {
+    std::string result;
+    std::string reference;
     bool inReference = false;
     for (std::size_t i = 0; i < valueTemplate.length(); ++i) {
         if (inReference) {
@@ -166,20 +82,7 @@ String substitute(const String& valueTemplate, const Range& elements) {
     return result;
 }
 
-inline
-bool getBoolValue(const String& input, bool& output) {
-    if (input == "1" || input.equalsIgnoreCase("on")
-            || input.equalsIgnoreCase("true")) {
-        output = true;
-        return true;
-    }
-    if (input == "0" || input.equalsIgnoreCase("off")
-            || input.equalsIgnoreCase("false")) {
-        output = false;
-        return true;
-    }
-    return false;
-}
+bool getBoolValue(std::string input, bool& output);
 
 } // namespace tools
 

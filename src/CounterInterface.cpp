@@ -4,7 +4,7 @@ class CounterInterface::CounterSensor : public Sensor {
 public:
     CounterSensor(float multiplier) : multiplier(multiplier) {}
 
-    std::vector<String> measure() override {
+    std::vector<std::string> measure() override {
         if (lastMeasurement == 0) {
             lastMeasurement = millis();
             number = 0;
@@ -17,7 +17,7 @@ public:
         float result = number * 1000.0f / timeDifference * multiplier;
         number = 0;
         lastMeasurement = now;
-        return {String{result}};
+        return {std::to_string(result)};
     }
 
     void increment() { ++number; }
@@ -45,7 +45,7 @@ void CounterInterface::start() {
     sensorInterface.start();
 }
 
-void CounterInterface::execute(const String& command) {
+void CounterInterface::execute(const std::string& command) {
     sensorInterface.execute(command);
 }
 

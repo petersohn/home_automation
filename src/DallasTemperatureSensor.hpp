@@ -13,7 +13,7 @@ class DallasTemperatureSensor : public Sensor {
 public:
     DallasTemperatureSensor(int pin);
 
-    std::vector<String> measure() override;
+    std::vector<std::string> measure() override;
 private:
     OneWire oneWire;
     DallasTemperature sensors;

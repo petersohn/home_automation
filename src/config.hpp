@@ -10,29 +10,29 @@ class Interface;
 class Action;
 
 struct ServerConfig {
-    String address;
+    std::string address;
     uint16_t port = 0;
-    String username;
-    String password;
+    std::string username;
+    std::string password;
 };
 
 struct GlobalConfig {
-    String wifiSSID;
-    String wifiPassword;
+    std::string wifiSSID;
+    std::string wifiPassword;
     std::vector<ServerConfig> servers;
 };
 
 struct InterfaceConfig {
-    String name;
+    std::string name;
     std::unique_ptr<Interface> interface;
-    String commandTopic;
+    std::string commandTopic;
     std::vector<std::unique_ptr<Action>> actions;
-    std::vector<String> storedValue;
+    std::vector<std::string> storedValue;
 };
 
 struct DeviceConfig {
-    String name;
-    String availabilityTopic;
+    std::string name;
+    std::string availabilityTopic;
     bool debug = false;
     int debugPort = 2534;
     std::vector<InterfaceConfig> interfaces;
@@ -41,7 +41,7 @@ struct DeviceConfig {
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
-InterfaceConfig* findInterface(const String& name);
+InterfaceConfig* findInterface(const std::string& name);
 void initConfig();
 
 #endif // CONFIG_HPP

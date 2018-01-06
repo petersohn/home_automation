@@ -3,18 +3,17 @@
 
 #include "Action.hpp"
 
-#include <Arduino.h>
-
 class PublishAction : public Action {
 public:
-    PublishAction(const String& topic, const String& valueTemplate, bool retain)
+    PublishAction(const std::string& topic, const std::string& valueTemplate,
+            bool retain)
             : topic(topic), valueTemplate(valueTemplate), retain(retain) {}
 
     void fire(const InterfaceConfig& interface);
 
 private:
-    String topic;
-    String valueTemplate;
+    std::string topic;
+    std::string valueTemplate;
     bool retain;
 };
 

@@ -4,15 +4,16 @@
 #include <PubSubClient.h>
 
 #include <functional>
+#include <string>
 
 namespace mqtt {
 
 extern PubSubClient client;
 
 bool loop();
-void subscribe(const String& topic,
-        std::function<void(const String&)> callback);
-void unsubscribe(const String& topic);
+void subscribe(const std::string& topic,
+        std::function<void(const std::string&)> callback);
+void unsubscribe(const std::string& topic);
 
 } // namespace mqtt
 

@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include "ArduinoJson.hpp"
 #include "collection.hpp"
 #include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
@@ -13,7 +14,6 @@
 #include "PublishAction.hpp"
 #include "SensorInterface.hpp"
 
-#include <ArduinoJson.h>
 #include <FS.h>
 
 #include <algorithm>
@@ -33,7 +33,8 @@ void parseTo(const JsonObject& jsonObject, T& target, const char* name) {
     }
 }
 
-void parseTo(const JsonObject& jsonObject, String& target, const char* name) {
+void parseTo(const JsonObject& jsonObject, std::string& target,
+        const char* name) {
     auto value = jsonObject.get<const char*>(name);
     if (value) {
         target = value;
@@ -46,12 +47,12 @@ ParsedData parseFile(const char* filename) {
     ParsedData result;
     File f = SPIFFS.open(filename, "r");
     if (!f) {
-        debugln(String("Could not open file: ") + filename);
+        debugln(std::string("Could not open file: ") + filename);
         return result;
     }
     result.root = &result.buffer.parseObject(f);
     if (*result.root == JsonObject::invalid()) {
-        debugln(String("Could not parse JSON file: ") + filename);
+        debugln(std::string("Could not parse JSON file: ") + filename);
         result.root = nullptr;
     }
 
@@ -69,10 +70,10 @@ ServerConfig parseServerConfig(const JsonObject& data) {
 
 ServerConfig parseSingleServerConfig(const JsonObject& data) {
     ServerConfig result;
-    result.address = data.get<String>("serverAddress");
+    result.address = data.get<std::string>("serverAddress");
     result.port = data.get<uint16_t>("serverPort");
-    result.username = data.get<String>("serverUsername");
-    result.password = data.get<String>("serverPassword");
+    result.username = data.get<std::string>("serverUsername");
+    result.password = data.get<std::string>("serverPassword");
     return result;
 }
 
@@ -107,7 +108,7 @@ bool getPin(const JsonObject& data, int& value) {
         value = rawValue.as<int>();
         return true;
     }
-    debugln("Invalid pin: " + rawValue.as<String>());
+    debugln("Invalid pin: " + rawValue.as<std::string>());
     return false;
 }
 
@@ -140,7 +141,7 @@ std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
 }
 
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
-    String type = data.get<String>("type");
+    std::string type = data.get<std::string>("type");
     if (type == "input") {
         int pin = 0;
         return getPin(data, pin)
@@ -156,7 +157,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
     } else if (type == "dht") {
         int pin = 0;
         auto type = tools::findValue(dhtTypes,
-                data.get<String>("dhtType"));
+                data.get<std::string>("dhtType"));
         if (!type) {
             debugln("Invalid DHT type.");
             return nullptr;
@@ -179,12 +180,12 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                         getInterval(data), getOffset(data)})
                 : nullptr;
     } else if (type == "mqtt") {
-        String topic = data["topic"];
+        std::string topic = data["topic"];
         return topic.length() != 0
                ? std::unique_ptr<Interface>(new MqttInterface{topic})
                : nullptr;
     } else {
-        debugln(String("Invalid interface type: ") + type);
+        debugln(std::string("Invalid interface type: ") + type);
         return {};
     }
 }
@@ -218,10 +219,10 @@ void parseInterfaces(const JsonObject& data,
     }
 }
 
-String getMandatoryArgument(const JsonObject& data, const char* name) {
-    String result = data[name];
+std::string getMandatoryArgument(const JsonObject& data, const char* name) {
+    std::string result = data[name];
     if (result.length() == 0) {
-        debugln(String(name) + " is mandatory.");
+        debugln(std::string(name) + " is mandatory.");
     }
     return result;
 }
@@ -233,7 +234,7 @@ InterfaceConfig* findInterface(
                 return interface.name == name;
             });
     if (interface == interfaces.end()) {
-        debugln("Could not find interface: " + String(name));
+        debugln("Could not find interface: " + std::string(name));
         return nullptr;
     }
     return &*interface;
@@ -241,16 +242,16 @@ InterfaceConfig* findInterface(
 
 std::unique_ptr<Action> parseBareAction(const JsonObject& data,
         std::vector<InterfaceConfig>& interfaces) {
-    String type = data.get<String>("type");
+    auto type = data.get<std::string>("type");
     if (type == "publish") {
-        String topic = getMandatoryArgument(data, "topic");
+        std::string topic = getMandatoryArgument(data, "topic");
         if (topic.length() == 0) {
             return {};
         }
         return std::unique_ptr<Action>(new PublishAction{topic,
-                data.get<String>("template"), data.get<bool>("retain")});
+                data.get<std::string>("template"), data.get<bool>("retain")});
     } else if (type == "command") {
-        String command = getMandatoryArgument(data, "command");
+        std::string command = getMandatoryArgument(data, "command");
         if (command.length() == 0) {
             return {};
         }
@@ -270,7 +271,7 @@ std::unique_ptr<Action> parseBareAction(const JsonObject& data,
 
 std::unique_ptr<Action> parseAction(const JsonObject& data,
         std::vector<InterfaceConfig>& interfaces) {
-    String value = data["value"];
+    std::string value = data["value"];
     if (value.length() != 0) {
         return std::unique_ptr<Action>{new ConditionalAction{
                 value, parseBareAction(data, interfaces)}};
@@ -287,7 +288,7 @@ void parseActions(const JsonObject& data,
     }
 
     for (const JsonObject& action : actions) {
-        String interfaceName = action["interface"];
+        std::string interfaceName = action["interface"];
         auto interface = findInterface(interfaces, action["interface"]);
         if (!interface) {
             continue;

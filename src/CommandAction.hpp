@@ -8,14 +8,14 @@
 
 class CommandAction : public Action {
 public:
-    CommandAction(Interface& target, const String& command)
+    CommandAction(Interface& target, const std::string& command)
             : target(target), command(command) {}
 
     void fire(const InterfaceConfig& interface);
 
 private:
     Interface& target;
-    String command;
+    std::string command;
 };
 
 #endif // COMMANDACTION_HPP

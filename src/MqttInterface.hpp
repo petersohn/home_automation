@@ -5,19 +5,19 @@
 
 class MqttInterface : public Interface {
 public:
-    MqttInterface(const String& topic)
+    MqttInterface(const std::string& topic)
             : topic(topic) {}
     ~MqttInterface();
 
     void start() override;
-    void execute(const String& command) override;
+    void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
-    void onMessage(const String& message);
+    void onMessage(const std::string& message);
 
-    String topic;
-    std::vector<String> messages;
+    std::string topic;
+    std::vector<std::string> messages;
 };
 
 #endif // MQTTINTERFACE_HPP

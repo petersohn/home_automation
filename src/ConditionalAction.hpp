@@ -3,19 +3,18 @@
 
 #include "Action.hpp"
 
-#include <Arduino.h>
-
 #include <memory>
 
 class ConditionalAction : public Action {
 public:
-    ConditionalAction(const String& value, std::unique_ptr<Action>&& action)
+    ConditionalAction(const std::string& value,
+            std::unique_ptr<Action>&& action)
             : value(value), action(std::move(action)) {}
 
     void fire(const InterfaceConfig& interface);
 
 private:
-    String value;
+    std::string value;
     std::unique_ptr<Action> action;
 };
 

@@ -1,10 +1,11 @@
 #ifndef DEBUG_HPP
 #define DEBUG_HPP
 
+#include "ArduinoJson.hpp"
 #include "config.hpp"
+#include "print.hpp"
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 
 class WiFiDebugger {
@@ -34,12 +35,12 @@ extern std::unique_ptr<WiFiDebugger> wifiDebugger;
 template<typename T>
 void debug(const T& value) {
     if (deviceConfig.debug) {
-        Serial.print(value);
+        print(Serial, value);
     }
     if (wifiDebugger) {
         WiFiClient& client = wifiDebugger->getClient();
         if (client) {
-            client.print(value);
+            print(client, value);
         }
     }
 }
@@ -47,12 +48,12 @@ void debug(const T& value) {
 template<typename T = char*>
 void debugln(const T& value = "") {
     if (deviceConfig.debug) {
-        Serial.println(value);
+        println(Serial, value);
     }
     if (wifiDebugger) {
         WiFiClient& client = wifiDebugger->getClient();
         if (client) {
-            client.println(value);
+            println(client, value);
         }
     }
 }

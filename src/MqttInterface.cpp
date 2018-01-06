@@ -8,21 +8,21 @@ MqttInterface::~MqttInterface() {
 
 void MqttInterface::start() {
     mqtt::subscribe(topic,
-            [this](const String& message) {
+            [this](const std::string& message) {
                 onMessage(message);
             });
 }
 
-void MqttInterface::execute(const String& /*command*/) {
+void MqttInterface::execute(const std::string& /*command*/) {
 }
 
 void MqttInterface::update(Actions action) {
-    for (const String& message : messages) {
+    for (const std::string& message : messages) {
         action.fire({message});
     }
     messages.clear();
 }
 
-void MqttInterface::onMessage(const String& message) {
+void MqttInterface::onMessage(const std::string& message) {
     messages.push_back(message);
 }

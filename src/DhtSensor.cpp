@@ -10,7 +10,7 @@ bool isOk(float value) {
 
 } // unnamed namespace
 
-std::vector<String> DhtSensor::measure() {
+std::vector<std::string> DhtSensor::measure() {
     float temperature = dht.readTemperature();
     if (!isOk(temperature)) {
         return {};
@@ -19,5 +19,5 @@ std::vector<String> DhtSensor::measure() {
     if (!isOk(humidity)) {
         return {};
     }
-    return {String{temperature}, String{humidity}};
+    return {std::to_string(temperature), std::to_string(humidity)};
 }

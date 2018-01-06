@@ -5,8 +5,6 @@
 
 #include <Bounce2.h>
 
-#include <Arduino.h>
-
 class GpioInput : public Interface {
 public:
     GpioInput(int pin) {
@@ -15,7 +13,7 @@ public:
     }
 
     void start() override;
-    void execute(const String& command) override;
+    void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:

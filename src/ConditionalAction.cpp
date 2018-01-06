@@ -3,7 +3,7 @@
 #include "string.hpp"
 
 void ConditionalAction::fire(const InterfaceConfig& interface) {
-    const String& toCompare = interface.storedValue[0];
+    const std::string& toCompare = interface.storedValue[0];
     if (toCompare == value) {
         action->fire(interface);
     } else {

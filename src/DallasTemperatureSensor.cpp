@@ -21,16 +21,16 @@ DallasTemperatureSensor::DallasTemperatureSensor(int pin)
 
 }
 
-std::vector<String> DallasTemperatureSensor::measure() {
+std::vector<std::string> DallasTemperatureSensor::measure() {
     sensors.requestTemperatures();
-    std::vector<String> result;
+    std::vector<std::string> result;
     for (const auto& address : addresses) {
         float temperature = sensors.getTempC(address.data());
         if (temperature == DEVICE_DISCONNECTED_C) {
             debugln("Failed to read temperature.");
             return {};
         }
-        result.emplace_back(temperature);
+        result.emplace_back(std::to_string(temperature));
     }
     return result;
 }

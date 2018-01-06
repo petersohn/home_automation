@@ -3,14 +3,12 @@
 
 #include "Interface.hpp"
 
-#include <Arduino.h>
-
 class GpioOutput : public Interface {
 public:
     GpioOutput(int pin, bool defaultValue);
 
     void start() override;
-    void execute(const String& command) override;
+    void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:

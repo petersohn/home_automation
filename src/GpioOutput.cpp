@@ -4,6 +4,10 @@
 #include "rtc.hpp"
 #include "string.hpp"
 
+#include <cstdlib>
+
+#include <Arduino.h>
+
 namespace {
 
 constexpr int rtcSetMask = 2;
@@ -25,16 +29,16 @@ GpioOutput::GpioOutput(int pin, bool defaultValue)
     setValue();
 }
 
-void GpioOutput::execute(const String& command) {
+void GpioOutput::execute(const std::string& command) {
     bool newValue = value;
     debug("Pin: ");
     debug(pin);
     debugln(": executing command: " + command);
 
     std::size_t position = 0;
-    String commandName = tools::nextToken(command, ' ', position);
+    std::string commandName = tools::nextToken(command, ' ', position);
 
-    if (commandName.equalsIgnoreCase("toggle")) {
+    if (commandName == "toggle") {
         if (nextBlink != 0) {
             debugln("Cannot toggle while blinking.");
         } else {
@@ -43,9 +47,9 @@ void GpioOutput::execute(const String& command) {
         return;
     }
 
-    if (commandName.equalsIgnoreCase("blink")) {
-        blinkOn = tools::nextToken(command, ' ', position).toInt();
-        blinkOff = tools::nextToken(command, ' ', position).toInt();
+    if (commandName =="blink") {
+       blinkOn = std::atoi(tools::nextToken(command, ' ', position).c_str());
+       blinkOff = std::atoi(tools::nextToken(command, ' ', position).c_str());
         if (blinkOn == 0 || blinkOff == 0) {
             clearBlink();
         } else {
@@ -73,8 +77,8 @@ void GpioOutput::update(Actions action) {
     }
 
     if (changed) {
-        action.fire({String(digitalRead(pin)),
-                String(blinkOn), String(blinkOff)});
+        action.fire({std::to_string(digitalRead(pin)),
+                std::to_string(blinkOn), std::to_string(blinkOff)});
         changed = false;
     }
 }

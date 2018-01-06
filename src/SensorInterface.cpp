@@ -10,7 +10,7 @@ void SensorInterface::start() {
     nextExecution = millis() - offset;
 }
 
-void SensorInterface::execute(const String& /*command*/) {
+void SensorInterface::execute(const std::string& /*command*/) {
 }
 
 void SensorInterface::update(Actions action) {

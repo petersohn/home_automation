@@ -1,5 +1,6 @@
 #include "client.hpp"
 
+#include "ArduinoJson.hpp"
 #include "config.hpp"
 #include "debug.hpp"
 #include "Interface.hpp"
@@ -22,31 +23,33 @@ constexpr unsigned statusSendInterval = 60000;
 unsigned long nextConnectionAttempt = 0;
 unsigned long nextStatusSend = 0;
 WiFiClient wifiClient;
-String willMessage;
+std::string willMessage;
 bool restarted = true;
 
-using Subscription = std::pair<String, std::function<void(const String&)>>;
+using Subscription = std::pair<std::string,
+      std::function<void(const std::string&)>>;
 
 std::vector<Subscription> subscriptions;
 
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
-    String topicStr = topic;
+    std::string topicStr = topic;
     debugln("Message received on topic " + topicStr);
     auto iterator = std::find_if(
             subscriptions.begin(), subscriptions.end(),
             [&topicStr](const Subscription& element) {
+                debugln("-->" + element.first);
                 return element.first == topicStr;
             });
     if (iterator == subscriptions.end()) {
         debugln("No subscription for topic.");
         return;
     }
-    String message = tools::toString((const char*)payload, length);
+    std::string message((const char*)payload, length);
     iterator->second(message);
 }
 
-String getStatusMessage(bool available, bool restarted) {
+std::string getStatusMessage(bool available, bool restarted) {
     StaticJsonBuffer<128> buffer;
     JsonObject& message = buffer.createObject();
     message["name"] = deviceConfig.name.c_str();
@@ -58,7 +61,7 @@ String getStatusMessage(bool available, bool restarted) {
         message["rssi"] = WiFi.RSSI();
         message["freeMemory"] = ESP.getFreeHeap();
     }
-    String result;
+    std::string result;
     message.printTo(result);
     return result;
 }
@@ -94,7 +97,7 @@ ConnectStatus connectIfNeeded() {
     if (mqtt::client.connected()) {
         return ConnectStatus::alreadyConnected;
     }
-    debugln("Client status = " + String(mqtt::client.state()));
+    debugln("Client status = " + std::to_string(mqtt::client.state()));
     debugln("Connecting to MQTT broker...");
     for (const ServerConfig& server : globalConfig.servers) {
         if (tryToConnect(server)) {
@@ -118,7 +121,7 @@ void sendStatusMessage(bool restarted) {
     auto now = millis();
     if (deviceConfig.availabilityTopic.length() != 0 && now >= nextStatusSend) {
         debug("Sending status message");
-        String message = getStatusMessage(true, restarted);
+        std::string message = getStatusMessage(true, restarted);
         mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
                 message.c_str(), true);
         nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
@@ -154,15 +157,15 @@ bool loop() {
     }
 }
 
-void subscribe(const String& topic,
-        std::function<void(const String&)> callback) {
+void subscribe(const std::string& topic,
+        std::function<void(const std::string&)> callback) {
     subscriptions.emplace_back(topic, callback);
     if (client.connected()) {
         client.subscribe(topic.c_str());
     }
 }
 
-void unsubscribe(const String& topic) {
+void unsubscribe(const std::string& topic) {
     subscriptions.erase(std::remove_if(
             subscriptions.begin(), subscriptions.end(),
             [&topic](const Subscription& element) {

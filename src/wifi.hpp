@@ -5,7 +5,7 @@
 
 namespace wifi {
 
-bool connectIfNeeded(const String& ssid, const String& password);
+bool connectIfNeeded(const std::string& ssid, const std::string& password);
 
 } // namespace wifi
 

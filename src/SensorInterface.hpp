@@ -13,7 +13,7 @@ public:
             : sensor(std::move(sensor)), interval(interval), offset(offset) {}
 
     void start() override;
-    void execute(const String& command) override;
+    void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
