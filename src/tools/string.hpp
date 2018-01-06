@@ -6,8 +6,6 @@
 #include <memory>
 #include <string>
 
-#include <Arduino.h>
-
 namespace tools {
 
 std::string nextToken(const std::string& string, char separator,
@@ -41,7 +39,7 @@ namespace detail {
 template<typename Range>
 void addValue(std::string& result, const std::string& reference,
         const Range& elements) {
-    int value = std::atoi(reference.c_str());
+    std::size_t value = std::atol(reference.c_str());
     if (value > 0 && value <= elements.size()) {
         result += elements[value - 1];
     }
