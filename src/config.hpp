@@ -25,7 +25,6 @@ struct GlobalConfig {
 struct InterfaceConfig {
     std::string name;
     std::unique_ptr<Interface> interface;
-    std::string commandTopic;
     std::vector<std::unique_ptr<Action>> actions;
     std::vector<std::string> storedValue;
 };

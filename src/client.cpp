@@ -102,11 +102,6 @@ ConnectStatus connectIfNeeded() {
     for (const ServerConfig& server : globalConfig.servers) {
         if (tryToConnect(server)) {
             debugln("Connection successful.");
-            for (const InterfaceConfig& interface : deviceConfig.interfaces) {
-                if (interface.commandTopic.length() != 0) {
-                    mqtt::client.subscribe(interface.commandTopic.c_str());
-                }
-            }
             for (const auto& element : subscriptions) {
                 mqtt::client.subscribe(element.first.c_str());
             }

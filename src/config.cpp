@@ -1,16 +1,17 @@
 #include "config.hpp"
 
 #include "ArduinoJson.hpp"
+#include "client.hpp"
 #include "collection.hpp"
 #include "CommandAction.hpp"
 #include "ConditionalAction.hpp"
 #include "CounterInterface.hpp"
-#include "MqttInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
+#include "MqttInterface.hpp"
 #include "PublishAction.hpp"
 #include "SensorInterface.hpp"
 
@@ -213,8 +214,17 @@ void parseInterfaces(const JsonObject& data,
 
         result.emplace_back();
         InterfaceConfig& interfaceConfig = result.back();
+
         PARSE(interface, interfaceConfig, name);
-        PARSE(interface, interfaceConfig, commandTopic);
+
+        std::string commandTopic = interface["commandTopic"];
+        if (!commandTopic.empty()) {
+            mqtt::subscribe(commandTopic,
+                    [&interfaceConfig](const std::string& command) {
+                        interfaceConfig.interface->execute(command);
+                    });
+        }
+
         interfaceConfig.interface = std::move(parsedInterface);
     }
 }
