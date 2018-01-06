@@ -1,7 +1,7 @@
 #ifndef DHTSENSOR_HPP
 #define DHTSENSOR_HPP
 
-#include "Sensor.hpp"
+#include "common/Sensor.hpp"
 
 #include <DHT.h>
 

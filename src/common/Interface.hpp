@@ -1,7 +1,7 @@
-#ifndef INTERFACE_HPP
-#define INTERFACE_HPP
+#ifndef COMMON_INTERFACE_HPP
+#define COMMON_INTERFACE_HPP
 
-#include "Action.hpp"
+#include "Actions.hpp"
 
 #include <string>
 
@@ -13,4 +13,4 @@ public:
     virtual ~Interface() {}
 };
 
-#endif // INTERFACE_HPP
+#endif // COMMON_INTERFACE_HPP

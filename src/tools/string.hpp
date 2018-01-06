@@ -1,5 +1,5 @@
-#ifndef TOOLS_STREAM_HPP
-#define TOOLS_STREAM_HPP
+#ifndef TOOLS_STRING_HPP
+#define TOOLS_STRING_HPP
 
 #include <cstdlib>
 #include <cstring>
@@ -86,4 +86,4 @@ bool getBoolValue(std::string input, bool& output);
 
 } // namespace tools
 
-#endif // TOOLS_STREAM_HPP
+#endif // TOOLS_STRING_HPP

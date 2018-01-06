@@ -1,9 +1,8 @@
 #ifndef COUNTERINTERFACE_HPP
 #define COUNTERINTERFACE_HPP
 
-#include "Interface.hpp"
-#include "Sensor.hpp"
 #include "SensorInterface.hpp"
+#include "common/Interface.hpp"
 
 #include <Bounce2.h>
 

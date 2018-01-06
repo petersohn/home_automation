@@ -1,7 +1,7 @@
 #ifndef PUBLISHACTION_HPP
 #define PUBLISHACTION_HPP
 
-#include "Action.hpp"
+#include "common/Action.hpp"
 
 class PublishAction : public Action {
 public:

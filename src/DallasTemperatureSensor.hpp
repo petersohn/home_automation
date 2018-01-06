@@ -1,7 +1,7 @@
 #ifndef DALLASTEMPERATURESENSOR_HPP
 #define DALLASTEMPERATURESENSOR_HPP
 
-#include "Sensor.hpp"
+#include "common/Sensor.hpp"
 
 #include <OneWire.h>
 #include <DallasTemperature.h>

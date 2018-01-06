@@ -1,5 +1,9 @@
 #include "CounterInterface.hpp"
 
+#include "common/Sensor.hpp"
+
+#include <Arduino.h>
+
 class CounterInterface::CounterSensor : public Sensor {
 public:
     CounterSensor(float multiplier) : multiplier(multiplier) {}

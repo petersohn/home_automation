@@ -1,7 +1,8 @@
 #include "PublishAction.hpp"
+
 #include "client.hpp"
 #include "debug.hpp"
-#include "string.hpp"
+#include "tools/string.hpp"
 
 void PublishAction::fire(const InterfaceConfig& interface) {
     debugln("Publishing to " + topic);

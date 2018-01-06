@@ -1,10 +1,10 @@
-#ifndef COMMANDACTION_HPP
-#define COMMANDACTION_HPP
+#ifndef COMMON_COMMANDACTION_HPP
+#define COMMON_COMMANDACTION_HPP
 
 #include "Action.hpp"
 #include "Interface.hpp"
 
-#include <Arduino.h>
+#include <string>
 
 class CommandAction : public Action {
 public:
@@ -18,6 +18,6 @@ private:
     std::string command;
 };
 
-#endif // COMMANDACTION_HPP
+#endif // COMMON_COMMANDACTION_HPP
 
 

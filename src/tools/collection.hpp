@@ -1,5 +1,5 @@
-#ifndef COLLECTION_HPP
-#define COLLECTION_HPP
+#ifndef TOOLS_COLLECTION_HPP
+#define TOOLS_COLLECTION_HPP
 
 #include <algorithm>
 #include <iterator>
@@ -24,4 +24,4 @@ typename Collection::value_type::second_type const* findValue(
 
 } // namespace tools
 
-#endif // COLLECTION_HPP
+#endif // TOOLS_COLLECTION_HPP

@@ -2,7 +2,7 @@
 
 #include "debug.hpp"
 #include "rtc.hpp"
-#include "string.hpp"
+#include "tools/string.hpp"
 
 #include <cstdlib>
 

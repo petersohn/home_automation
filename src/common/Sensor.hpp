@@ -1,5 +1,5 @@
-#ifndef SENSOR_HPP
-#define SENSOR_HPP
+#ifndef COMMON_SENSOR_HPP
+#define COMMON_SENSOR_HPP
 
 #include <string>
 #include <vector>
@@ -10,4 +10,4 @@ public:
     virtual ~Sensor() {}
 };
 
-#endif // SENSOR_HPP
+#endif // COMMON_SENSOR_HPP

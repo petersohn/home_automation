@@ -3,8 +3,8 @@
 #include "ArduinoJson.hpp"
 #include "config.hpp"
 #include "debug.hpp"
-#include "Interface.hpp"
-#include "string.hpp"
+#include "common/Interface.hpp"
+#include "tools/string.hpp"
 
 #include <algorithm>
 #include <vector>

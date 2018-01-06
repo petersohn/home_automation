@@ -1,5 +1,5 @@
-#ifndef CONDITIONALACTION_HPP
-#define CONDITIONALACTION_HPP
+#ifndef COMMON_CONDITIONALACTION_HPP
+#define COMMON_CONDITIONALACTION_HPP
 
 #include "Action.hpp"
 
@@ -18,5 +18,5 @@ private:
     std::unique_ptr<Action> action;
 };
 
-#endif // CONDITIONALACTION_HPP
+#endif // COMMON_CONDITIONALACTION_HPP
 

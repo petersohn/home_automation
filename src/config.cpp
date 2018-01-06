@@ -2,9 +2,6 @@
 
 #include "ArduinoJson.hpp"
 #include "client.hpp"
-#include "collection.hpp"
-#include "CommandAction.hpp"
-#include "ConditionalAction.hpp"
 #include "CounterInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
@@ -14,6 +11,9 @@
 #include "MqttInterface.hpp"
 #include "PublishAction.hpp"
 #include "SensorInterface.hpp"
+#include "common/CommandAction.hpp"
+#include "common/ConditionalAction.hpp"
+#include "tools/collection.hpp"
 
 #include <FS.h>
 

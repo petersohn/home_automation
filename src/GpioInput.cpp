@@ -2,6 +2,11 @@
 
 #include <Arduino.h>
 
+GpioInput::GpioInput(int pin) {
+    pinMode(pin, INPUT);
+    bounce.attach(pin);
+}
+
 void GpioInput::start() {
     startup = true;
 }

@@ -1,13 +1,10 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include <Arduino.h>
+#include "common/InterfaceConfig.hpp"
 
-#include <memory>
+#include <string>
 #include <vector>
-
-class Interface;
-class Action;
 
 struct ServerConfig {
     std::string address;
@@ -20,13 +17,6 @@ struct GlobalConfig {
     std::string wifiSSID;
     std::string wifiPassword;
     std::vector<ServerConfig> servers;
-};
-
-struct InterfaceConfig {
-    std::string name;
-    std::unique_ptr<Interface> interface;
-    std::vector<std::unique_ptr<Action>> actions;
-    std::vector<std::string> storedValue;
 };
 
 struct DeviceConfig {

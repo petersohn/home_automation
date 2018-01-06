@@ -1,8 +1,8 @@
 #ifndef SENSORINTERFACE_HPP
 #define SENSORINTERFACE_HPP
 
-#include "Interface.hpp"
-#include "Sensor.hpp"
+#include "common/Interface.hpp"
+#include "common/Sensor.hpp"
 
 #include <memory>
 

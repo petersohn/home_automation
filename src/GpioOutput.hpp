@@ -1,7 +1,7 @@
 #ifndef GPIOOUTPUT_HPP
 #define GPIOOUTPUT_HPP
 
-#include "Interface.hpp"
+#include "common/Interface.hpp"
 
 class GpioOutput : public Interface {
 public:

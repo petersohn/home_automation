@@ -1,9 +1,9 @@
-#include "Action.hpp"
 #include "client.hpp"
 #include "config.hpp"
 #include "debug.hpp"
-#include "Interface.hpp"
 #include "wifi.hpp"
+#include "common/Action.hpp"
+#include "common/Interface.hpp"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>

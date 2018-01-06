@@ -1,7 +1,7 @@
 #ifndef MQTTINTERFACE_HPP
 #define MQTTINTERFACE_HPP
 
-#include "Interface.hpp"
+#include "common/Interface.hpp"
 
 class MqttInterface : public Interface {
 public:

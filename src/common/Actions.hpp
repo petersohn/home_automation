@@ -1,17 +1,7 @@
-#ifndef ACTION_HPP
-#define ACTION_HPP
+#ifndef COMMON_ACTIONS_HPP
+#define COMMON_ACTIONS_HPP
 
-#include "config.hpp"
-
-#include <memory>
-#include <string>
-#include <vector>
-
-class Action {
-public:
-    virtual void fire(const InterfaceConfig& interface) = 0;
-    virtual ~Action() {}
-};
+#include "Action.hpp"
 
 class Actions {
 public:
@@ -30,4 +20,4 @@ private:
     InterfaceConfig& interface;
 };
 
-#endif // ACTION_HPP
+#endif // COMMON_ACTIONS_HPP

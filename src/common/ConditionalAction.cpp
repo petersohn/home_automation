@@ -1,6 +1,6 @@
 #include "ConditionalAction.hpp"
 
-#include "string.hpp"
+#include "../tools/string.hpp"
 
 void ConditionalAction::fire(const InterfaceConfig& interface) {
     const std::string& toCompare = interface.storedValue[0];
