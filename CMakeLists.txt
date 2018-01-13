@@ -13,10 +13,12 @@ include_directories(${Boost_INCLUDE_DIRS})
 link_libraries(boost_unit_test_framework)
 
 include_directories(src)
+include_directories(test/ArduinoJson)
 
 file(GLOB test_sources test/*.cpp)
 file(GLOB common_sources src/common/*.cpp)
+file(GLOB operation_sources src/operation/*.cpp)
 file(GLOB tools_sources src/tools/*.cpp)
 
 add_executable(home_automation_test
-    ${test_sources} ${common_sources} ${tools_sources})
+    ${test_sources} ${operation_sources} ${common_sources} ${tools_sources})

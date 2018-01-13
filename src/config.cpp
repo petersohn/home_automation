@@ -12,7 +12,7 @@
 #include "PublishAction.hpp"
 #include "SensorInterface.hpp"
 #include "common/CommandAction.hpp"
-#include "common/ConditionalAction.hpp"
+#include "operation/OperationParser.hpp"
 #include "tools/collection.hpp"
 
 #include <FS.h>
@@ -23,7 +23,7 @@ namespace {
 
 struct ParsedData {
     DynamicJsonBuffer buffer{512};
-    const JsonObject* root = nullptr;
+    JsonObject* root = nullptr;
 };
 
 template<typename T>
@@ -237,46 +237,37 @@ std::string getMandatoryArgument(const JsonObject& data, const char* name) {
     return result;
 }
 
-std::unique_ptr<Action> parseBareAction(const JsonObject& data,
+std::unique_ptr<Action> parseAction(JsonObject& data,
+        const InterfaceConfig& interface,
         std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
     auto type = data.get<std::string>("type");
+    operation::Parser operationParser{interfaces, interface};
     if (type == "publish") {
         std::string topic = getMandatoryArgument(data, "topic");
-        if (topic.length() == 0) {
+        if (topic.empty()) {
             return {};
+        }
+        if (!data["payload"].success() && !data["template"].success()) {
+            data.set("template", "%1");
         }
         return std::unique_ptr<Action>(new PublishAction{topic,
-                data.get<std::string>("template"), data.get<bool>("retain")});
+                operationParser.parse(data, "payload", "template"),
+                data.get<bool>("retain")});
     } else if (type == "command") {
-        std::string command = getMandatoryArgument(data, "command");
-        if (command.length() == 0) {
-            return {};
-        }
-
         auto target = findInterface(interfaces, data["target"]);
         if (!target) {
             return {};
         }
 
         return std::unique_ptr<Action>(new CommandAction{*target->interface,
-                command});
+                operationParser.parse(data, "command", "template")});
     } else {
         debugln("Invalid action type: " + type);
         return {};
     }
 }
 
-std::unique_ptr<Action> parseAction(const JsonObject& data,
-        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
-    std::string value = data["value"];
-    if (value.length() != 0) {
-        return std::unique_ptr<Action>{new ConditionalAction{
-                value, parseBareAction(data, interfaces)}};
-    }
-    return parseBareAction(data, interfaces);
-}
-
-void parseActions(const JsonObject& data,
+void parseActions(JsonObject& data,
         std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
     const JsonArray& actions = data["actions"];
     if (actions == JsonArray::invalid()) {
@@ -284,21 +275,21 @@ void parseActions(const JsonObject& data,
         return;
     }
 
-    for (const JsonObject& action : actions) {
+    for (JsonObject& action : actions) {
         std::string interfaceName = action["interface"];
         auto interface = findInterface(interfaces, action["interface"]);
         if (!interface) {
             continue;
         }
 
-        auto parsedAction = parseAction(action, interfaces);
+        auto parsedAction = parseAction(action, *interface, interfaces);
         if (!parsedAction) {
             debugln("Invalid action configuration.");
             continue;
         }
 
-    interface->actions.push_back(std::move(parsedAction));
-}
+        interface->actions.push_back(std::move(parsedAction));
+    }
 }
 
 DeviceConfig readDeviceConfig(const char* filename) {

@@ -115,10 +115,16 @@ ConnectStatus connectIfNeeded() {
 void sendStatusMessage(bool restarted) {
     auto now = millis();
     if (deviceConfig.availabilityTopic.length() != 0 && now >= nextStatusSend) {
-        debug("Sending status message");
+        debugln("Sending status message to topic "
+                + deviceConfig.availabilityTopic);
         std::string message = getStatusMessage(true, restarted);
-        mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
-                message.c_str(), true);
+        debugln(message);
+        if (mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
+                message.c_str(), true)) {
+            debugln("Success.");
+        } else {
+            debugln("Failure.");
+        }
         nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
                 * statusSendInterval;
     }

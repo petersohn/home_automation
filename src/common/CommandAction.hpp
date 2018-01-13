@@ -3,19 +3,21 @@
 
 #include "Action.hpp"
 #include "Interface.hpp"
+#include "../operation/Operation.hpp"
 
 #include <string>
 
 class CommandAction : public Action {
 public:
-    CommandAction(Interface& target, const std::string& command)
-            : target(target), command(command) {}
+    CommandAction(Interface& target,
+            std::unique_ptr<operation::Operation>&& command)
+            : target(target), command(std::move(command)) {}
 
     void fire(const InterfaceConfig& interface);
 
 private:
     Interface& target;
-    std::string command;
+    std::unique_ptr<operation::Operation> command;
 };
 
 #endif // COMMON_COMMANDACTION_HPP
