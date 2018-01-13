@@ -45,7 +45,7 @@ void debug(const T& value) {
     }
 }
 
-template<typename T = char*>
+template<typename T = const char*>
 void debugln(const T& value = "") {
     if (deviceConfig.debug) {
         println(Serial, value);

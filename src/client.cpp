@@ -130,7 +130,7 @@ namespace mqtt {
 
 PubSubClient client;
 
-bool loop() {
+void loop() {
     if (millis() >= nextConnectionAttempt) {
         switch (connectIfNeeded()) {
         case ConnectStatus::alreadyConnected:

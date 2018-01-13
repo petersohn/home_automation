@@ -10,7 +10,7 @@ namespace mqtt {
 
 extern PubSubClient client;
 
-bool loop();
+void loop();
 void subscribe(const std::string& topic,
         std::function<void(const std::string&)> callback);
 void unsubscribe(const std::string& topic);
