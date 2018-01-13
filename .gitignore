@@ -3,8 +3,8 @@ custom/
 load_environment.sh
 *.compile.json
 .settings
-/Debug/
-/Release/
+Debug/
+Release/
 *.o
 *.a
 *.elf
