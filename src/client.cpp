@@ -137,9 +137,8 @@ void loop() {
             sendStatusMessage(false);
             break;
         case ConnectStatus::connectionSuccessful:
-            for (const InterfaceConfig& interface :
-                    deviceConfig.interfaces) {
-                interface.interface->start();
+            for (const auto& interface : deviceConfig.interfaces) {
+                interface->interface->start();
             }
             nextStatusSend = millis();
             sendStatusMessage(restarted);

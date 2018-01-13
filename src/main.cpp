@@ -56,8 +56,8 @@ void loop()
         mqtt::loop();
     }
 
-    for (InterfaceConfig& interface : deviceConfig.interfaces) {
-        interface.interface->update(Actions{interface});
+    for (const auto& interface : deviceConfig.interfaces) {
+        interface->interface->update(Actions{*interface});
     }
 
     mqtt::client.loop();

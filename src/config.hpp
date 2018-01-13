@@ -24,13 +24,12 @@ struct DeviceConfig {
     std::string availabilityTopic;
     bool debug = false;
     int debugPort = 2534;
-    std::vector<InterfaceConfig> interfaces;
+    std::vector<std::unique_ptr<InterfaceConfig>> interfaces;
 };
 
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
-InterfaceConfig* findInterface(const std::string& name);
 void initConfig();
 
 #endif // CONFIG_HPP

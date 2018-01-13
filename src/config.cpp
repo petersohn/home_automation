@@ -192,7 +192,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
 }
 
 void parseInterfaces(const JsonObject& data,
-        std::vector<InterfaceConfig>& result) {
+        std::vector<std::unique_ptr<InterfaceConfig>>& result) {
     const JsonArray& interfaces = data["interfaces"];
     if (interfaces == JsonArray::invalid()) {
         debugln("Could not parse interfaces.");
@@ -212,8 +212,8 @@ void parseInterfaces(const JsonObject& data,
             continue;
         }
 
-        result.emplace_back();
-        InterfaceConfig& interfaceConfig = result.back();
+        result.emplace_back(new InterfaceConfig);
+        InterfaceConfig& interfaceConfig = *result.back();
 
         PARSE(interface, interfaceConfig, name);
 
@@ -237,21 +237,8 @@ std::string getMandatoryArgument(const JsonObject& data, const char* name) {
     return result;
 }
 
-InterfaceConfig* findInterface(
-        std::vector<InterfaceConfig>& interfaces, const char* name) {
-    auto interface = std::find_if(interfaces.begin(), interfaces.end(),
-            [&name](const InterfaceConfig& interface) {
-                return interface.name == name;
-            });
-    if (interface == interfaces.end()) {
-        debugln("Could not find interface: " + std::string(name));
-        return nullptr;
-    }
-    return &*interface;
-}
-
 std::unique_ptr<Action> parseBareAction(const JsonObject& data,
-        std::vector<InterfaceConfig>& interfaces) {
+        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
     auto type = data.get<std::string>("type");
     if (type == "publish") {
         std::string topic = getMandatoryArgument(data, "topic");
@@ -280,7 +267,7 @@ std::unique_ptr<Action> parseBareAction(const JsonObject& data,
 }
 
 std::unique_ptr<Action> parseAction(const JsonObject& data,
-        std::vector<InterfaceConfig>& interfaces) {
+        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
     std::string value = data["value"];
     if (value.length() != 0) {
         return std::unique_ptr<Action>{new ConditionalAction{
@@ -290,7 +277,7 @@ std::unique_ptr<Action> parseAction(const JsonObject& data,
 }
 
 void parseActions(const JsonObject& data,
-        std::vector<InterfaceConfig>& interfaces) {
+        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
     const JsonArray& actions = data["actions"];
     if (actions == JsonArray::invalid()) {
         debugln("Could not parse actions.");
