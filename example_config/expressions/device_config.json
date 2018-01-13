@@ -1,0 +1,73 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "availabilityTopic": "home/devices/testDevice/availability",
+    "interfaces": [
+        {
+            "type": "output",
+            "name": "led",
+            "commandTopic": "home/devices/testDevice/led/set",
+            "pin": 2
+        },
+        {
+            "type": "input",
+            "name": "button",
+            "pin": 0
+        },
+        {
+            "type": "mqtt",
+            "name": "in",
+            "topic": "home/devices/testDevice/in"
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "led",
+            "topic": "home/devices/testDevice/led/state",
+            "retain": true
+        },
+        {
+            "type": "publish",
+            "interface": "led",
+            "topic": "home/devices/testDevice/led/blink",
+            "template": "%2 %3",
+            "retain": true
+        },
+        {
+            "type": "publish",
+            "interface": "button",
+            "topic": "home/devices/testDevice/button/state",
+            "retain": true
+        },
+        {
+            "type": "publish",
+            "interface": "in",
+            "topic": "home/devices/testDevice/out",
+            "retain": false
+        },
+        {
+            "type": "command",
+            "interface": "button",
+            "target": "led",
+            "command": {
+                "type": "if",
+                "cond": {
+                    "type": ">",
+                    "ops": [{"type": "value", "interface": "in"}, 0]
+                },
+                "then": {
+                    "type": "s+",
+                    "ops": [
+                        "blink ",
+                        {"type": "value", "interface": "in"},
+                        " ",
+                        {"type": "value", "interface": "in"}
+                    ]
+                },
+                "else": "toggle"
+            },
+            "value": "0"
+        }
+    ]
+}
