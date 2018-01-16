@@ -30,7 +30,8 @@ std::vector<std::string> DallasTemperatureSensor::measure() {
             debugln("Failed to read temperature.");
             return {};
         }
-        result.emplace_back(std::to_string(temperature));
+        auto value = std::to_string(temperature);
+        result.emplace_back(value);
     }
     return result;
 }
