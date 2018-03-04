@@ -1,8 +1,10 @@
 #include "CounterInterface.hpp"
 
 #include "common/Sensor.hpp"
+#include "debug.hpp"
 
 #include <Arduino.h>
+#include <FunctionalInterrupt.h>
 
 class CounterInterface::CounterSensor : public Sensor {
 public:
@@ -24,7 +26,7 @@ public:
         return {std::to_string(result)};
     }
 
-    void increment() { ++number; }
+    void increment(int n) { number += n; }
 private:
     float multiplier;
     unsigned number = 0;
@@ -32,10 +34,19 @@ private:
 };
 
 CounterInterface::CounterInterface(
-        int pin, float multiplier, int interval, int offset)
-        : sensorInterface(createCounterSensor(multiplier), interval, offset) {
+        int pin, int bounceTime, float multiplier, int interval, int offset)
+        : bounceTime(bounceTime),
+          sensorInterface(createCounterSensor(multiplier), interval, offset) {
     pinMode(pin, INPUT);
-    bounce.attach(pin);
+    attachInterrupt(pin, [this]() { onRise(); }, RISING);
+}
+
+void CounterInterface::onRise() {
+    long now = millis();
+    if (now - lastRise > bounceTime) {
+        ++riseCount;
+        lastRise = now;
+    }
 }
 
 auto CounterInterface::createCounterSensor(
@@ -54,8 +65,10 @@ void CounterInterface::execute(const std::string& command) {
 }
 
 void CounterInterface::update(Actions action) {
-    if (bounce.update() && bounce.rose()) {
-        counterSensor->increment();
+    while (riseCount > 0) {
+        int count = riseCount;
+        counterSensor->increment(count);
+        riseCount -= count;
     }
     sensorInterface.update(action);
 }

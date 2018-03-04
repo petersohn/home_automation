@@ -177,7 +177,8 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>(new CounterInterface{
-                        pin, getJsonWithDefault(data["multiplier"], 1.0f),
+                        pin, getJsonWithDefault(data["bounceTime"], 0),
+                        getJsonWithDefault(data["multiplier"], 1.0f),
                         getInterval(data), getOffset(data)})
                 : nullptr;
     } else if (type == "mqtt") {

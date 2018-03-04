@@ -4,11 +4,10 @@
 #include "SensorInterface.hpp"
 #include "common/Interface.hpp"
 
-#include <Bounce2.h>
-
 class CounterInterface : public Interface {
 public:
-    CounterInterface(int pin, float multiplier, int interval, int offset);
+    CounterInterface(int pin, int bounceTime, float multiplier, int interval,
+            int offset);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -18,10 +17,13 @@ private:
     class CounterSensor;
 
     std::unique_ptr<CounterSensor> createCounterSensor(float multiplier);
+    void onRise();
 
-    Bounce bounce;
     CounterSensor* counterSensor  = nullptr;
+    int bounceTime;
     SensorInterface sensorInterface;
+    volatile int riseCount = 0;
+    volatile long lastRise = 0;
 };
 
 #endif // COUNTERINTERFACE_HPP
