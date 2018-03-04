@@ -18,12 +18,15 @@ private:
 
     std::unique_ptr<CounterSensor> createCounterSensor(float multiplier);
     void onRise();
+    void resetMinInterval();
 
     CounterSensor* counterSensor  = nullptr;
     int bounceTime;
+    int interval;
     SensorInterface sensorInterface;
     volatile int riseCount = 0;
     volatile long lastRise = 0;
+    volatile int minInterval;
 };
 
 #endif // COUNTERINTERFACE_HPP
