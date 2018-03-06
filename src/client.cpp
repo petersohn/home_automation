@@ -50,7 +50,7 @@ void onMessageReceived(
 }
 
 std::string getStatusMessage(bool available, bool restarted) {
-    StaticJsonBuffer<128> buffer;
+    StaticJsonBuffer<160> buffer;
     JsonObject& message = buffer.createObject();
     message["name"] = deviceConfig.name.c_str();
     message["available"] = available;
