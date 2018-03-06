@@ -162,6 +162,11 @@ Sensors send their value periodically. Common parameters used for all sensors:
   device blocking for a long time. Note that a measurement is always made right
   after boot.
 
+#### `analog`
+
+Reports the output of the ADC port. The 0--1 V range is mapped into 0--1024
+values. Since the ESP has only one ADC port, the `pin` parameter is ignored.
+
 #### `counter`
 
 Measures the frequency of a GPIO port switching to 1 state. It can be used, for

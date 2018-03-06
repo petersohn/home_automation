@@ -6,6 +6,7 @@
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
+#include "AnalogSensor.hpp"
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
 #include "MqttInterface.hpp"
@@ -155,6 +156,9 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                 ?  std::unique_ptr<Interface>{
                         new GpioOutput{pin, data["default"]}}
                 : nullptr;
+    } else if (type == "analog") {
+        return createSensorInterface(data,
+                std::unique_ptr<Sensor>(new AnalogSensor{}));
     } else if (type == "dht") {
         int pin = 0;
         auto type = tools::findValue(dhtTypes,
