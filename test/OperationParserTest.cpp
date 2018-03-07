@@ -135,6 +135,13 @@ struct OperationTestSampleConditional {
     std::string expectedValue;
 };
 
+struct OperationTestSampleMapping {
+    std::string operation;
+    std::string operands;
+    std::string value;
+    std::string expectedValue;
+};
+
 std::ostream& operator<<(std::ostream& os,
         const OperationTestSampleString& sample) {
     return os << sample.operation << "(" << sample.operands << ") = "
@@ -152,6 +159,12 @@ std::ostream& operator<<(std::ostream& os,
     return os << sample.condition << " ? ("
             << sample.thenBranch << ") : ("
             << sample.elseBranch << ") = " << sample.expectedValue;
+}
+
+std::ostream& operator<<(std::ostream& os,
+        const OperationTestSampleMapping& sample) {
+    return os << sample.operation << "[" << sample.operands
+            << "] : " << sample.value << " = " << sample.expectedValue;
 }
 
 OperationTestSampleString stringOperations[] = {
@@ -322,6 +335,79 @@ OperationTestSampleString unaryOperations[] = {
     {"!", "1", "0"},
 };
 
+OperationTestSampleMapping mappingOperations[] = {
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 40, "max": 60, "value": "bar"})",
+        "6", "foo"},
+    {"map", R"(
+            {"min": 40, "max": 50, "value": "foo"},
+            {"min": 0, "max": 10, "value": "bar"})",
+        "6", "bar"},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 40, "max": 60, "value": "bar"})",
+        "50", "bar"},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 40, "max": 60, "value": "bar"})",
+        "-1", ""},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 40, "max": 60, "value": "bar"})",
+        "120", ""},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 40, "max": 60, "value": "bar"})",
+        "60", ""},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 40, "max": 60, "value": "bar"})",
+        "30", ""},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 20, "max": 60, "value": "bar"})",
+        "15", "foo"},
+    {"map", R"(
+            {"min": 0, "max": 30, "value": "foo"},
+            {"min": 30, "max": 60, "value": "bar"},
+            {"min": 60, "max": 80, "value": "baz"})",
+        "60", "baz"},
+
+    {"smap", R"(
+            {"min": 40, "max": 90, "value": "foo"},
+            {"min": 0, "max": 10, "value": "bar"})",
+        "6", "foo"},
+    {"smap", R"(
+            {"min": "bar", "max": "foo", "value": "first"},
+            {"min": "foo", "max": "widget", "value": "second"})",
+        "asd", ""},
+    {"smap", R"(
+            {"min": "bar", "max": "foo", "value": "first"},
+            {"min": "foo", "max": "widget", "value": "second"})",
+        "ert", "first"},
+    {"smap", R"(
+            {"min": "bar", "max": "foo", "value": "first"},
+            {"min": "foo", "max": "widget", "value": "second"})",
+        "foo", "second"},
+    {"smap", R"(
+            {"min": "bar", "max": "foo", "value": "first"},
+            {"min": "foo", "max": "widget", "value": "second"})",
+        "vbvbvb", "second"},
+    {"smap", R"(
+            {"min": "bar", "max": "foo", "value": "first"},
+            {"min": "foo", "max": "widget", "value": "second"})",
+        "xxx", ""},
+    {"smap", R"(
+            {"min": "foo", "max": "widget", "value": "second"},
+            {"min": "bar", "max": "foo", "value": "first"})",
+        "vbvbvb", "second"},
+    {"smap", R"(
+            {"min": "foo", "max": "widget", "value": "second"},
+            {"min": "bar", "max": "foo", "value": "first"})",
+        "ert", "first"},
+};
+
 OperationTestSampleConditional conditionalOperations[] = {
     {
         R"({"type": "=", "ops": [2, 2]})",
@@ -382,6 +468,19 @@ BOOST_DATA_TEST_CASE_F(Fixture, ConditionalTest,
             "cond": )" + sample.condition + R"(,
             "then": )" + sample.thenBranch + R"(,
             "else": )" + sample.elseBranch + R"(
+        }
+    })";
+    auto operation = parse(json);
+    BOOST_TEST(operation->evaluate() == sample.expectedValue);
+}
+
+BOOST_DATA_TEST_CASE_F(Fixture, MappingTest,
+        boost::unit_test::data::make(mappingOperations)) {
+    std::string json = R"({
+        "result": {
+            "type": ")" + sample.operation + R"(",
+            "ops": [)" + sample.operands + R"(],
+            "value": )" + sample.value + R"(
         }
     })";
     auto operation = parse(json);

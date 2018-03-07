@@ -10,6 +10,8 @@
 
 namespace operation {
 
+struct MappingElement;
+
 class Parser {
 public:
     Parser(const std::vector<std::unique_ptr<InterfaceConfig>>& interfaces,
@@ -22,6 +24,7 @@ private:
     std::unique_ptr<Operation> doParse(const JsonVariant& data);
     std::vector<std::unique_ptr<Operation>> parseOperands(
             const JsonObject& object);
+    std::vector<MappingElement> parseMappingElements(const JsonObject& object);
 
     std::vector<InterfaceConfig*> interfaces;
     const InterfaceConfig& interface;
