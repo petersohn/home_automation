@@ -32,6 +32,12 @@ void SensorInterface::update(Actions action) {
             debugln();
             nextRetry = 0;
             action.fire(values);
+            pulseSent = false;
+        }
+    } else if (!pulse.empty()) {
+        if (!pulseSent) {
+            action.fire(pulse);
+            pulseSent = true;
         }
     }
 }
