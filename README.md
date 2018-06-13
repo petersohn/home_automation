@@ -161,6 +161,9 @@ Sensors send their value periodically. Common parameters used for all sensors:
   measurement takes a long time and there are multiple sensors, to avoid the
   device blocking for a long time. Note that a measurement is always made right
   after boot.
+* `pulse`: If set, the value of the sensor is reset to this value after
+  measurement. For example, a value of 0 means that at each measurement, the
+  value of the sensor is processed, then it is reset to 0 in the next tick.
 
 #### `analog`
 
@@ -180,6 +183,9 @@ Parameters:
   =5000 mm^3), of water, and the input area of the rain gauge is 100 cm^2
   (=10000 mm^2), then set this value to 5000 / 10000 = 0.5 to measure rain in
   mm/s, or 1800 to measure in mm/h.
+* `bounceTime`: The minimum time interval between successive switches, in
+  milliseconds. If the value switches more than once in this interval, it is
+  counted as one switch.
 
 #### `dht`
 
@@ -230,3 +236,7 @@ Parameters:
 * `target`: The name of the target interface, where the command is sent.
 * `command`: The command to send to the target interface. Value substitution is
   done similarly to the `template` parameter of the `publish` action.
+
+## Operations
+
+TODO. see unit tests.
