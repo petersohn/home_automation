@@ -162,13 +162,24 @@ std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
             getPulse(data)}};
 }
 
+GpioInput::CycleType getCycleType(const std::string& value) {
+    if (value == "none") {
+        return GpioInput::CycleType::none;
+    }
+    if (value == "multi") {
+        return GpioInput::CycleType::multi;
+    }
+
+    return GpioInput::CycleType::single;
+}
+
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
     std::string type = data.get<std::string>("type");
     if (type == "input") {
         int pin = 0;
         return getPin(data, pin)
-                ?  std::unique_ptr<Interface>{
-                        new GpioInput{pin}}
+                ?  std::unique_ptr<Interface>{new GpioInput{
+                        pin, getCycleType(data.get<std::string>("cycle"))}}
                 : nullptr;
     } else if (type == "output") {
         int pin = 0;

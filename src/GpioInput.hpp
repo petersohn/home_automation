@@ -3,19 +3,28 @@
 
 #include "common/Interface.hpp"
 
-#include <Bounce2.h>
-
 class GpioInput : public Interface {
 public:
-    GpioInput(int pin);
+    enum class CycleType {
+        none, single, multi
+    };
+
+    GpioInput(int pin, CycleType cycleType, unsigned interval = 10);
 
     void start() override;
     void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
+    void onChange();
+
+    const int pin;
+    const CycleType cycleType;
+    const unsigned interval;
     bool startup = false;
-    Bounce bounce;
+    volatile int state = 0;
+    volatile unsigned long lastChanged = 0;
+    volatile int cycles = 0;
 };
 
 

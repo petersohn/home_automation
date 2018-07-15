@@ -12,6 +12,7 @@
         {
             "type": "input",
             "name": "button",
+            "cycle": "single",
             "pin": 0
         }
     ],
