@@ -17,10 +17,12 @@ enum class ConnectStatus {
     connectionFailed
 };
 
-constexpr unsigned connectionAttemptInterval = 1000;
+constexpr unsigned initialBackoff = 500;
+constexpr unsigned maxBackoff = 60000;
 constexpr unsigned statusSendInterval = 60000;
 
 unsigned long nextConnectionAttempt = 0;
+unsigned backoff = initialBackoff;
 unsigned long nextStatusSend = 0;
 WiFiClient wifiClient;
 std::string willMessage;
@@ -149,9 +151,11 @@ void loop() {
             nextStatusSend = millis();
             sendStatusMessage(restarted);
             restarted = false;
+            backoff = initialBackoff;
             break;
         case ConnectStatus::connectionFailed:
-            nextConnectionAttempt = millis() + connectionAttemptInterval;
+            nextConnectionAttempt = millis() + backoff;
+            backoff = std::min(backoff * 2, maxBackoff);
             break;
         }
     }
