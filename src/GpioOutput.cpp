@@ -77,8 +77,8 @@ void GpioOutput::update(Actions action) {
     }
 
     if (changed) {
-        action.fire({std::to_string(digitalRead(pin)),
-                std::to_string(blinkOn), std::to_string(blinkOff)});
+        action.fire({tools::intToString(digitalRead(pin)),
+        	tools::intToString(blinkOn), tools::intToString(blinkOff)});
         changed = false;
     }
 }

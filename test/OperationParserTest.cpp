@@ -60,7 +60,7 @@ BOOST_FIXTURE_TEST_CASE(ParseConstantInt, Fixture) {
 BOOST_FIXTURE_TEST_CASE(ParseConstantFloat, Fixture) {
     std::string json = R"({"result": 2.4})";
     auto operation = parse(json);
-    BOOST_TEST(std::stof(operation->evaluate()) == 2.4,
+    BOOST_TEST(std::atof(operation->evaluate().c_str()) == 2.4,
             boost::test_tools::tolerance(1e-6));
 }
 
@@ -444,7 +444,7 @@ BOOST_DATA_TEST_CASE_F(Fixture, OperationTestWithNumericalResult,
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(std::stof(operation->evaluate()) == sample.expectedValue,
+    BOOST_TEST(std::atof(operation->evaluate().c_str()) == sample.expectedValue,
             boost::test_tools::tolerance(1e-6));
 }
 

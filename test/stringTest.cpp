@@ -223,4 +223,44 @@ BOOST_AUTO_TEST_CASE(InvalidValue) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(IntToStringTest)
+
+BOOST_AUTO_TEST_CASE(SingleDigit) {
+    BOOST_TEST(tools::intToString(5) == "5");
+}
+
+BOOST_AUTO_TEST_CASE(Zero) {
+    BOOST_TEST(tools::intToString(0) == "0");
+}
+
+BOOST_AUTO_TEST_CASE(MultipleDigits) {
+    BOOST_TEST(tools::intToString(23523) == "23523");
+}
+
+BOOST_AUTO_TEST_CASE(NegativeNumber) {
+    BOOST_TEST(tools::intToString(-125) == "-125");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(FloatToStringTest)
+
+BOOST_AUTO_TEST_CASE(Integer) {
+    BOOST_TEST(tools::floatToString(42.0, 2) == "42");
+}
+
+BOOST_AUTO_TEST_CASE(StopAtPoints) {
+    BOOST_TEST(tools::floatToString(51.34123, 2) == "51.34");
+}
+
+BOOST_AUTO_TEST_CASE(Negative) {
+    BOOST_TEST(tools::floatToString(-42.61, 2) == "-42.61");
+}
+
+BOOST_AUTO_TEST_CASE(MoreComplicated) {
+    BOOST_TEST(tools::floatToString(1.0 / 3.0, 6) == "0.333333");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()

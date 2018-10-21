@@ -1,7 +1,8 @@
 #include "CounterInterface.hpp"
 
-#include "common/Sensor.hpp"
 #include "debug.hpp"
+#include "common/Sensor.hpp"
+#include "tools/string.hpp"
 
 #include <Arduino.h>
 #include <FunctionalInterrupt.h>
@@ -24,7 +25,7 @@ public:
         number = 0;
         max = 0;
         lastMeasurement = now;
-        return {std::to_string(averageResult), std::to_string(maxResult)};
+        return {tools::floatToString(averageResult, 4), tools::floatToString(maxResult, 4)};
     }
 
     void update(int counter, float maxRate) {

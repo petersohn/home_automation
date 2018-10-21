@@ -1,5 +1,7 @@
 #include "GpioInput.hpp"
+
 #include "debug.hpp"
+#include "tools/string.hpp"
 
 #include <Arduino.h>
 #include <FunctionalInterrupt.h>
@@ -113,12 +115,12 @@ void GpioInput::update(Actions action) {
     }
 
     for (int i = 0; i < currentCycles; ++i) {
-        action.fire({std::to_string(!lastState)});
-        action.fire({std::to_string(lastState)});
+        action.fire({tools::intToString(!lastState)});
+        action.fire({tools::intToString(lastState)});
     }
 
     if ((startup && currentCycles == 0) || currentState.saved != lastState) {
-        action.fire({std::to_string(currentState.saved)});
+        action.fire({tools::intToString(currentState.saved)});
     }
 
     startup = false;

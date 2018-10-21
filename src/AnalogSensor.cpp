@@ -1,7 +1,8 @@
 #include "AnalogSensor.hpp"
+#include "tools/string.hpp"
 
 #include <Arduino.h>
 
 std::vector<std::string> AnalogSensor::measure() {
-    return {std::to_string(analogRead(A0))};
+    return {tools::intToString(analogRead(A0))};
 }

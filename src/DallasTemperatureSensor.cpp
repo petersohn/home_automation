@@ -1,6 +1,7 @@
 #include "DallasTemperatureSensor.hpp"
 
 #include "debug.hpp"
+#include "tools/string.hpp"
 
 DallasTemperatureSensor::DallasTemperatureSensor(int pin)
         : oneWire(pin), sensors(&oneWire) {
@@ -30,7 +31,7 @@ std::vector<std::string> DallasTemperatureSensor::measure() {
             debugln("Failed to read temperature.");
             return {};
         }
-        auto value = std::to_string(temperature);
+        auto value = tools::floatToString(temperature, 1);
         result.emplace_back(value);
     }
     return result;

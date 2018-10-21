@@ -19,11 +19,12 @@
 #include <FS.h>
 
 #include <algorithm>
+#include <memory>
 
 namespace {
 
 struct ParsedData {
-    DynamicJsonBuffer buffer{512};
+    std::unique_ptr<DynamicJsonBuffer> buffer{new DynamicJsonBuffer{512}};
     JsonObject* root = nullptr;
 };
 
@@ -52,7 +53,7 @@ ParsedData parseFile(const char* filename) {
         debugln(std::string("Could not open file: ") + filename);
         return result;
     }
-    result.root = &result.buffer.parseObject(f);
+    result.root = &result.buffer->parseObject(f);
     if (*result.root == JsonObject::invalid()) {
         debugln(std::string("Could not parse JSON file: ") + filename);
         result.root = nullptr;
@@ -367,6 +368,13 @@ DeviceConfig deviceConfig;
 
 void initConfig() {
     SPIFFS.begin();
+    deviceConfig.debug = true;
+    Serial.begin(115200);
+    Serial.println("Filesystem");
+    Dir dir = SPIFFS.openDir("/");
+    while (dir.next()) {
+        Serial.println(dir.fileName());
+    }
     deviceConfig = readDeviceConfig("/device_config.json");
     globalConfig = readGlobalConfig("/global_config.json");
 }

@@ -99,7 +99,7 @@ ConnectStatus connectIfNeeded() {
     if (mqtt::client.connected()) {
         return ConnectStatus::alreadyConnected;
     }
-    debugln("Client status = " + std::to_string(mqtt::client.state()));
+    debugln("Client status = " + tools::intToString(mqtt::client.state()));
     debugln("Connecting to MQTT broker...");
     for (const ServerConfig& server : globalConfig.servers) {
         if (tryToConnect(server)) {

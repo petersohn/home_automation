@@ -1,5 +1,7 @@
 #include "DhtSensor.hpp"
 
+#include "tools/string.hpp"
+
 #include <cmath>
 
 namespace {
@@ -19,5 +21,5 @@ std::vector<std::string> DhtSensor::measure() {
     if (!isOk(humidity)) {
         return {};
     }
-    return {std::to_string(temperature), std::to_string(humidity)};
+    return {tools::floatToString(temperature, 1), tools::floatToString(humidity, 1)};
 }
