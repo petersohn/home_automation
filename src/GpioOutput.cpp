@@ -19,10 +19,13 @@ void GpioOutput::start() {
     changed = true;
 }
 
-GpioOutput::GpioOutput(int pin, bool defaultValue)
-        : pin(pin), rtcId(rtcNext()) {
+bool GpioOutput::getOutput() {
+    return invert ? !value : value;
+}
+
+GpioOutput::GpioOutput(int pin, bool defaultValue, bool invert)
+        : pin(pin), rtcId(rtcNext()), invert(invert) {
     pinMode(pin, OUTPUT);
-    digitalWrite(pin, value);
     RtcData rtcData = rtcGet(rtcId);
     value = ((rtcData & rtcSetMask) == 0)
             ? defaultValue : rtcData & rtcValueMask;
@@ -77,8 +80,9 @@ void GpioOutput::update(Actions action) {
     }
 
     if (changed) {
-        action.fire({tools::intToString(digitalRead(pin)),
-        	tools::intToString(blinkOn), tools::intToString(blinkOff)});
+        bool localValue = digitalRead(pin);
+        action.fire({tools::intToString(invert ? !localValue : localValue),
+            tools::intToString(blinkOn), tools::intToString(blinkOff)});
         changed = false;
     }
 }
@@ -97,7 +101,7 @@ void GpioOutput::clearBlink() {
 }
 
 void GpioOutput::setValue() {
-    digitalWrite(pin, value);
+    digitalWrite(pin, getOutput());
     RtcData rtcData = rtcSetMask;
     if (value) {
         rtcData |= rtcValueMask;

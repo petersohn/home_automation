@@ -186,7 +186,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{
-                        new GpioOutput{pin, data["default"]}}
+                        new GpioOutput{pin, data["default"], data["invert"]}}
                 : nullptr;
     } else if (type == "analog") {
         return createSensorInterface(data,

@@ -1,6 +1,7 @@
 #include "client.hpp"
 #include "config.hpp"
 #include "debug.hpp"
+#include "rtc.hpp"
 #include "wifi.hpp"
 #include "common/Action.hpp"
 #include "common/Interface.hpp"
@@ -39,6 +40,7 @@ void setDeviceName() {
 void setup()
 {
     WiFi.mode(WIFI_STA);
+    rtcInit();
     initConfig();
     setDeviceName();
 }
