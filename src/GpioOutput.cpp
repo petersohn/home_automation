@@ -27,8 +27,17 @@ GpioOutput::GpioOutput(int pin, bool defaultValue, bool invert)
         : pin(pin), rtcId(rtcNext()), invert(invert) {
     pinMode(pin, OUTPUT);
     RtcData rtcData = rtcGet(rtcId);
-    value = ((rtcData & rtcSetMask) == 0)
-            ? defaultValue : rtcData & rtcValueMask;
+    debug("Pin ");
+    debug(pin);
+    debug(": ");
+    if ((rtcData & rtcSetMask) == 0) {
+        value = defaultValue;
+        debug("default value ");
+    } else {
+        value = rtcData & rtcValueMask;
+        debug("from RTC ");
+    }
+    debugln(value);
     setValue();
 }
 
@@ -101,7 +110,12 @@ void GpioOutput::clearBlink() {
 }
 
 void GpioOutput::setValue() {
-    digitalWrite(pin, getOutput());
+    bool output = getOutput();
+    debug("Pin ");
+    debug(pin);
+    debug(": value=");
+    debugln(output);
+    digitalWrite(pin, output);
     RtcData rtcData = rtcSetMask;
     if (value) {
         rtcData |= rtcValueMask;

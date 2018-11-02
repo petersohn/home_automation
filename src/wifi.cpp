@@ -8,6 +8,7 @@ namespace {
 
 unsigned long nextAttempt = 0;
 bool connecting = false;
+int lastStatus = WL_NO_SHIELD;
 
 constexpr int checkInterval = 500;
 constexpr int retryInterval = 5000;
@@ -16,6 +17,11 @@ constexpr int retryInterval = 5000;
 
 bool connectIfNeeded(const std::string& ssid, const std::string& password) {
     int status = WiFi.status();
+    if (status != lastStatus) {
+    	debug("status=");
+    	debugln(status);
+    	lastStatus = status;
+    }
     if (status == WL_CONNECTED) {
         if (connecting) {
             debug("\nConnection to wifi successful. IP address = ");
