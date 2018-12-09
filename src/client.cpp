@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <vector>
 
+static_assert(MQTT_MAX_PACKET_SIZE == 256, "check MQTT packet size");
+
 namespace {
 
 enum class ConnectStatus {
