@@ -6,7 +6,7 @@
         {
             "type": "counter",
             "name": "rain",
-            "interval": 30,
+            "interval": 10,
             "multiplier": 1800,
             "pin": 0
         }

@@ -44,13 +44,13 @@ private:
     unsigned long lastMeasurement = 0;
 };
 
-CounterInterface::CounterInterface(
+CounterInterface::CounterInterface(std::string name,
         int pin, int bounceTime, float multiplier, int interval, int offset,
         std::vector<std::string> pulse)
         : bounceTime(bounceTime),
           interval(interval),
-          sensorInterface(createCounterSensor(multiplier), interval, offset,
-                  std::move(pulse)) {
+          sensorInterface(createCounterSensor(multiplier), std::move(name),
+          interval, offset, std::move(pulse)) {
     pinMode(pin, INPUT);
     resetMinInterval();
     attachInterrupt(pin, [this]() { onRise(); }, RISING);

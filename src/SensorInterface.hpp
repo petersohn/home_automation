@@ -8,10 +8,10 @@
 
 class SensorInterface : public Interface {
 public:
-    SensorInterface(std::unique_ptr<Sensor>&& sensor,
+    SensorInterface(std::unique_ptr<Sensor>&& sensor, std::string name,
             int interval, int offset, std::vector<std::string> pulse)
-            : sensor(std::move(sensor)), interval(interval), offset(offset),
-              pulse(std::move(pulse)) {}
+            : sensor(std::move(sensor)), name(std::move(name)),
+              interval(interval), offset(offset), pulse(std::move(pulse)) {}
 
     void start() override;
     void execute(const std::string& command) override;
@@ -19,6 +19,7 @@ public:
 
 private:
     std::unique_ptr<Sensor> sensor;
+    std::string name;
     int interval;
     int offset;
     long nextExecution = 0;

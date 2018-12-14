@@ -159,8 +159,8 @@ std::vector<std::string> getPulse(const JsonObject& data) {
 std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
         std::unique_ptr<Sensor>&& sensor) {
     return std::unique_ptr<Interface>{new SensorInterface{
-            std::move(sensor), getInterval(data), getOffset(data),
-            getPulse(data)}};
+            std::move(sensor), data.get<std::string>("name"),
+            getInterval(data), getOffset(data), getPulse(data)}};
 }
 
 GpioInput::CycleType getCycleType(const std::string& value) {
@@ -213,6 +213,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>(new CounterInterface{
+                        data.get<std::string>("name"),
                         pin, getJsonWithDefault(data["bounceTime"], 0),
                         getJsonWithDefault(data["multiplier"], 1.0f),
                         getInterval(data), getOffset(data), getPulse(data)})

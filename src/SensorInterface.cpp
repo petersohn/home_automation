@@ -21,11 +21,13 @@ void SensorInterface::update(Actions action) {
             nextExecution += ((now - nextExecution) / interval + 1) * interval;
         }
         auto values = sensor->measure();
+        debug(name);
         if (values.empty()) {
-            debugln("Measurement failed. Trying again.");
+            debugln(": Measurement failed. Trying again.");
             nextRetry = now + 1000;
         } else {
-            debug("Measurement successful:");
+            debug(name);
+            debug(": Measurement successful:");
             for (const std::string& value : values) {
                 debug(" " + value);
             }
