@@ -6,7 +6,7 @@
         {
             "type": "dallasTemperature",
             "name": "dallas",
-            "interval": 60,
+            "interval": 10,
             "pin": 2
         }
     ],

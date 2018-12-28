@@ -17,8 +17,11 @@ public:
 private:
     OneWire oneWire;
     DallasTemperature sensors;
+    bool initialized = false;
 
     std::vector<std::array<std::uint8_t, 8>> addresses;
+
+    void initialize();
 };
 
 #endif // DALLASTEMPERATURESENSOR_HPP

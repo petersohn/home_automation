@@ -5,10 +5,35 @@
 
 DallasTemperatureSensor::DallasTemperatureSensor(int pin)
         : oneWire(pin), sensors(&oneWire) {
+    initialize();
+}
+
+std::vector<std::string> DallasTemperatureSensor::measure() {
+    if (!initialized) {
+        initialize();
+    }
+    sensors.requestTemperatures();
+    std::vector<std::string> result;
+    for (const auto& address : addresses) {
+        float temperature = sensors.getTempC(address.data());
+        if (temperature == DEVICE_DISCONNECTED_C) {
+            debugln("Failed to read temperature.");
+            initialized = false;
+            return {};
+        }
+        auto value = tools::floatToString(temperature, 1);
+        result.emplace_back(value);
+    }
+    return result;
+}
+
+void DallasTemperatureSensor::initialize() {
     sensors.begin();
     int count = sensors.getDeviceCount();
     debug("Number of devices: ");
     debugln(count);
+    addresses.clear();
+    addresses.reserve(count);
     for (int i = 0; i < count; ++i) {
         addresses.emplace_back();
         if (!sensors.getAddress(addresses.back().data(), i)) {
@@ -19,20 +44,5 @@ DallasTemperatureSensor::DallasTemperatureSensor(int pin)
         }
         sensors.setResolution(addresses.back().data(), 9);
     }
-
-}
-
-std::vector<std::string> DallasTemperatureSensor::measure() {
-    sensors.requestTemperatures();
-    std::vector<std::string> result;
-    for (const auto& address : addresses) {
-        float temperature = sensors.getTempC(address.data());
-        if (temperature == DEVICE_DISCONNECTED_C) {
-            debugln("Failed to read temperature.");
-            return {};
-        }
-        auto value = tools::floatToString(temperature, 1);
-        result.emplace_back(value);
-    }
-    return result;
+    initialized = count != 0;
 }
