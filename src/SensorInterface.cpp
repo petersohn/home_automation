@@ -26,7 +26,6 @@ void SensorInterface::update(Actions action) {
             debugln(": Measurement failed. Trying again.");
             nextRetry = now + 1000;
         } else {
-            debug(name);
             debug(": Measurement successful:");
             for (const std::string& value : values) {
                 debug(" " + value);
