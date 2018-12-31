@@ -241,6 +241,14 @@ BOOST_AUTO_TEST_CASE(NegativeNumber) {
     BOOST_TEST(tools::intToString(-125) == "-125");
 }
 
+BOOST_AUTO_TEST_CASE(Hex) {
+    BOOST_TEST(tools::intToString(0x12dead, 16) == "12DEAD");
+}
+
+BOOST_AUTO_TEST_CASE(Oct) {
+    BOOST_TEST(tools::intToString(0137235, 8) == "137235");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(FloatToStringTest)

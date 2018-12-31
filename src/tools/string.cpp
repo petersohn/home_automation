@@ -19,18 +19,25 @@ std::string nextToken(const std::string& string, char separator,
     return string.substr(startPos, position - startPos);
 }
 
-std::string intToString(int value) {
+std::string intToString(int value, unsigned radix) {
+    constexpr const char* characters = "0123456789ABCDEF";
+
+    if (radix > 16) {
+        return "";
+    }
+
     if (value == 0) {
         return "0";
     }
+
     std::string result;
     bool negative = value < 0;
     if (negative) {
         value *= -1;
     }
     while (value != 0) {
-        result += (value % 10) + '0';
-        value /= 10;
+        result += characters[value % radix];
+        value /= radix;
     }
     if (negative) {
         result += '-';

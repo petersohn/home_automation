@@ -11,7 +11,7 @@ namespace tools {
 std::string nextToken(const std::string& string, char separator,
         size_t& position);
 
-std::string intToString(int i);
+std::string intToString(int i, unsigned radix = 10);
 std::string floatToString(float i, int decimals);
 
 class Join {
