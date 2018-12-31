@@ -53,8 +53,19 @@ void onMessageReceived(
     iterator->second(message);
 }
 
+std::string getMac() {
+    std::uint8_t mac[6];
+    WiFi.macAddress(mac);
+    tools::Join result{":"};
+    debug("MAC ");
+    for (int i = 0; i < 6; ++i) {
+        result.add(tools::intToString(mac[i], 16));
+    }
+    return result.get();
+}
+
 std::string getStatusMessage(bool available, bool restarted) {
-    StaticJsonBuffer<160> buffer;
+    StaticJsonBuffer<200> buffer;
     JsonObject& message = buffer.createObject();
     message["name"] = deviceConfig.name.c_str();
     message["available"] = available;
@@ -64,6 +75,7 @@ std::string getStatusMessage(bool available, bool restarted) {
         message["uptime"] = millis();
         message["rssi"] = WiFi.RSSI();
         message["freeMemory"] = ESP.getFreeHeap();
+        message["mac"] = getMac();
     }
     std::string result;
     message.printTo(result);
