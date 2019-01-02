@@ -14,7 +14,7 @@ static_assert(MQTT_MAX_PACKET_SIZE == 256, "check MQTT packet size");
 namespace {
 
 enum class ConnectStatus {
-    alreadyConnected,
+    connecting,
     connectionSuccessful,
     connectionFailed
 };
@@ -24,10 +24,13 @@ PubSubClient client;
 constexpr unsigned initialBackoff = 500;
 constexpr unsigned maxBackoff = 60000;
 constexpr unsigned statusSendInterval = 60000;
+constexpr unsigned availabilityReceiveTimeout = 2000;
 
 unsigned long nextConnectionAttempt = 0;
+unsigned long availabilityReceiveTimeLimit = 0;
 unsigned backoff = initialBackoff;
 unsigned long nextStatusSend = 0;
+bool initialized = false;
 WiFiClient wifiClient;
 std::string willMessage;
 bool restarted = true;
@@ -37,14 +40,89 @@ using Subscription = std::pair<std::string,
 
 std::vector<Subscription> subscriptions;
 
+std::string getMac() {
+    std::uint8_t mac[6];
+    WiFi.macAddress(mac);
+    tools::Join result{":"};
+    for (int i = 0; i < 6; ++i) {
+        result.add(tools::intToString(mac[i], 16));
+    }
+    return result.get();
+}
+
+std::string getStatusMessage(bool available, bool restarted) {
+    DynamicJsonBuffer buffer(200);
+    JsonObject& message = buffer.createObject();
+    message["name"] = deviceConfig.name.c_str();
+    message["available"] = available;
+    message["mac"] = getMac();
+    if (available) {
+        message["restarted"] = restarted;
+        message["ip"] = WiFi.localIP().toString();
+        message["uptime"] = millis();
+        message["rssi"] = WiFi.RSSI();
+        message["freeMemory"] = ESP.getFreeHeap();
+    }
+    std::string result;
+    message.printTo(result);
+    return result;
+}
+
+void resetAvailabilityReceive() {
+    availabilityReceiveTimeLimit = 0;
+}
+
+void connectionBackoff() {
+    nextConnectionAttempt = millis() + backoff;
+    backoff = std::min(backoff * 2, maxBackoff);
+}
+
+void resetConnectionBackoff() {
+    backoff = initialBackoff;
+}
+
+void handleAvailabilityMessage(const JsonObject& message) {
+    bool available = message.get<bool>("available");
+    auto name = message.get<std::string>("name");
+    auto mac = message.get<std::string>("mac");
+
+    debugln("Got availability: available=" + tools::intToString(available) +
+            " name=" + name + " mac=" + mac);
+
+    if (name != deviceConfig.name) {
+        debugln("Another device, not interested.");
+        return;
+    }
+
+    if (mac != getMac() && available) {
+        debugln("Device collision.");
+        client.disconnect();
+    }
+
+    if (availabilityReceiveTimeLimit != 0) {
+        debugln("Got expected message.");
+        connectionBackoff();
+        resetAvailabilityReceive();
+    } else if (!available) {
+        debugln("Refreshing availability state.");
+        nextStatusSend = millis();
+    }
+}
+
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
     std::string topicStr = topic;
     debugln("Message received on topic " + topicStr);
+    if (topicStr == deviceConfig.availabilityTopic) {
+        std::string payloadStr{reinterpret_cast<const char*>(payload), length};
+        DynamicJsonBuffer buffer(200);
+        auto& message = buffer.parseObject(payloadStr);
+        handleAvailabilityMessage(message);
+    }
+
     auto iterator = std::find_if(
             subscriptions.begin(), subscriptions.end(),
             [&topicStr](const Subscription& element) {
-                debugln("-->" + element.first);
                 return element.first == topicStr;
             });
     if (iterator == subscriptions.end()) {
@@ -55,35 +133,6 @@ void onMessageReceived(
     iterator->second(message);
 }
 
-std::string getMac() {
-    std::uint8_t mac[6];
-    WiFi.macAddress(mac);
-    tools::Join result{":"};
-    debug("MAC ");
-    for (int i = 0; i < 6; ++i) {
-        result.add(tools::intToString(mac[i], 16));
-    }
-    return result.get();
-}
-
-std::string getStatusMessage(bool available, bool restarted) {
-    StaticJsonBuffer<200> buffer;
-    JsonObject& message = buffer.createObject();
-    message["name"] = deviceConfig.name.c_str();
-    message["available"] = available;
-    if (available) {
-        message["restarted"] = restarted;
-        message["ip"] = WiFi.localIP().toString();
-        message["uptime"] = millis();
-        message["rssi"] = WiFi.RSSI();
-        message["freeMemory"] = ESP.getFreeHeap();
-        message["mac"] = getMac();
-    }
-    std::string result;
-    message.printTo(result);
-    return result;
-}
-
 bool tryToConnect(const ServerConfig& server) {
     debug("Connecting to ");
     debug(server.address);
@@ -92,19 +141,31 @@ bool tryToConnect(const ServerConfig& server) {
     debug(" as ");
     debugln(server.username);
     bool result = false;
+    client.setServer(server.address.c_str(), server.port).setClient(wifiClient)
+            .setCallback(onMessageReceived);
+    std::string clientId = deviceConfig.name + "-" + getMac();
+    debugln("clientId=" + clientId);
     if (deviceConfig.availabilityTopic.length() != 0) {
         willMessage = getStatusMessage(false, false);
-        client.setServer(server.address.c_str(), server.port)
-                .setCallback(onMessageReceived).setClient(wifiClient);
         result = client.connect(
-                deviceConfig.name.c_str(),
+                clientId.c_str(),
                 server.username.c_str(),
                 server.password.c_str(),
                 deviceConfig.availabilityTopic.c_str(), 0, true,
                 willMessage.c_str());
+        if (result) {
+            debugln("Connected to server. Listening to availability topic.");
+            result = client.subscribe(deviceConfig.availabilityTopic.c_str());
+            if (!result) {
+                debugln("Failed to listen to availability topic.");
+                client.disconnect();
+            }
+            availabilityReceiveTimeLimit =
+                    millis() + availabilityReceiveTimeout;
+        }
     } else {
         result = client.connect(
-                deviceConfig.name.c_str(),
+                clientId.c_str(),
                 server.username.c_str(),
                 server.password.c_str());
     }
@@ -112,22 +173,36 @@ bool tryToConnect(const ServerConfig& server) {
 }
 
 ConnectStatus connectIfNeeded() {
-    if (client.connected()) {
-        return ConnectStatus::alreadyConnected;
-    }
-    debugln("Client status = " + tools::intToString(client.state()));
-    debugln("Connecting to MQTT broker...");
-    for (const ServerConfig& server : globalConfig.servers) {
-        if (tryToConnect(server)) {
-            debugln("Connection successful.");
-            for (const auto& element : subscriptions) {
-                client.subscribe(element.first.c_str());
+    if (!client.connected()) {
+        initialized = false;
+        debugln("Client status = " + tools::intToString(client.state()));
+        debugln("Connecting to MQTT broker...");
+        for (const ServerConfig& server : globalConfig.servers) {
+            if (tryToConnect(server)) {
+                debugln("Connection successful.");
+                for (const auto& element : subscriptions) {
+                    client.subscribe(element.first.c_str());
+                }
+                break;
             }
-            return ConnectStatus::connectionSuccessful;
+        }
+
+        if (!client.connected()) {
+            debugln("Connection failed.");
+            return ConnectStatus::connectionFailed;
         }
     }
-    debugln("Connection failed.");
-    return ConnectStatus::connectionFailed;
+
+    if (availabilityReceiveTimeLimit != 0) {
+        if (availabilityReceiveTimeLimit > millis()) {
+            return ConnectStatus::connecting;
+        }
+
+        debugln("Did not get availability topic in time. "
+                "Assuming we are first.");
+        resetAvailabilityReceive();
+    }
+    return ConnectStatus::connectionSuccessful;
 }
 
 void sendStatusMessage(bool restarted) {
@@ -155,21 +230,24 @@ namespace mqtt {
 void loop() {
     if (millis() >= nextConnectionAttempt) {
         switch (connectIfNeeded()) {
-        case ConnectStatus::alreadyConnected:
-            sendStatusMessage(false);
-            break;
         case ConnectStatus::connectionSuccessful:
-            for (const auto& interface : deviceConfig.interfaces) {
-                interface->interface->start();
+            if (initialized) {
+                sendStatusMessage(false);
+            } else {
+                for (const auto& interface : deviceConfig.interfaces) {
+                    interface->interface->start();
+                }
+                nextStatusSend = millis();
+                sendStatusMessage(restarted);
+                restarted = false;
+                resetConnectionBackoff();
+                initialized = true;
             }
-            nextStatusSend = millis();
-            sendStatusMessage(restarted);
-            restarted = false;
-            backoff = initialBackoff;
             break;
         case ConnectStatus::connectionFailed:
-            nextConnectionAttempt = millis() + backoff;
-            backoff = std::min(backoff * 2, maxBackoff);
+            connectionBackoff();
+            break;
+        case ConnectStatus::connecting:
             break;
         }
     }
