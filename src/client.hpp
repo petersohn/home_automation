@@ -8,12 +8,13 @@
 
 namespace mqtt {
 
-extern PubSubClient client;
-
 void loop();
+void disconnect();
+
 void subscribe(const std::string& topic,
         std::function<void(const std::string&)> callback);
 void unsubscribe(const std::string& topic);
+void publish(const std::string& topic, const std::string& payload, bool retain);
 
 } // namespace mqtt
 

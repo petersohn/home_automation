@@ -19,6 +19,8 @@ enum class ConnectStatus {
     connectionFailed
 };
 
+PubSubClient client;
+
 constexpr unsigned initialBackoff = 500;
 constexpr unsigned maxBackoff = 60000;
 constexpr unsigned statusSendInterval = 60000;
@@ -92,16 +94,16 @@ bool tryToConnect(const ServerConfig& server) {
     bool result = false;
     if (deviceConfig.availabilityTopic.length() != 0) {
         willMessage = getStatusMessage(false, false);
-        mqtt::client.setServer(server.address.c_str(), server.port)
+        client.setServer(server.address.c_str(), server.port)
                 .setCallback(onMessageReceived).setClient(wifiClient);
-        result = mqtt::client.connect(
+        result = client.connect(
                 deviceConfig.name.c_str(),
                 server.username.c_str(),
                 server.password.c_str(),
                 deviceConfig.availabilityTopic.c_str(), 0, true,
                 willMessage.c_str());
     } else {
-        result = mqtt::client.connect(
+        result = client.connect(
                 deviceConfig.name.c_str(),
                 server.username.c_str(),
                 server.password.c_str());
@@ -110,16 +112,16 @@ bool tryToConnect(const ServerConfig& server) {
 }
 
 ConnectStatus connectIfNeeded() {
-    if (mqtt::client.connected()) {
+    if (client.connected()) {
         return ConnectStatus::alreadyConnected;
     }
-    debugln("Client status = " + tools::intToString(mqtt::client.state()));
+    debugln("Client status = " + tools::intToString(client.state()));
     debugln("Connecting to MQTT broker...");
     for (const ServerConfig& server : globalConfig.servers) {
         if (tryToConnect(server)) {
             debugln("Connection successful.");
             for (const auto& element : subscriptions) {
-                mqtt::client.subscribe(element.first.c_str());
+                client.subscribe(element.first.c_str());
             }
             return ConnectStatus::connectionSuccessful;
         }
@@ -135,7 +137,7 @@ void sendStatusMessage(bool restarted) {
                 + deviceConfig.availabilityTopic);
         std::string message = getStatusMessage(true, restarted);
         debugln(message);
-        if (mqtt::client.publish(deviceConfig.availabilityTopic.c_str(),
+        if (client.publish(deviceConfig.availabilityTopic.c_str(),
                 message.c_str(), true)) {
             debugln("Success.");
         } else {
@@ -149,8 +151,6 @@ void sendStatusMessage(bool restarted) {
 } // unnamed namespace
 
 namespace mqtt {
-
-PubSubClient client;
 
 void loop() {
     if (millis() >= nextConnectionAttempt) {
@@ -173,6 +173,8 @@ void loop() {
             break;
         }
     }
+
+    client.loop();
 }
 
 void subscribe(const std::string& topic,
@@ -192,6 +194,20 @@ void unsubscribe(const std::string& topic) {
     if (client.connected()) {
         client.unsubscribe(topic.c_str());
     }
+}
+
+void publish(
+        const std::string& topic, const std::string& payload, bool retain) {
+    debugln("Publishing to " + topic);
+    if (client.publish(topic.c_str(), payload.c_str(), retain)) {
+        debugln("Success.");
+    } else {
+        debugln("Failure.");
+    }
+}
+
+void disconnect() {
+    mqtt::disconnect();
 }
 
 } // namespace mqtt

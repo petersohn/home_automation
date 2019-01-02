@@ -5,14 +5,10 @@
 #include "tools/string.hpp"
 
 void PublishAction::fire(const InterfaceConfig& /*interface*/) {
-    debugln("Publishing to " + topic);
     std::string value = operation->evaluate();
     if (value.length() == 0) {
+        debugln("No value for " + topic);
         return;
     }
-    if (mqtt::client.publish(topic.c_str(), value.c_str(), retain)) {
-        debugln("Success.");
-    } else {
-        debugln("Failure.");
-    }
+    mqtt::publish(topic, value, retain);
 }

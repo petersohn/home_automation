@@ -49,7 +49,7 @@ void loop()
 {
     if (millis() >= timeLimit) {
         debugln("Approaching timer overflow. Rebooting.");
-        mqtt::client.disconnect();
+        mqtt::disconnect();
         ESP.restart();
     }
 
@@ -61,8 +61,6 @@ void loop()
     for (const auto& interface : deviceConfig.interfaces) {
         interface->interface->update(Actions{*interface});
     }
-
-    mqtt::client.loop();
 
     delay(1);
 }
