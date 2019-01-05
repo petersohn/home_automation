@@ -35,6 +35,13 @@ WiFiClient wifiClient;
 std::string willMessage;
 bool restarted = true;
 
+struct Message {
+    std::string topic;
+    std::string payload;
+};
+
+std::vector<Message> receivedMessages;
+
 using Subscription = std::pair<std::string,
       std::function<void(const std::string&)>>;
 
@@ -112,26 +119,29 @@ void handleAvailabilityMessage(const JsonObject& message) {
 
 void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
-    std::string topicStr = topic;
-    debugln("Message received on topic " + topicStr);
-    if (topicStr == deviceConfig.availabilityTopic) {
-        std::string payloadStr{reinterpret_cast<const char*>(payload), length};
+    receivedMessages.push_back(Message{topic,
+            std::string{reinterpret_cast<const char*>(payload), length}});
+}
+
+void handleMessage(const Message& message) {
+    debugln("Message received on topic " + message.topic);
+    if (message.topic == deviceConfig.availabilityTopic) {
+        debugln(message.payload);
         DynamicJsonBuffer buffer(200);
-        auto& message = buffer.parseObject(payloadStr);
-        handleAvailabilityMessage(message);
+        auto& json = buffer.parseObject(message.payload);
+        handleAvailabilityMessage(json);
     }
 
     auto iterator = std::find_if(
             subscriptions.begin(), subscriptions.end(),
-            [&topicStr](const Subscription& element) {
-                return element.first == topicStr;
+            [&message](const Subscription& element) {
+                return element.first == message.topic;
             });
     if (iterator == subscriptions.end()) {
         debugln("No subscription for topic.");
         return;
     }
-    std::string message((const char*)payload, length);
-    iterator->second(message);
+    iterator->second(message.payload);
 }
 
 bool tryToConnect(const ServerConfig& server) {
@@ -254,6 +264,11 @@ void loop() {
     }
 
     client.loop();
+
+    for (const auto& message : receivedMessages) {
+        handleMessage(message);
+    }
+    receivedMessages.clear();
 }
 
 void subscribe(const std::string& topic,
@@ -286,7 +301,11 @@ void publish(
 }
 
 void disconnect() {
-    mqtt::disconnect();
+    client.disconnect();
+}
+
+bool isConnected() {
+    return client.connected();
 }
 
 } // namespace mqtt

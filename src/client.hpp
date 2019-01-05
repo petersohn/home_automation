@@ -10,6 +10,7 @@ namespace mqtt {
 
 void loop();
 void disconnect();
+bool isConnected();
 
 void subscribe(const std::string& topic,
         std::function<void(const std::string&)> callback);

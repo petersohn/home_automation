@@ -24,6 +24,7 @@ struct DeviceConfig {
     std::string availabilityTopic;
     bool debug = false;
     int debugPort = 2534;
+    std::string debugTopic;
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces;
 };
 

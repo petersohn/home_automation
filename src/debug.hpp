@@ -1,9 +1,9 @@
 #ifndef DEBUG_HPP
 #define DEBUG_HPP
 
-#include "ArduinoJson.hpp"
 #include "config.hpp"
 #include "print.hpp"
+#include "StringStream.hpp"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -17,13 +17,7 @@ public:
         server.begin();
     }
 
-    WiFiClient& getClient() {
-        if (client && client.connected()) {
-            return client;
-        }
-        client = server.available();
-        return client;
-    }
+    WiFiClient& getClient();
 
 private:
     WiFiServer server;
@@ -31,6 +25,27 @@ private:
 };
 
 extern std::unique_ptr<WiFiDebugger> wifiDebugger;
+
+class MqttDebugger {
+public:
+    MqttDebugger(const std::string& topic) : topic(topic) {}
+
+    template<typename T>
+    void add(const T& value) {
+        if (!sending) {
+            print(currentLine, value);
+        }
+    }
+
+    void send();
+
+private:
+    const std::string topic;
+    StringStream currentLine;
+    bool sending = false;
+};
+
+extern std::unique_ptr<MqttDebugger> mqttDebugger;
 
 template<typename T>
 void debug(const T& value) {
@@ -42,6 +57,10 @@ void debug(const T& value) {
         if (client) {
             print(client, value);
         }
+    }
+
+    if (mqttDebugger) {
+        mqttDebugger->add(value);
     }
 }
 
@@ -56,17 +75,11 @@ void debugln(const T& value = "") {
             println(client, value);
         }
     }
-}
 
-inline void debugJson(JsonVariant value) {
-    if (!deviceConfig.debug) {
-        return;
+    if (mqttDebugger) {
+        mqttDebugger->add(value);
+        mqttDebugger->send();
     }
-
-    StaticJsonBuffer<50> buffer;
-    JsonArray& array = buffer.createArray();
-    array.add(value);
-    array.prettyPrintTo(Serial);
 }
 
 #endif // DEBUG_HPP

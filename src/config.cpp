@@ -353,6 +353,11 @@ DeviceConfig readDeviceConfig(const char* filename) {
     debug("Debug port = ");
     debugln(result.debugPort);
 
+    PARSE(*data.root, result, debugTopic);
+    if (!result.debugTopic.empty()) {
+        mqttDebugger.reset(new MqttDebugger(result.debugTopic));
+    }
+
     PARSE(*data.root, result, name);
     PARSE(*data.root, result, availabilityTopic);
 
