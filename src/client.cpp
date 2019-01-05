@@ -97,12 +97,13 @@ void handleAvailabilityMessage(const JsonObject& message) {
     if (mac != getMac() && available) {
         debugln("Device collision.");
         client.disconnect();
+        connectionBackoff();
     }
 
     if (availabilityReceiveTimeLimit != 0) {
         debugln("Got expected message.");
-        connectionBackoff();
         resetAvailabilityReceive();
+        nextStatusSend = millis();
     } else if (!available) {
         debugln("Refreshing availability state.");
         nextStatusSend = millis();
