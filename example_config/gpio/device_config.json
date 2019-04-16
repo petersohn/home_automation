@@ -2,6 +2,7 @@
     "debug": true,
     "name": "testDevice",
     "availabilityTopic": "devices/testDevice/availability",
+    "debugTopic": "devices/testDevice/debug",
     "interfaces": [
         {
             "type": "output",
