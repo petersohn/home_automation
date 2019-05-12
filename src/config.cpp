@@ -205,9 +205,13 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                 : nullptr;
     } else if (type == "dallasTemperature") {
         int pin = 0;
+        size_t devices = data.get<size_t>("devices");
+        if (devices == 0) {
+            devices = 1;
+        }
         return getPin(data, pin)
                 ?  createSensorInterface(data, std::unique_ptr<Sensor>(
-                        new DallasTemperatureSensor{pin}))
+                        new DallasTemperatureSensor{pin, devices}))
                 : nullptr;
     } else if (type == "counter") {
         int pin = 0;

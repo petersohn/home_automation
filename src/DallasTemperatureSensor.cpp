@@ -3,14 +3,18 @@
 #include "debug.hpp"
 #include "tools/string.hpp"
 
-DallasTemperatureSensor::DallasTemperatureSensor(int pin)
-        : oneWire(pin), sensors(&oneWire) {
+DallasTemperatureSensor::DallasTemperatureSensor(int pin,
+        std::size_t expectedNumberOfDevices)
+        : oneWire(pin), sensors(&oneWire),
+          expectedNumberOfDevices(expectedNumberOfDevices) {
     initialize();
 }
 
 std::vector<std::string> DallasTemperatureSensor::measure() {
     if (!initialized) {
-        initialize();
+        if (!initialize()) {
+            return {};
+        }
     }
     sensors.requestTemperatures();
     std::vector<std::string> result;
@@ -27,11 +31,13 @@ std::vector<std::string> DallasTemperatureSensor::measure() {
     return result;
 }
 
-void DallasTemperatureSensor::initialize() {
+bool DallasTemperatureSensor::initialize() {
     sensors.begin();
     int count = sensors.getDeviceCount();
     debug("Number of devices: ");
-    debugln(count);
+    debug(count);
+    debug(", expected: ");
+    debugln(expectedNumberOfDevices);
     addresses.clear();
     addresses.reserve(count);
     for (int i = 0; i < count; ++i) {
@@ -44,5 +50,6 @@ void DallasTemperatureSensor::initialize() {
         }
         sensors.setResolution(addresses.back().data(), 9);
     }
-    initialized = count != 0;
+    initialized = addresses.size() == expectedNumberOfDevices;
+    return initialized;
 }
