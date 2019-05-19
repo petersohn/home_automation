@@ -216,6 +216,9 @@ Dallas temperature sensors (e.g. DS18B20). These sensors use the OneWire™
 interface, which means that multiple devices can be attached to the same port.
 One value is reported for each sensor.
 
+Parameters:
+*   `devices`: The number of devices attached to the bus.
+
 ## Actions
 
 Actions are fired by interfaces. The purpose of actions is to process the state
