@@ -9,6 +9,7 @@
 #include "AnalogSensor.hpp"
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
+#include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
 #include "PublishAction.hpp"
 #include "SensorInterface.hpp"
@@ -227,6 +228,12 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         return topic.length() != 0
                ? std::unique_ptr<Interface>(new MqttInterface{topic})
                : nullptr;
+    } else if (type == "keepalive") {
+        int pin = 0;
+        return getPin(data, pin)
+                ?  std::unique_ptr<Interface>{new KeepaliveInterface{
+                        pin, getJsonWithDefault(data["interval"], 10000)}}
+                : nullptr;
     } else {
         debugln(std::string("Invalid interface type: ") + type);
         return {};
