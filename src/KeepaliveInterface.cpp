@@ -2,8 +2,9 @@
 
 #include <Arduino.h>
 
-KeepaliveInterface::KeepaliveInterface(int pin, unsigned interval)
-        : pin(pin), interval(interval) {
+KeepaliveInterface::KeepaliveInterface(int pin, unsigned interval,
+        unsigned resetInterval)
+        : pin(pin), interval(interval), resetInterval(resetInterval) {
     pinMode(pin, OUTPUT);
 }
 
@@ -22,7 +23,7 @@ void KeepaliveInterface::update(Actions /*action*/) {
 
 void KeepaliveInterface::reset() {
         digitalWrite(this->pin, 0);
-        delay(10);
+        delay(this->resetInterval);
         digitalWrite(this->pin, 1);
         this->nextReset = millis() + this->interval;
 }

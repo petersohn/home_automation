@@ -232,7 +232,8 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         int pin = 0;
         return getPin(data, pin)
                 ?  std::unique_ptr<Interface>{new KeepaliveInterface{
-                        pin, getJsonWithDefault(data["interval"], 10000)}}
+                        pin, getJsonWithDefault(data["interval"], 10000),
+                        getJsonWithDefault(data["resetInterval"], 10)}}
                 : nullptr;
     } else {
         debugln(std::string("Invalid interface type: ") + type);
