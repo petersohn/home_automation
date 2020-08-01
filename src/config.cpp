@@ -302,7 +302,8 @@ std::unique_ptr<Action> parseAction(JsonObject& data,
         }
         return std::unique_ptr<Action>(new PublishAction{topic,
                 operationParser.parse(data, "payload", "template"),
-                data.get<bool>("retain")});
+                data.get<bool>("retain"),
+                data.get<unsigned>("minimumSendInterval")});
     } else if (type == "command") {
         auto target = findInterface(interfaces, data["target"]);
         if (!target) {
