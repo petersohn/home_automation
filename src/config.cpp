@@ -287,11 +287,13 @@ std::string getMandatoryArgument(const JsonObject& data, const char* name) {
     return result;
 }
 
-std::unique_ptr<Action> parseAction(JsonObject& data,
-        const InterfaceConfig& interface,
+std::pair<std::unique_ptr<Action>, std::unordered_set<InterfaceConfig*>>
+parseAction(JsonObject& data,
+        InterfaceConfig* defaultInterface,
         std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
     auto type = data.get<std::string>("type");
-    operation::Parser operationParser{interfaces, interface};
+    operation::Parser operationParser{interfaces, defaultInterface};
+    std::unique_ptr<Action> result;
     if (type == "publish") {
         std::string topic = getMandatoryArgument(data, "topic");
         if (topic.empty()) {
@@ -300,7 +302,7 @@ std::unique_ptr<Action> parseAction(JsonObject& data,
         if (!data["payload"].success() && !data["template"].success()) {
             data.set("template", "%1");
         }
-        return std::unique_ptr<Action>(new PublishAction{topic,
+        result = std::unique_ptr<Action>(new PublishAction{topic,
                 operationParser.parse(data, "payload", "template"),
                 data.get<bool>("retain"),
                 data.get<unsigned>("minimumSendInterval")});
@@ -310,12 +312,13 @@ std::unique_ptr<Action> parseAction(JsonObject& data,
             return {};
         }
 
-        return std::unique_ptr<Action>(new CommandAction{*target->interface,
+        result = std::unique_ptr<Action>(new CommandAction{*target->interface,
                 operationParser.parse(data, "command", "template")});
     } else {
         debugln("Invalid action type: " + type);
-        return {};
     }
+
+    return {std::move(result), std::move(operationParser).getUsedInterfaces()};
 }
 
 void parseActions(JsonObject& data,
@@ -328,18 +331,22 @@ void parseActions(JsonObject& data,
 
     for (JsonObject& action : actions) {
         std::string interfaceName = action["interface"];
-        auto interface = findInterface(interfaces, action["interface"]);
-        if (!interface) {
-            continue;
-        }
+        auto defaultInterface = findInterface(interfaces, action["interface"]);
 
-        auto parsedAction = parseAction(action, *interface, interfaces);
+        auto parseResult = parseAction(action, defaultInterface, interfaces);
+        std::shared_ptr<Action> parsedAction = std::move(parseResult.first);
+        auto&& usedInterfaces = parseResult.second;
         if (!parsedAction) {
             debugln("Invalid action configuration.");
             continue;
         }
 
-        interface->actions.push_back(std::move(parsedAction));
+        if (defaultInterface) {
+            usedInterfaces.insert(defaultInterface);
+        }
+        for (auto& interface : usedInterfaces) {
+            interface->actions.push_back(parsedAction);
+        }
     }
 }
 

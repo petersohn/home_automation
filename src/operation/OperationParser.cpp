@@ -17,9 +17,9 @@ std::unique_ptr<Operation> getEmptyOperation() {
 } // unnamed namespace
 
 Parser::Parser(const std::vector<std::unique_ptr<InterfaceConfig>>& interfaces,
-        const InterfaceConfig& interface)
+        InterfaceConfig* defaultInterface)
         : interfaces(interfaces.size(), nullptr),
-          interface(interface) {
+          defaultInterface(defaultInterface) {
     std::transform(interfaces.begin(), interfaces.end(),
             this->interfaces.begin(),
             [](const std::unique_ptr<InterfaceConfig>& interface) {
@@ -32,13 +32,13 @@ std::unique_ptr<Operation> Parser::parse(const JsonObject& data,
     std::string template_ = templateFieldName
             ? data.get<std::string>(templateFieldName) : "";
     auto operation = template_.length() != 0
-            ? std::unique_ptr<Operation>(new Template(&interface, template_))
+            ? std::unique_ptr<Operation>(new Template(defaultInterface, template_))
             : doParse(data[fieldName]);
     std::string value = data["value"];
     if (!value.empty()) {
         std::vector<std::unique_ptr<Operation>> operands;
         operands.push_back(std::unique_ptr<Operation>(
-                new Value(&interface, 1)));
+                new Value(defaultInterface, 1)));
         operands.push_back(std::unique_ptr<Operation>(
                 new Constant(value)));
         return std::unique_ptr<Operation>(new Conditional(
@@ -62,10 +62,11 @@ std::unique_ptr<Operation> Parser::doParse(const JsonVariant& data) {
         auto name = object.get<std::string>("interface");
         auto template_ = object.get<std::string>("template");
         auto interface = name.empty()
-                ? &this->interface : findInterface(interfaces, name);
+                ? this->defaultInterface : findInterface(interfaces, name);
         if (!interface) {
             return getEmptyOperation();
         }
+        usedInterfaces.insert(interface);
         if (template_.length() != 0) {
             return std::unique_ptr<Operation>(
                     new Template(interface, template_));

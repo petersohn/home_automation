@@ -42,7 +42,7 @@ struct Fixture {
     DynamicJsonBuffer buffer{512};
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces =
             createInterfaces();
-    operation::Parser parser{interfaces, *interfaces[1]};
+    operation::Parser parser{interfaces, interfaces[1].get()};
 };
 
 BOOST_FIXTURE_TEST_CASE(ParseConstantString, Fixture) {

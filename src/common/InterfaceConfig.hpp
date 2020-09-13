@@ -12,7 +12,7 @@ class Action;
 struct InterfaceConfig {
     std::string name;
     std::unique_ptr<Interface> interface;
-    std::vector<std::unique_ptr<Action>> actions;
+    std::vector<std::shared_ptr<Action>> actions;
     std::vector<std::string> storedValue;
 
     InterfaceConfig() = default;
