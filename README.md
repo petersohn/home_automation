@@ -240,8 +240,9 @@ Parameters:
 
 *   `topic`: The MQTT topic to publish to.
 *   `retain`: Whether the retain flag is to be set. Default is false.
-*   `template`: The message to send. The substrings _%n_ are substituted by the
-    _n_th value of the interface. The default is `%1`.
+*   `payload`: The payload of the message. It is an [operation](#operations).
+    Alternatively, `template` can be used for a simpler way to substitute
+    values.
 
 ### `command`
 
@@ -251,8 +252,9 @@ reachable. However Wifi connection still needs to be up.
 Parameters:
 
 *   `target`: The name of the target interface, where the command is sent.
-*   `command`: The command to send to the target interface. Value substitution
-    is done similarly to the `template` parameter of the `publish` action.
+*   `command`: The command to send to the target interface. An
+    [operation](#operations), works the same as `payload` for Publish actions.
+    `template` can also be used.
 
 ## Operations
 
