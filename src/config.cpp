@@ -12,6 +12,7 @@
 #include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
 #include "PublishAction.hpp"
+#include "PowerSupplyInterface.hpp"$
 #include "SensorInterface.hpp"
 #include "common/CommandAction.hpp"
 #include "operation/OperationParser.hpp"
@@ -106,14 +107,19 @@ GlobalConfig readGlobalConfig(const char* filename) {
     return result;
 }
 
-bool getPin(const JsonObject& data, int& value) {
-    JsonVariant rawValue = data["pin"];
-    if (rawValue.is<int>()) {
-        value = rawValue.as<int>();
+template<typename T>
+bool getRequiredValue(const JsonObject& data, const char* name, T& value) {
+    JsonVariant rawValue = data[name];
+    if (rawValue.is<T>()) {
+        value = rawValue.as<T>();
         return true;
     }
-    debugln("Invalid pin: " + rawValue.as<std::string>());
+    debugln("Invalid " + std::string(name) + ": " + rawValue.as<std::string>());
     return false;
+}
+
+bool getPin(const JsonObject& data, int& value) {
+    return getRequiredValue(data, "pin", value);
 }
 
 template<typename T>
@@ -234,6 +240,21 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                 ?  std::unique_ptr<Interface>{new KeepaliveInterface{
                         pin, getJsonWithDefault(data["interval"], 10000),
                         getJsonWithDefault(data["resetInterval"], 10)}}
+                : nullptr;
+    } else if (type == "powerSupply") {
+        int powerSwitchPin = 0;
+        int resetSwitchPin = 0;
+        int powerCheckPin = 0;
+        return (getRequiredValue(data, "powerSwitchPin", powerSwitchPin)
+                && getRequiredValue(data, "resetSwitchPin", resetSwitchPin)
+                && getRequiredValue(data, "powerCheckPin", powerCheckPin))
+                ?  std::unique_ptr<Interface>{new PowerSupplyInterface{
+                        powerSwitchPin, resetSwitchPin, powerCheckPin,
+                        getJsonWithDefault(data["pushTime"], 200),
+                        getJsonWithDefault(data["forceOffTime"], 6000),
+                        getJsonWithDefault(data["checkTime"], 60000),
+                        getJsonWithDefault(data["initialState"], "")
+                }}
                 : nullptr;
     } else {
         debugln(std::string("Invalid interface type: ") + type);
