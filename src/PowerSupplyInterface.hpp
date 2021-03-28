@@ -28,6 +28,9 @@ private:
     unsigned nextCheck = 0;
     unsigned powerButtonRelease = 0;
     unsigned resetButtonRelease = 0;
+
+    void pullDown(int pin);
+    void release(int pin);
 };
 
 #endif // POWERSUPPLYINTERFACE_HPP

@@ -20,15 +20,25 @@ PowerSupplyInterface::PowerSupplyInterface(int powerSwitchPin,
         targetState = TargetState::Off;
     }
 
-    pinMode(powerSwitchPin, OUTPUT);
-    pinMode(resetSwitchPin, OUTPUT);
+    pinMode(powerSwitchPin, INPUT);
+    pinMode(resetSwitchPin, INPUT);
     pinMode(powerCheckPin, INPUT);
 }
 
 void PowerSupplyInterface::start() {
-    digitalWrite(powerSwitchPin, 1);
-    digitalWrite(resetSwitchPin, 1);
 }
+
+void PowerSupplyInterface::pullDown(int pin)
+{
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, 0);
+}
+
+void PowerSupplyInterface::release(int pin)
+{
+    pinMode(pin, INPUT);
+}
+
 
 void PowerSupplyInterface::execute(const std::string& command) {
     if (command == "on") {
@@ -52,7 +62,7 @@ void PowerSupplyInterface::execute(const std::string& command) {
     if (command == "forceOff") {
         targetState = TargetState::Off;
         if (digitalRead(powerCheckPin) != 0) {
-            digitalWrite(powerSwitchPin, 0);
+            pullDown(powerSwitchPin);
             powerButtonRelease = millis() + forceOffTime;
         }
         return;
@@ -63,7 +73,7 @@ void PowerSupplyInterface::execute(const std::string& command) {
             nextCheck = 0;
         }
         if (digitalRead(powerCheckPin) != 0) {
-            digitalWrite(resetSwitchPin, 0);
+            pullDown(resetSwitchPin);
             resetButtonRelease = millis() + pushTime;
         }
         return;
@@ -74,12 +84,12 @@ void PowerSupplyInterface::update(Actions /*action*/) {
     auto now = millis();
     if (powerButtonRelease != 0 && now > powerButtonRelease) {
         debugln("power button release");
-        digitalWrite(powerSwitchPin, 1);
+        release(powerSwitchPin);
         powerButtonRelease = 0;
     }
     if (resetButtonRelease != 0 && now > resetButtonRelease) {
         debugln("reset button release");
-        digitalWrite(resetSwitchPin, 1);
+        release(resetSwitchPin);
         resetButtonRelease = 0;
     }
 
@@ -92,7 +102,7 @@ void PowerSupplyInterface::update(Actions /*action*/) {
             (targetState == TargetState::On ? 1 : 0) &&
             powerButtonRelease == 0) {
         debugln("power button press");
-        digitalWrite(powerSwitchPin, 0);
+        pullDown(powerSwitchPin);
         powerButtonRelease = millis() + pushTime;
     }
     nextCheck = now + checkTime;
