@@ -3,6 +3,7 @@
 #include "ArduinoJson.hpp"
 #include "client.hpp"
 #include "CounterInterface.hpp"
+#include "Cover.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "debug.hpp"
 #include "DhtSensor.hpp"
@@ -254,6 +255,19 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                         getJsonWithDefault(data["forceOffTime"], 6000),
                         getJsonWithDefault(data["checkTime"], 60000),
                         getJsonWithDefault(data["initialState"], "")
+                }}
+                : nullptr;
+    } else if (type == "powerSupply") {
+        int movementPin = 0;
+        int upPin = 0;
+        int downPin = 0;
+        return (getRequiredValue(data, "movementPin", movementPin)
+                && getRequiredValue(data, "upPin", upPin)
+                && getRequiredValue(data, "downPin", downPin))
+                ?  std::unique_ptr<Interface>{new Cover{
+                        movementPin, upPin, downPin,
+                        getJsonWithDefault(data["invertMovement"], false),
+                        getJsonWithDefault(data["invertUpDown"], false),
                 }}
                 : nullptr;
     } else {
