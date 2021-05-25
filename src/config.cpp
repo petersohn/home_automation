@@ -258,16 +258,18 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                 }}
                 : nullptr;
     } else if (type == "powerSupply") {
-        int movementPin = 0;
+        int upMovementPin = 0;
+        int downMovementPin = 0;
         int upPin = 0;
         int downPin = 0;
-        return (getRequiredValue(data, "movementPin", movementPin)
+        return (getRequiredValue(data, "upMovementPin", upMovementPin)
+                && getRequiredValue(data, "downMovementPin", downMovementPin)
                 && getRequiredValue(data, "upPin", upPin)
                 && getRequiredValue(data, "downPin", downPin))
                 ?  std::unique_ptr<Interface>{new Cover{
-                        movementPin, upPin, downPin,
-                        getJsonWithDefault(data["invertMovement"], false),
-                        getJsonWithDefault(data["invertUpDown"], false),
+                        upMovementPin, downMovementPin, upPin, downPin,
+                        getJsonWithDefault(data["invertInput"], false),
+                        getJsonWithDefault(data["invertOutput"], false),
                 }}
                 : nullptr;
     } else {

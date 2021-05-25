@@ -13,20 +13,22 @@ bool getActualValue(bool value, bool invert) {
 }
 }
 
-Cover::Cover(int movementPin, int upPin, int downPin,
-        bool invertMovement, bool invertUpDown) :
-        movementPin(movementPin),
+Cover::Cover(int upMovementPin, int downMovementPin, int upPin, int downPin,
+            bool invertInput, bool invertOutput) :
+        upMovementPin(upMovementPin),
+        downMovementPin(downMovementPin),
         upPin(upPin),
         downPin(downPin),
-        invertMovement(invertMovement),
-        invertUpDown(invertUpDown),
+        invertInput(invertInput),
+        invertOutput(invertOutput),
         upTimeId(rtcNext()),
         downTimeId(rtcNext()),
         positionId(rtcNext()) {
 }
 
 void Cover::start() {
-    pinMode(movementPin, INPUT);
+    pinMode(upMovementPin, INPUT);
+    pinMode(downMovementPin, INPUT);
     pinMode(upPin, OUTPUT);
     pinMode(downPin, OUTPUT);
 
@@ -34,7 +36,8 @@ void Cover::start() {
     downTime = rtcGet(downTimeId);
     position = rtcGet(positionId);
 
-    if ((position == 0 && upTime == 0 && downTime == 0) || isMoving()) {
+    if ((position == 0 && upTime == 0 && downTime == 0) ||
+            isMovingUp() || isMovingDown()) {
         log("Cannot determine initial position");
         position = -1;
     } else {
@@ -87,81 +90,66 @@ void Cover::setPosition(int value)
 }
 
 void Cover::beginOpening() {
-    if (state != State::BeginOpening && state != State::Opening) {
+    if (state != State::Opening) {
         stop();
-        state = State::BeginOpening;
-        digitalWrite(upPin, getActualValue(true, invertUpDown));
+        state = State::Opening;
+        digitalWrite(upPin, getActualValue(true, invertOutput));
     }
 }
 
 void Cover::beginClosing() {
-    if (state != State::BeginClosing && state != State::Closing) {
+    if (state != State::Closing) {
         stop();
-        state = State::BeginClosing;
-        digitalWrite(downPin, getActualValue(true, invertUpDown));
+        state = State::Closing;
+        digitalWrite(downPin, getActualValue(true, invertOutput));
     }
 }
 
 void Cover::update(Actions action) {
-    bool moving = isMoving();
-    auto now = millis();
-    State newState = state;
+    bool movingUp = isMovingUp();
+    bool movingDown = isMovingDown();
+
+    if (movingUp && movingDown) {
+        if (position != -1) {
+            log("Inconsistent moving state");
+            position = -1;
+            return;
+        }
+    }
+
     int newPosition = position;
+    State newState = state;
+
+    if (position != -1) {
+        if (movingUp) {
+            newPosition = std::min(99UL,
+                    moveStartPosition + 100 *
+                    (millis() - moveStartTime) / upTime);
+        } else if (movingDown) {
+            newPosition = std::min(99UL,
+                    moveStartPosition + 100 *
+                    (millis() - moveStartTime) / upTime);
+        }
+    }
+
     switch (state) {
-    case State::Stopping:
-        if (!moving) {
-            newState = State::Idle;
-        }
-        break;
     case State::Idle:
-        if (moving) {
-            newPosition = -1;
-        }
-        break;
-    case State::BeginOpening:
-        if (moving) {
-            moveStartTime = now;
-            moveStartPosition = position;
-            newState = State::Opening;
-        }
         break;
     case State::Opening:
-        if (!moving) {
-            log("Reached upper end");
+        if (!movingUp) {
             newPosition = 100;
-            newState = State::Idle;
-            if (moveStartPosition == 0) {
-                upTime = now - moveStartTime;
-            }
-        } else if (upTime != 0 && moveStartPosition != -1) {
-            newPosition = std::min(99UL,
-                    moveStartPosition + 100 * (now - moveStartTime) / upTime);
-        }
-        break;
-    case State::BeginClosing:
-        if (moving) {
-            moveStartTime = now;
-            moveStartPosition = position;
-            newState = State::Closing;
+            stop();
         }
         break;
     case State::Closing:
-        if (!moving) {
-            log("Reached lower end");
+        if (!movingDown) {
             newPosition = 0;
-            newState = State::Idle;
-            if (moveStartPosition == 100) {
-                downTime = now - moveStartTime;
-            }
-        } else if (downTime != 0 && moveStartPosition != -1) {
-            newPosition = std::max(1UL,
-                    moveStartPosition - 100 * (now - moveStartTime) / downTime);
+            stop();
         }
         break;
     }
 
-    if (newState != state || newPosition != position) {
-        state = newState;
+    if (newPosition != position || stateChanged) {
         position = newPosition;
         log("state=" + tools::intToString(static_cast<int>(state)) +
                 " position=" + tools::intToString(position));
@@ -188,25 +176,34 @@ void Cover::update(Actions action) {
             }
         }
 
-        if (targetPosition != -1 && moving && position == targetPosition) {
+        stateChanged = false;
+
+        if (targetPosition != -1 && state != State::Idle
+                && position == targetPosition) {
             targetPosition = -1;
             stop();
         }
     }
 }
 
-bool Cover::isMoving() const {
-    return getActualValue(digitalRead(movementPin), invertMovement);
+bool Cover::isMovingUp() const {
+    return getActualValue(digitalRead(upMovementPin), invertInput);
+}
+
+bool Cover::isMovingDown() const {
+    return getActualValue(digitalRead(downMovementPin), invertInput);
 }
 
 void Cover::stop() {
-    if (isMoving()) {
-        state = State::Stopping;
-        digitalWrite(upPin, getActualValue(false, invertUpDown));
-        digitalWrite(downPin, getActualValue(false, invertUpDown));
+    if (state != State::Idle) {
+        state = State::Idle;
+        stateChanged = true;
     }
+    digitalWrite(upPin, getActualValue(false, invertOutput));
+    digitalWrite(downPin, getActualValue(false, invertOutput));
 }
 
 void Cover::log(const std::string& msg) {
-    debugln("Cover " + tools::intToString(movementPin) + ": " + msg);
+    debugln("Cover " + tools::intToString(upPin) + "." +
+            tools::intToString(downPin) + ": " + msg);
 }
