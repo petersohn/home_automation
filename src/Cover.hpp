@@ -5,12 +5,6 @@
 
 class Cover : public Interface {
 public:
-    enum class State {
-        Idle,
-        Opening,
-        Closing,
-    };
-
     Cover(int upMovementPin, int downMovementPin, int upPin, int downPin,
             bool invertInput, bool invertOutput);
 
@@ -19,23 +13,42 @@ public:
     void update(Actions action) override;
 
 private:
-    const int upMovementPin;
-    const int downMovementPin;
-    const int upPin;
-    const int downPin;
+    class Movement {
+    public:
+        Movement(Cover& parent, int inputPin, int outputPin, int endPosition,
+                int direction, const std::string& directionName);
+        int update();
+        void start();
+        void stop();
+        bool isMoving() const;
+        bool isStarted() const;
+
+    private:
+        Cover& parent;
+        const int inputPin;
+        const int outputPin;
+        const int endPosition;
+        const int direction;
+        const int timeId;
+        const std::string debugPrefix;
+        unsigned moveTime = 0;
+        unsigned long moveStartTime = 0;
+        unsigned long startedTime = 0;
+        int moveStartPosition = -2;
+
+        bool isReallyMoving() const;
+        void log(const std::string& msg);
+    };
+
+    const std::string debugPrefix;
+    Movement up;
+    Movement down;
     const bool invertInput;
     const bool invertOutput;
-    const unsigned upTimeId;
-    const unsigned downTimeId;
     const unsigned positionId;
 
-    State state = State::Idle;
-    unsigned upTime = 0;
-    unsigned downTime = 0;
-    int position = 0;
+    int position = -1;
     int targetPosition = -1;
-    int moveStartPosition = -1;
-    unsigned long moveStartTime = 0;
     bool stateChanged = false;
 
     bool isMovingUp() const;

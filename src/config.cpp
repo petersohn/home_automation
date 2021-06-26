@@ -257,7 +257,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                         getJsonWithDefault(data["initialState"], "")
                 }}
                 : nullptr;
-    } else if (type == "powerSupply") {
+    } else if (type == "cover") {
         int upMovementPin = 0;
         int downMovementPin = 0;
         int upPin = 0;
