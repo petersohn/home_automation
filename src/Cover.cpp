@@ -74,15 +74,20 @@ int Cover::Movement::update() {
             moveStartPosition = parent.position;
             log("Started moving");
         }
+        if (parent.position == endPosition) {
+            newPosition = endPosition - direction;
+        }
     }
 
     if (isReallyMoving()) {
         if (moving) {
             if (parent.position != -1 && moveTime != 0) {
-                newPosition = std::min(endPosition - direction,
-                        moveStartPosition + static_cast<int>(
-                                direction * 100 *
-                                (now - moveStartTime) / moveTime));
+                newPosition = moveStartPosition + static_cast<int>(
+                        direction * 100.0 *
+                        (now - moveStartTime) / moveTime);
+                if (direction * newPosition >= endPosition) {
+                    newPosition = endPosition - direction;
+                }
             }
         } else if (isStarted()) {
             log("End position reached.");
