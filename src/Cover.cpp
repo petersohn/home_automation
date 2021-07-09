@@ -142,8 +142,10 @@ void Cover::execute(const std::string& command) {
         targetPosition = -1;
         stop();
     } else if (command == "OPEN") {
+        targetPosition = -1;
         beginOpening();
     } else if (command == "CLOSE") {
+        targetPosition = -1;
         beginClosing();
     } else {
         StaticJsonBuffer<20> buf;
@@ -237,10 +239,15 @@ void Cover::update(Actions action) {
             targetPosition = -1;
             stop();
         } else if (!up.isStarted()
-                && !down.isStarted()
-                && up.getDidNotStartCount() < 2
+                && !down.isStarted()) {
+            if (up.getDidNotStartCount() < 2
                 && down.getDidNotStartCount() < 2) {
-            setPosition(targetPosition);
+                setPosition(targetPosition);
+            } else {
+                targetPosition = -1;
+                up.resetDidNotStartCount();
+                down.resetDidNotStartCount();
+            }
         }
     }
 }

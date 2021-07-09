@@ -23,6 +23,7 @@ private:
         bool isMoving() const;
         bool isStarted() const;
         unsigned getDidNotStartCount() const { return didNotStartCount; }
+        void resetDidNotStartCount() { didNotStartCount = 0; }
 
     private:
         Cover& parent;
