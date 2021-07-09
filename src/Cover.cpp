@@ -68,6 +68,7 @@ int Cover::Movement::update() {
     bool moving = isMoving();
 
     if (moving) {
+        didNotStartCount = 0;
         if (moveStartTime == 0) {
             moveStartTime = now;
         } else if (!isReallyMoving() && now - moveStartTime >= debounceTime) {
@@ -100,6 +101,7 @@ int Cover::Movement::update() {
             }
         }
     } else if (!moving && isStarted() && now - startedTime > startTimeout) {
+        ++didNotStartCount;
         log("Was at end position.");
         stop();
         newPosition = endPosition;
@@ -228,10 +230,17 @@ void Cover::update(Actions action) {
         action.fire(values);
 
         stateChanged = false;
+    }
 
-        if (targetPosition != -1 && position == targetPosition) {
+    if (targetPosition != -1) {
+        if (position == targetPosition) {
             targetPosition = -1;
             stop();
+        } else if (!up.isStarted()
+                && !down.isStarted()
+                && up.getDidNotStartCount() < 2
+                && down.getDidNotStartCount() < 2) {
+            setPosition(targetPosition);
         }
     }
 }

@@ -22,6 +22,7 @@ private:
         void stop();
         bool isMoving() const;
         bool isStarted() const;
+        unsigned getDidNotStartCount() const { return didNotStartCount; }
 
     private:
         Cover& parent;
@@ -35,6 +36,7 @@ private:
         unsigned long moveStartTime = 0;
         unsigned long startedTime = 0;
         int moveStartPosition = -2;
+        unsigned didNotStartCount = 0;
 
         bool isReallyMoving() const;
         void log(const std::string& msg);
