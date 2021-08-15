@@ -6,7 +6,7 @@
 class Cover : public Interface {
 public:
     Cover(int upMovementPin, int downMovementPin, int upPin, int downPin,
-            bool invertInput, bool invertOutput);
+            bool invertInput, bool invertOutput, unsigned closedPosition);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -48,6 +48,7 @@ private:
     Movement down;
     const bool invertInput;
     const bool invertOutput;
+    const unsigned closedPosition;
     const unsigned positionId;
 
     int position = -1;

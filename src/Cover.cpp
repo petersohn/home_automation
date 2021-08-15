@@ -89,6 +89,8 @@ int Cover::Movement::update() {
                 if (direction * newPosition >= endPosition) {
                     newPosition = endPosition - direction;
                 }
+            } else {
+                newPosition = 100 - endPosition + direction;
             }
         } else if (isStarted()) {
             log("End position reached.");
@@ -119,13 +121,14 @@ int Cover::Movement::update() {
 }
 
 Cover::Cover(int upMovementPin, int downMovementPin, int upPin, int downPin,
-            bool invertInput, bool invertOutput) :
+            bool invertInput, bool invertOutput, unsigned closedPosition) :
         debugPrefix("Cover " + tools::intToString(upPin) + "." +
                 tools::intToString(downPin) + ": "),
         up(*this, upMovementPin, upPin, 100, 1, "up"),
         down(*this, downMovementPin, downPin, 0, -1, "down"),
         invertInput(invertInput),
         invertOutput(invertOutput),
+        closedPosition(closedPosition),
         positionId(rtcNext())
          {
     position = rtcGet(positionId) - 1;
@@ -218,8 +221,10 @@ void Cover::update(Actions action) {
             stateName = "OPENING";
         } else if (down.isStarted()) {
             stateName = "CLOSING";
+        } else if (position <= closedPosition) {
+            stateName = "CLOSED";
         } else {
-            stateName = "IDLE";
+            stateName = "OPEN";
         }
 
         log("state=" + stateName +

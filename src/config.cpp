@@ -270,6 +270,7 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                         upMovementPin, downMovementPin, upPin, downPin,
                         getJsonWithDefault(data["invertInput"], false),
                         getJsonWithDefault(data["invertOutput"], false),
+                        getJsonWithDefault(data["closedPosition"], 0),
                 }}
                 : nullptr;
     } else {
