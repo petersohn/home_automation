@@ -15,6 +15,7 @@
 #include "PublishAction.hpp"
 #include "PowerSupplyInterface.hpp"$
 #include "SensorInterface.hpp"
+#include "StatusInterface.hpp"
 #include "common/CommandAction.hpp"
 #include "operation/OperationParser.hpp"
 #include "tools/collection.hpp"
@@ -273,6 +274,8 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
                         getJsonWithDefault(data["closedPosition"], 0),
                 }}
                 : nullptr;
+    } else if (type == "status") {
+        return std::unique_ptr<Interface>{new StatusInterface{}};
     } else {
         debugln(std::string("Invalid interface type: ") + type);
         return {};
