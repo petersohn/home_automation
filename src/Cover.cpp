@@ -43,7 +43,10 @@ void Cover::Movement::stop() {
     auto value = getActualValue(false, parent.invertOutput);
     log("stop " + tools::intToString(parent.invertOutput) + " " + tools::intToString(value));
     digitalWrite(outputPin, value);
-    startedTime = 0;
+    if (startedTime != 0) {
+        startedTime = 0;
+        parent.stateChanged = true;
+    }
 }
 
 void Cover::Movement::log(const std::string& msg) {
@@ -258,7 +261,6 @@ void Cover::update(Actions action) {
 }
 
 void Cover::stop() {
-    stateChanged = stateChanged || up.isStarted() || down.isStarted();
     up.stop();
     down.stop();
 }
