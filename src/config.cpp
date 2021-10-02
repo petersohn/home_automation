@@ -10,6 +10,7 @@
 #include "AnalogSensor.hpp"
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
+#include "HM3301Sensor.hpp"
 #include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
 #include "PublishAction.hpp"
@@ -221,6 +222,14 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         return getPin(data, pin)
                 ?  createSensorInterface(data, std::unique_ptr<Sensor>(
                         new DallasTemperatureSensor{pin, devices}))
+                : nullptr;
+    } else if (type == "hm3301") {
+        int sda = 0;
+        int scl = 0;
+        return (getRequiredValue(data, "sda", sda)
+                && getRequiredValue(data, "scl", scl))
+                ?  createSensorInterface(data, std::unique_ptr<Sensor>(
+                        new HM3301Sensor{sda, scl}))
                 : nullptr;
     } else if (type == "counter") {
         int pin = 0;
