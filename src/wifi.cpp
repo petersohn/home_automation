@@ -1,4 +1,5 @@
 #include "debug.hpp"
+#include "rtc.hpp"
 
 #include <ESP8266WiFi.h>
 extern "C" {
@@ -12,11 +13,50 @@ namespace {
 unsigned long nextAttempt = 0;
 bool connecting = false;
 station_status_t lastStatus = (station_status_t)-1;
+unsigned backoffRtcId = 0;
+unsigned long currentBackoff = 0;
+unsigned long lastConnectionFailure = 0;
+unsigned long connectionStarted = 0;
 
 constexpr int checkInterval = 500;
 constexpr int retryInterval = 5000;
+constexpr unsigned long initialBackoff = 60000;
+constexpr unsigned long maximumBackoff = 600000;
+constexpr unsigned long connectionTimeout = 60000;
+
+void setBackoff(unsigned long value) {
+    currentBackoff = value;
+    rtcSet(backoffRtcId, currentBackoff);
+}
 
 } // unnamed namespace
+
+void init() {
+    backoffRtcId = rtcNext();
+    currentBackoff = rtcGet(backoffRtcId);
+    if (currentBackoff == 0) {
+        currentBackoff = initialBackoff;
+    }
+}
+
+void connectionFailed() {
+    auto now = millis();
+    if (lastConnectionFailure == 0) {
+        debug("\nConnection failed for the first time. Trying again.");
+    } else {
+        debug("\nConnection failed. Trying again. Rebooting in ");
+        debug(now - lastConnectionFailure + currentBackoff);
+        debugln(" ms");
+        if (lastConnectionFailure < now - currentBackoff) {
+            debugln("Failure to connect, rebooting.");
+            setBackoff(std::max(currentBackoff * 2, maximumBackoff));
+            ESP.restart();
+        }
+    }
+    lastConnectionFailure = now;
+    connecting = false;
+    nextAttempt += retryInterval;
+}
 
 bool connectIfNeeded(const std::string& ssid, const std::string& password) {
     station_status_t s = wifi_station_get_connect_status();
@@ -34,6 +74,8 @@ bool connectIfNeeded(const std::string& ssid, const std::string& password) {
             if (wifiDebugger) {
                 wifiDebugger->begin();
             }
+            setBackoff(initialBackoff);
+            lastConnectionFailure = 0;
         }
         return true;
     }
@@ -50,6 +92,7 @@ bool connectIfNeeded(const std::string& ssid, const std::string& password) {
         WiFi.begin(ssid.c_str(), password.c_str());
         connecting = true;
         nextAttempt = now;
+        connectionStarted = now;
         return false;
     }
 
@@ -62,13 +105,17 @@ bool connectIfNeeded(const std::string& ssid, const std::string& password) {
     case WL_IDLE_STATUS:
     case WL_DISCONNECTED:
         debugln("Waiting for wifi connection...");
-        nextAttempt += checkInterval;
+        if (connectionStarted < now - connectionTimeout) {
+            connectionFailed();
+        } else {
+            nextAttempt += checkInterval;
+        }
         break;
-    case WL_CONNECT_FAILED:
-        debugln("\nConnection failed. Trying again.");
-        connecting = false;
-        nextAttempt += retryInterval;
+    case WL_CONNECT_FAILED: {
+        auto now = millis();
+        connectionFailed();
         break;
+    }
     case WL_NO_SSID_AVAIL:
         debugln("\nSSID not found. Trying again.");
         connecting = false;
