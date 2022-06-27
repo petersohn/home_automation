@@ -111,15 +111,12 @@ bool connectIfNeeded(const std::string& ssid, const std::string& password) {
             nextAttempt += checkInterval;
         }
         break;
-    case WL_CONNECT_FAILED: {
-        auto now = millis();
+    case WL_CONNECT_FAILED:
         connectionFailed();
         break;
-    }
     case WL_NO_SSID_AVAIL:
-        debugln("\nSSID not found. Trying again.");
-        connecting = false;
-        nextAttempt += retryInterval;
+        debugln("\nSSID not found.");
+        connectionFailed();
         break;
     case WL_CONNECTED:
         break;
