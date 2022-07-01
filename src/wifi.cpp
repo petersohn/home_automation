@@ -42,12 +42,12 @@ void init() {
 void connectionFailed() {
     auto now = millis();
     if (lastConnectionFailure == 0) {
-        debug("\nConnection failed for the first time. Trying again.");
+        debugln("\nConnection failed for the first time. Trying again.");
     } else {
         debug("\nConnection failed. Trying again. Rebooting in ");
         debug(now - lastConnectionFailure + currentBackoff);
         debugln(" ms");
-        if (lastConnectionFailure < now - currentBackoff) {
+        if (now > lastConnectionFailure + currentBackoff) {
             debugln("Failure to connect, rebooting.");
             setBackoff(std::max(currentBackoff * 2, maximumBackoff));
             ESP.restart();
@@ -105,17 +105,20 @@ bool connectIfNeeded(const std::string& ssid, const std::string& password) {
     case WL_IDLE_STATUS:
     case WL_DISCONNECTED:
         debugln("Waiting for wifi connection...");
-        if (connectionStarted < now - connectionTimeout) {
+        if (connecting && now > connectionStarted + connectionTimeout) {
+            debugln("aaa");
             connectionFailed();
         } else {
             nextAttempt += checkInterval;
         }
         break;
     case WL_CONNECT_FAILED:
+        debugln("bbb");
         connectionFailed();
         break;
     case WL_NO_SSID_AVAIL:
         debugln("\nSSID not found.");
+        debugln("ccc");
         connectionFailed();
         break;
     case WL_CONNECTED:
