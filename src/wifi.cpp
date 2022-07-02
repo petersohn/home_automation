@@ -22,7 +22,7 @@ constexpr int checkInterval = 500;
 constexpr int retryInterval = 5000;
 constexpr unsigned long initialBackoff = 60000;
 constexpr unsigned long maximumBackoff = 600000;
-constexpr unsigned long connectionTimeout = 60000;
+constexpr unsigned long connectionTimeout = 40000;
 
 void setBackoff(unsigned long value) {
     currentBackoff = value;
@@ -104,7 +104,9 @@ bool connectIfNeeded(const std::string& ssid, const std::string& password) {
         break;
     case WL_IDLE_STATUS:
     case WL_DISCONNECTED:
-        debugln("Waiting for wifi connection...");
+        debug("Waiting for wifi connection (");
+        debug(connectionStarted + connectionTimeout - now);
+        debugln(" remaining)...");
         if (connecting && now > connectionStarted + connectionTimeout) {
             debugln("aaa");
             connectionFailed();

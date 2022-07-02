@@ -49,12 +49,12 @@
 		<link>
 			<name>libraries/DHT_sensor_library</name>
 			<type>2</type>
-			<location>/home/petersohn/Arduino/libraries/DHT_sensor_library</location>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/DHT_sensor_library/1.4.4</locationURI>
 		</link>
 		<link>
 			<name>libraries/DallasTemperature</name>
 			<type>2</type>
-			<location>/home/petersohn/Arduino/libraries/DallasTemperature</location>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/DallasTemperature/3.9.0</locationURI>
 		</link>
 		<link>
 			<name>libraries/ESP8266WiFi</name>
@@ -64,17 +64,17 @@
 		<link>
 			<name>libraries/Grove_-_Laser_PM2.5_Sensor_HM3301</name>
 			<type>2</type>
-			<location>/home/petersohn/Arduino/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301</location>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301/1.0.2</locationURI>
 		</link>
 		<link>
 			<name>libraries/OneWire</name>
 			<type>2</type>
-			<location>/home/petersohn/Arduino/libraries/OneWire</location>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/OneWire/2.3.5</locationURI>
 		</link>
 		<link>
 			<name>libraries/PubSubClient</name>
 			<type>2</type>
-			<location>/home/petersohn/Arduino/libraries/PubSubClient</location>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/PubSubClient/2.8.0</locationURI>
 		</link>
 		<link>
 			<name>libraries/Wire</name>

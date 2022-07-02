@@ -7,7 +7,7 @@
 
 class DhtSensor : public Sensor {
 public:
-    DhtSensor(int pin, int type) : dht(pin, type) {}
+    DhtSensor(int pin, int type);
 
     std::vector<std::string> measure() override;
 private:
