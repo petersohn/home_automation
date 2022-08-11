@@ -45,8 +45,10 @@ void connectionFailed() {
         debugln("\nConnection failed for the first time. Trying again.");
     } else {
         debug("\nConnection failed. Trying again. Rebooting in ");
-        debug(now - lastConnectionFailure + currentBackoff);
-        debugln(" ms");
+        debug(now - lastConnectionFailure - currentBackoff);
+        debug(" ms (backoff=");
+        debug(currentBackoff);
+        debugln(" ms)");
         if (now > lastConnectionFailure + currentBackoff) {
             debugln("Failure to connect, rebooting.");
             setBackoff(std::max(currentBackoff * 2, maximumBackoff));
