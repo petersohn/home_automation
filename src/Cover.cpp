@@ -16,7 +16,7 @@ constexpr int debounceTime = 20;
 constexpr int startTimeout = 1000;
 }
 
-Cover::Movement::Movement(Cover& parent, int inputPin, int outputPin,
+Cover::Movement::Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin,
         int endPosition, int direction, const std::string& directionName) :
         parent(parent),
         inputPin(inputPin),
@@ -123,7 +123,7 @@ int Cover::Movement::update() {
     return newPosition;
 }
 
-Cover::Cover(int upMovementPin, int downMovementPin, int upPin, int downPin,
+Cover::Cover(uint8_t upMovementPin, uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
             bool invertInput, bool invertOutput, unsigned closedPosition) :
         debugPrefix("Cover " + tools::intToString(upPin) + "." +
                 tools::intToString(downPin) + ": "),

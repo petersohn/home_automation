@@ -45,7 +45,7 @@ int encodeState(const State& state) {
 
 }
 
-GpioInput::GpioInput(int pin, CycleType cycleType, unsigned interval)
+GpioInput::GpioInput(uint8_t pin, CycleType cycleType, unsigned interval)
         : pin(pin), cycleType(cycleType), interval(interval) {
     pinMode(pin, INPUT);
     lastChanged = millis();

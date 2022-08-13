@@ -13,7 +13,7 @@ bool isOk(float value) {
 
 } // unnamed namespace
 
-DhtSensor::DhtSensor(int pin, int type) : dht(pin, type) {
+DhtSensor::DhtSensor(uint8_t pin, int type) : dht(pin, type) {
 	dht.begin();
 }
 

@@ -5,7 +5,7 @@
 
 class GpioOutput : public Interface {
 public:
-    GpioOutput(int pin, bool defaultValue, bool invert);
+    GpioOutput(uint8_t pin, bool defaultValue, bool invert);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -17,7 +17,7 @@ private:
     void clearBlink();
     bool getOutput();
 
-    int pin;
+    uint8_t pin;
     unsigned rtcId;
     bool changed = false;
     bool value;

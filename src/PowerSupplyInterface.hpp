@@ -9,8 +9,8 @@ public:
         Off, On, Dontcare
     };
 
-    PowerSupplyInterface(int powerSwitchPin, int resetSwitchPin,
-            int powerCheckPin, unsigned pushTime, unsigned forceOffTime,
+    PowerSupplyInterface(uint8_t powerSwitchPin, uint8_t resetSwitchPin,
+            uint8_t powerCheckPin, unsigned pushTime, unsigned forceOffTime,
             unsigned checkTime, const std::string& initialState);
 
     void start() override;
@@ -18,9 +18,9 @@ public:
     void update(Actions action) override;
 
 private:
-    const int powerSwitchPin;
-    const int resetSwitchPin;
-    const int powerCheckPin;
+    const uint8_t powerSwitchPin;
+    const uint8_t resetSwitchPin;
+    const uint8_t powerCheckPin;
     const unsigned pushTime;
     const unsigned forceOffTime;
     const unsigned checkTime;
@@ -29,8 +29,8 @@ private:
     unsigned powerButtonRelease = 0;
     unsigned resetButtonRelease = 0;
 
-    void pullDown(int pin);
-    void release(int pin);
+    void pullDown(uint8_t pin);
+    void release(uint8_t pin);
 };
 
 #endif // POWERSUPPLYINTERFACE_HPP

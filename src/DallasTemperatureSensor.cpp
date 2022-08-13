@@ -3,7 +3,7 @@
 #include "debug.hpp"
 #include "tools/string.hpp"
 
-DallasTemperatureSensor::DallasTemperatureSensor(int pin,
+DallasTemperatureSensor::DallasTemperatureSensor(uint8_t pin,
         std::size_t expectedNumberOfDevices)
         : oneWire(pin), sensors(&oneWire),
           expectedNumberOfDevices(expectedNumberOfDevices) {

@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-KeepaliveInterface::KeepaliveInterface(int pin, unsigned interval,
+KeepaliveInterface::KeepaliveInterface(uint8_t pin, unsigned interval,
         unsigned resetInterval)
         : pin(pin), interval(interval), resetInterval(resetInterval) {
     pinMode(pin, OUTPUT);

@@ -23,7 +23,7 @@ bool GpioOutput::getOutput() {
     return invert ? !value : value;
 }
 
-GpioOutput::GpioOutput(int pin, bool defaultValue, bool invert)
+GpioOutput::GpioOutput(uint8_t pin, bool defaultValue, bool invert)
         : pin(pin), rtcId(rtcNext()), invert(invert) {
     pinMode(pin, OUTPUT);
     RtcData rtcData = rtcGet(rtcId);

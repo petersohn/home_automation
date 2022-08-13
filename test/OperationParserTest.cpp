@@ -13,19 +13,19 @@ BOOST_AUTO_TEST_SUITE(OperationParserTest)
 struct Fixture {
     static std::vector<std::unique_ptr<InterfaceConfig>> createInterfaces() {
         std::vector<std::unique_ptr<InterfaceConfig>> result;
-        result.emplace_back(new InterfaceConfig);
+        result.emplace_back(std::make_unique<InterfaceConfig>());
         result.back()->name = "str1";
         result.back()->storedValue = {"foo", "bar", "foobar"};
 
-        result.emplace_back(new InterfaceConfig);
+        result.emplace_back(std::make_unique<InterfaceConfig>());
         result.back()->name = "str2";
         result.back()->storedValue = {"asd", "fgh", "jkl"};
 
-        result.emplace_back(new InterfaceConfig);
+        result.emplace_back(std::make_unique<InterfaceConfig>());
         result.back()->name = "int";
         result.back()->storedValue = {"123", "63", "0", "-110"};
 
-        result.emplace_back(new InterfaceConfig);
+        result.emplace_back(std::make_unique<InterfaceConfig>());
         result.back()->name = "float";
         result.back()->storedValue = {"1.2", "0.0", "-11.55"};
 

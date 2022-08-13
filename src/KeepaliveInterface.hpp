@@ -5,7 +5,7 @@
 
 class KeepaliveInterface : public Interface {
 public:
-    KeepaliveInterface(int pin, unsigned interval, unsigned resetInterval);
+    KeepaliveInterface(uint8_t pin, unsigned interval, unsigned resetInterval);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -14,7 +14,7 @@ public:
 private:
     void reset();
 
-    const int pin;
+    const uint8_t pin;
     const unsigned interval;
     const unsigned resetInterval;
     unsigned nextReset = 0;

@@ -5,7 +5,7 @@
 
 class Cover : public Interface {
 public:
-    Cover(int upMovementPin, int downMovementPin, int upPin, int downPin,
+    Cover(uint8_t upMovementPin, uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
             bool invertInput, bool invertOutput, unsigned closedPosition);
 
     void start() override;
@@ -15,7 +15,7 @@ public:
 private:
     class Movement {
     public:
-        Movement(Cover& parent, int inputPin, int outputPin, int endPosition,
+        Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin, int endPosition,
                 int direction, const std::string& directionName);
         int update();
         void start();
@@ -27,8 +27,8 @@ private:
 
     private:
         Cover& parent;
-        const int inputPin;
-        const int outputPin;
+        const uint8_t inputPin;
+        const uint8_t outputPin;
         const int endPosition;
         const int direction;
         const int timeId;

@@ -6,7 +6,7 @@
 
 class CounterInterface : public Interface {
 public:
-    CounterInterface(std::string name, int pin, int bounceTime,
+    CounterInterface(std::string name, uint8_t pin, int bounceTime,
             float multiplier, int interval,
             int offset, std::vector<std::string> pulse);
 

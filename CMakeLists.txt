@@ -5,7 +5,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif(NOT CMAKE_BUILD_TYPE)
 
-set (CXX_COMMON_FLAGS "-std=c++11 -Wall -Wextra")
+set (CXX_COMMON_FLAGS "-std=c++17 -Wall -Wextra")
 set (CMAKE_CXX_FLAGS_DEBUG "${CXX_COMMON_FLAGS} -O0 -g")
 set (CMAKE_CXX_FLAGS_RELEASE "${CXX_COMMON_FLAGS} -O2")
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)

@@ -29,7 +29,7 @@
 namespace {
 
 struct ParsedData {
-    std::unique_ptr<DynamicJsonBuffer> buffer{new DynamicJsonBuffer{512}};
+	std::unique_ptr<DynamicJsonBuffer> buffer = std::make_unique<DynamicJsonBuffer>(512);
     JsonObject* root = nullptr;
 };
 
@@ -121,7 +121,7 @@ bool getRequiredValue(const JsonObject& data, const char* name, T& value) {
     return false;
 }
 
-bool getPin(const JsonObject& data, int& value) {
+bool getPin(const JsonObject& data, uint8_t& value) {
     return getRequiredValue(data, "pin", value);
 }
 
@@ -168,9 +168,9 @@ std::vector<std::string> getPulse(const JsonObject& data) {
 
 std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
         std::unique_ptr<Sensor>&& sensor) {
-    return std::unique_ptr<Interface>{new SensorInterface{
+    return std::make_unique<SensorInterface>(
             std::move(sensor), data.get<std::string>("name"),
-            getInterval(data), getOffset(data), getPulse(data)}};
+            getInterval(data), getOffset(data), getPulse(data));
 }
 
 GpioInput::CycleType getCycleType(const std::string& value) {
@@ -187,22 +187,22 @@ GpioInput::CycleType getCycleType(const std::string& value) {
 std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
     std::string type = data.get<std::string>("type");
     if (type == "input") {
-        int pin = 0;
+        uint8_t pin = 0;
         return getPin(data, pin)
-                ?  std::unique_ptr<Interface>{new GpioInput{
-                        pin, getCycleType(data.get<std::string>("cycle"))}}
+                ?  std::make_unique<GpioInput>(
+                        pin, getCycleType(data.get<std::string>("cycle")))
                 : nullptr;
     } else if (type == "output") {
-        int pin = 0;
+        uint8_t pin = 0;
         return getPin(data, pin)
-                ?  std::unique_ptr<Interface>{
-                        new GpioOutput{pin, data["default"], data["invert"]}}
+                ?  std::make_unique<GpioOutput>(
+                        pin, data["default"], data["invert"])
                 : nullptr;
     } else if (type == "analog") {
         return createSensorInterface(data,
-                std::unique_ptr<Sensor>(new AnalogSensor{}));
+                std::make_unique<AnalogSensor>());
     } else if (type == "dht") {
-        int pin = 0;
+        uint8_t pin = 0;
         auto type = tools::findValue(dhtTypes,
                 data.get<std::string>("dhtType"));
         if (!type) {
@@ -211,80 +211,78 @@ std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
         }
         return getPin(data, pin)
                 ?  createSensorInterface(data,
-                        std::unique_ptr<Sensor>(new DhtSensor{pin, *type}))
+                        std::make_unique<DhtSensor>(pin, *type))
                 : nullptr;
     } else if (type == "dallasTemperature") {
-        int pin = 0;
+        uint8_t pin = 0;
         size_t devices = data.get<size_t>("devices");
         if (devices == 0) {
             devices = 1;
         }
         return getPin(data, pin)
-                ?  createSensorInterface(data, std::unique_ptr<Sensor>(
-                        new DallasTemperatureSensor{pin, devices}))
+                ?  createSensorInterface(data,
+                    std::make_unique<DallasTemperatureSensor>(pin, devices))
                 : nullptr;
     } else if (type == "hm3301") {
         int sda = 0;
         int scl = 0;
         return (getRequiredValue(data, "sda", sda)
                 && getRequiredValue(data, "scl", scl))
-                ?  createSensorInterface(data, std::unique_ptr<Sensor>(
-                        new HM3301Sensor{sda, scl}))
+                ?  createSensorInterface(data,
+                    std::make_unique<HM3301Sensor>(sda, scl))
                 : nullptr;
     } else if (type == "counter") {
-        int pin = 0;
+        uint8_t pin = 0;
         return getPin(data, pin)
-                ?  std::unique_ptr<Interface>(new CounterInterface{
+                ?  std::make_unique<CounterInterface>(
                         data.get<std::string>("name"),
                         pin, getJsonWithDefault(data["bounceTime"], 0),
                         getJsonWithDefault(data["multiplier"], 1.0f),
-                        getInterval(data), getOffset(data), getPulse(data)})
+                        getInterval(data), getOffset(data), getPulse(data))
                 : nullptr;
     } else if (type == "mqtt") {
         std::string topic = data["topic"];
         return topic.length() != 0
-               ? std::unique_ptr<Interface>(new MqttInterface{topic})
+               ? std::make_unique<MqttInterface>(topic)
                : nullptr;
     } else if (type == "keepalive") {
-        int pin = 0;
+        uint8_t pin = 0;
         return getPin(data, pin)
-                ?  std::unique_ptr<Interface>{new KeepaliveInterface{
+                ?  std::make_unique<KeepaliveInterface>(
                         pin, getJsonWithDefault(data["interval"], 10000),
-                        getJsonWithDefault(data["resetInterval"], 10)}}
+                        getJsonWithDefault(data["resetInterval"], 10))
                 : nullptr;
     } else if (type == "powerSupply") {
-        int powerSwitchPin = 0;
-        int resetSwitchPin = 0;
-        int powerCheckPin = 0;
+        uint8_t powerSwitchPin = 0;
+        uint8_t resetSwitchPin = 0;
+        uint8_t powerCheckPin = 0;
         return (getRequiredValue(data, "powerSwitchPin", powerSwitchPin)
                 && getRequiredValue(data, "resetSwitchPin", resetSwitchPin)
                 && getRequiredValue(data, "powerCheckPin", powerCheckPin))
-                ?  std::unique_ptr<Interface>{new PowerSupplyInterface{
+                ?  std::make_unique<PowerSupplyInterface>(
                         powerSwitchPin, resetSwitchPin, powerCheckPin,
                         getJsonWithDefault(data["pushTime"], 200),
                         getJsonWithDefault(data["forceOffTime"], 6000),
                         getJsonWithDefault(data["checkTime"], 60000),
-                        getJsonWithDefault(data["initialState"], "")
-                }}
+                        getJsonWithDefault(data["initialState"], ""))
                 : nullptr;
     } else if (type == "cover") {
-        int upMovementPin = 0;
-        int downMovementPin = 0;
-        int upPin = 0;
-        int downPin = 0;
+        uint8_t upMovementPin = 0;
+        uint8_t downMovementPin = 0;
+        uint8_t upPin = 0;
+        uint8_t downPin = 0;
         return (getRequiredValue(data, "upMovementPin", upMovementPin)
                 && getRequiredValue(data, "downMovementPin", downMovementPin)
                 && getRequiredValue(data, "upPin", upPin)
                 && getRequiredValue(data, "downPin", downPin))
-                ?  std::unique_ptr<Interface>{new Cover{
+                ?  std::make_unique<Cover>(
                         upMovementPin, downMovementPin, upPin, downPin,
                         getJsonWithDefault(data["invertInput"], false),
                         getJsonWithDefault(data["invertOutput"], false),
-                        getJsonWithDefault(data["closedPosition"], 0),
-                }}
+                        getJsonWithDefault(data["closedPosition"], 0))
                 : nullptr;
     } else if (type == "status") {
-        return std::unique_ptr<Interface>{new StatusInterface{}};
+        return std::make_unique<StatusInterface>();
     } else {
         debugln(std::string("Invalid interface type: ") + type);
         return {};
@@ -312,7 +310,7 @@ void parseInterfaces(const JsonObject& data,
             continue;
         }
 
-        result.emplace_back(new InterfaceConfig);
+        result.emplace_back(std::make_unique<InterfaceConfig>());
         InterfaceConfig& interfaceConfig = *result.back();
 
         PARSE(interface, interfaceConfig, name);
@@ -352,18 +350,18 @@ parseAction(JsonObject& data,
         if (!data["payload"].success() && !data["template"].success()) {
             data.set("template", "%1");
         }
-        result = std::unique_ptr<Action>(new PublishAction{topic,
+        result = std::make_unique<PublishAction>(topic,
                 operationParser.parse(data, "payload", "template"),
                 data.get<bool>("retain"),
-                data.get<unsigned>("minimumSendInterval")});
+                data.get<unsigned>("minimumSendInterval"));
     } else if (type == "command") {
         auto target = findInterface(interfaces, data["target"]);
         if (!target) {
             return {};
         }
 
-        result = std::unique_ptr<Action>(new CommandAction{*target->interface,
-                operationParser.parse(data, "command", "template")});
+        result = std::make_unique<CommandAction>(*target->interface,
+                operationParser.parse(data, "command", "template"));
     } else {
         debugln("Invalid action type: " + type);
     }
@@ -415,7 +413,7 @@ DeviceConfig readDeviceConfig(const char* filename) {
 
     PARSE(*data.root, result, debugPort);
     if (result.debugPort != 0) {
-        wifiDebugger.reset(new WiFiDebugger(result.debugPort));
+        wifiDebugger = std::make_unique<WiFiDebugger>(result.debugPort);
     }
 
     debugln();
@@ -425,7 +423,7 @@ DeviceConfig readDeviceConfig(const char* filename) {
 
     PARSE(*data.root, result, debugTopic);
     if (!result.debugTopic.empty()) {
-        mqttDebugger.reset(new MqttDebugger(result.debugTopic));
+        mqttDebugger = std::make_unique<MqttDebugger>(result.debugTopic);
     }
 
     PARSE(*data.root, result, name);

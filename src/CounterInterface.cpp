@@ -7,6 +7,8 @@
 #include <Arduino.h>
 #include <FunctionalInterrupt.h>
 
+#include <memory>
+
 class CounterInterface::CounterSensor : public Sensor {
 public:
     CounterSensor(float multiplier) : multiplier(multiplier) {}
@@ -45,7 +47,7 @@ private:
 };
 
 CounterInterface::CounterInterface(std::string name,
-        int pin, int bounceTime, float multiplier, int interval, int offset,
+        uint8_t pin, int bounceTime, float multiplier, int interval, int offset,
         std::vector<std::string> pulse)
         : bounceTime(bounceTime),
           interval(interval),
@@ -69,7 +71,7 @@ void CounterInterface::onRise() {
 
 auto CounterInterface::createCounterSensor(float multiplier)
         -> std::unique_ptr<CounterSensor> {
-    std::unique_ptr<CounterSensor> result{new CounterSensor{multiplier}};
+    auto result = std::make_unique<CounterSensor>(multiplier);
     counterSensor = result.get();
     return result;
 }

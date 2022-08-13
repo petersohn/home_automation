@@ -3,8 +3,8 @@
 
 #include <Arduino.h>
 
-PowerSupplyInterface::PowerSupplyInterface(int powerSwitchPin,
-        int resetSwitchPin, int powerCheckPin, unsigned pushTime,
+PowerSupplyInterface::PowerSupplyInterface(uint8_t powerSwitchPin,
+        uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
         unsigned forceOffTime, unsigned checkTime, const std::string& initialState)
     : powerSwitchPin(powerSwitchPin)
     , resetSwitchPin(resetSwitchPin)
@@ -28,13 +28,13 @@ PowerSupplyInterface::PowerSupplyInterface(int powerSwitchPin,
 void PowerSupplyInterface::start() {
 }
 
-void PowerSupplyInterface::pullDown(int pin)
+void PowerSupplyInterface::pullDown(uint8_t pin)
 {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, 0);
 }
 
-void PowerSupplyInterface::release(int pin)
+void PowerSupplyInterface::release(uint8_t pin)
 {
     pinMode(pin, INPUT);
 }

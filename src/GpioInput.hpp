@@ -9,7 +9,7 @@ public:
         none, single, multi
     };
 
-    GpioInput(int pin, CycleType cycleType, unsigned interval = 10);
+    GpioInput(uint8_t pin, CycleType cycleType, unsigned interval = 10);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -18,7 +18,7 @@ public:
 private:
     void onChange();
 
-    const int pin;
+    const uint8_t pin;
     const CycleType cycleType;
     const unsigned interval;
     bool startup = false;
