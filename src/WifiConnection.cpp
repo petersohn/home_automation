@@ -55,8 +55,7 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
     if (status == WL_CONNECTED) {
         if (connecting) {
             debug << "\nConnection to wifi successful. IP address = "
-                << std::endl;
-            // debugln(WiFi.localIP());
+                << WiFi.localIP().toString().c_str() << std::endl;
             connecting = false;
 //            if (wifiDebugger) {
 //                wifiDebugger->begin();
