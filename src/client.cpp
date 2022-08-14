@@ -227,6 +227,7 @@ void MqttClient::loop() {
             if (initialized) {
                 sendStatusMessage(false);
             } else {
+                initialized = true;
                 for (const auto& interface : deviceConfig.interfaces) {
                     interface->interface->start();
                 }
@@ -234,7 +235,6 @@ void MqttClient::loop() {
                 sendStatusMessage(restarted);
                 restarted = false;
                 resetConnectionBackoff();
-                initialized = true;
             }
             break;
         case ConnectStatus::connectionFailed:
@@ -274,6 +274,9 @@ void MqttClient::unsubscribe(const std::string& topic) {
 
 void MqttClient::publish(
         const std::string& topic, const std::string& payload, bool retain) {
+    if (!initialized) {
+        return;
+    }
     if (!client->publish(topic.c_str(), payload.c_str(), retain)) {
         debug << "Publishing to " << topic << " failed." << std::endl;
     }
