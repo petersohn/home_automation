@@ -2,7 +2,7 @@
 #include "config.hpp"
 #include "debug.hpp"
 #include "rtc.hpp"
-#include "wifi.hpp"
+#include "WifiConnection.hpp"
 #include "common/Action.hpp"
 #include "common/Interface.hpp"
 
@@ -20,6 +20,7 @@ namespace {
 
 constexpr unsigned long timeLimit =
         std::numeric_limits<unsigned long>::max() - 60000;
+WifiConnection wifiConnection;
 
 void setDeviceName() {
     static char* name = nullptr;
@@ -41,6 +42,7 @@ void setup()
 {
     WiFi.mode(WIFI_STA);
     rtcInit();
+    wifiConnection.init();
     initConfig();
     setDeviceName();
 }
@@ -53,7 +55,7 @@ void loop()
         ESP.restart();
     }
 
-    if (wifi::connectIfNeeded(
+    if (wifiConnection.connectIfNeeded(
             globalConfig.wifiSSID, globalConfig.wifiPassword)) {
         mqtt::loop();
     }
