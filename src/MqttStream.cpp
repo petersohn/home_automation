@@ -10,7 +10,11 @@ int MqttStreambuf::overflow(int ch) {
 int MqttStreambuf::sync() {
     if (!sending) {
         sending = true;
-        mqttClient.publish(topic, this->str(), false);
+        auto msg = this->str();
+        if (msg[msg.size() - 1] == '\n') {
+            msg.resize(msg.size() - 1);
+        }
+        mqttClient.publish(topic, msg, false);
         sending = false;
     }
     this->str("");
