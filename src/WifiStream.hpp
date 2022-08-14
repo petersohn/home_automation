@@ -16,6 +16,7 @@ protected:
 private:
     WiFiServer server;
     WiFiClient client;
+    unsigned long lastChecked = 0;
 
     void initClientIfNeeded();
 };

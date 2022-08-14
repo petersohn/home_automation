@@ -1,9 +1,16 @@
 #include "WifiStream.hpp"
 
+#include <Arduino.h>
+
 void WifiStreambuf::initClientIfNeeded() {
     if (client && client.connected()) {
         return;
     }
+    const auto now = millis();
+    if (lastChecked + 100 > now) {
+        return;
+    }
+    lastChecked = now;
     client = server.available();
 }
 
