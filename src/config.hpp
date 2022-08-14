@@ -5,6 +5,9 @@
 
 #include <string>
 #include <vector>
+#include <ostream>
+
+class MqttClient;
 
 struct ServerConfig {
     std::string address;
@@ -31,6 +34,6 @@ struct DeviceConfig {
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
-void initConfig();
+void initConfig(std::ostream& debug, MqttClient& mqttClient);
 
 #endif // CONFIG_HPP

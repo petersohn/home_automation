@@ -1,11 +1,10 @@
 #include "DallasTemperatureSensor.hpp"
 
-#include "debug.hpp"
 #include "tools/string.hpp"
 
-DallasTemperatureSensor::DallasTemperatureSensor(uint8_t pin,
-        std::size_t expectedNumberOfDevices)
-        : oneWire(pin), sensors(&oneWire),
+DallasTemperatureSensor::DallasTemperatureSensor(std::ostream& debug,
+        uint8_t pin, std::size_t expectedNumberOfDevices)
+        : debug(debug), oneWire(pin), sensors(&oneWire),
           expectedNumberOfDevices(expectedNumberOfDevices) {
     initialize();
 }
@@ -21,7 +20,7 @@ std::vector<std::string> DallasTemperatureSensor::measure() {
     for (const auto& address : addresses) {
         float temperature = sensors.getTempC(address.data());
         if (temperature == DEVICE_DISCONNECTED_C) {
-            debugln("Failed to read temperature.");
+            debug << "Failed to read temperature." << std::endl;
             initialized = false;
             return {};
         }
@@ -34,18 +33,16 @@ std::vector<std::string> DallasTemperatureSensor::measure() {
 bool DallasTemperatureSensor::initialize() {
     sensors.begin();
     int count = sensors.getDeviceCount();
-    debug("Number of devices: ");
-    debug(count);
-    debug(", expected: ");
-    debugln(expectedNumberOfDevices);
+    debug << "Number of devices: " << count << ", expected: "
+        << expectedNumberOfDevices << std::endl;
     addresses.clear();
     addresses.reserve(count);
     for (int i = 0; i < count; ++i) {
         addresses.emplace_back();
         if (!sensors.getAddress(addresses.back().data(), i)) {
             addresses.pop_back();
-            debug("Failed to initialize temperature sensor at index ");
-            debugln(i);
+            debug << "Failed to initialize temperature sensor at index "
+                << i << std::endl;
             continue;
         }
         sensors.setResolution(addresses.back().data(), 9);

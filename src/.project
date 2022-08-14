@@ -47,6 +47,11 @@
 			<location>/home/petersohn/Arduino/libraries/Adafruit_Unified_Sensor</location>
 		</link>
 		<link>
+			<name>libraries/ArduinoJson</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/ArduinoJson/6.18.4</locationURI>
+		</link>
+		<link>
 			<name>libraries/DHT_sensor_library</name>
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/DHT_sensor_library/1.4.4</locationURI>

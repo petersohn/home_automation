@@ -10,7 +10,7 @@ void StatusInterface::execute(const std::string& /*command*/) {
 }
 
 void StatusInterface::update(Actions action) {
-    int newValue = mqtt::isConnected() ? 1 : 0;
+    int newValue = mqttClient.isConnected() ? 1 : 0;
     if (newValue != value) {
         value = newValue;
         action.fire({tools::intToString(value)});

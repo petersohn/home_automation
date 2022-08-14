@@ -3,15 +3,20 @@
 
 #include "common/Interface.hpp"
 
+#include <ostream>
+
 class GpioOutput : public Interface {
 public:
-    GpioOutput(uint8_t pin, bool defaultValue, bool invert);
+    GpioOutput(
+        std::ostream& debug, uint8_t pin, bool defaultValue, bool invert);
 
     void start() override;
     void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
+    std::ostream& debug;
+
     void toggle();
     void setValue();
     void clearBlink();

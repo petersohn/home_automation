@@ -2,11 +2,12 @@
 #define MQTTINTERFACE_HPP
 
 #include "common/Interface.hpp"
+#include "client.hpp"
 
 class MqttInterface : public Interface {
 public:
-    MqttInterface(const std::string& topic)
-            : topic(topic) {}
+    MqttInterface(MqttClient& mqttClient, const std::string& topic)
+            : mqttClient(mqttClient), topic(topic) {}
     ~MqttInterface();
 
     void start() override;
@@ -14,10 +15,12 @@ public:
     void update(Actions action) override;
 
 private:
-    void onMessage(const std::string& message);
+    MqttClient& mqttClient;
 
     std::string topic;
     std::vector<std::string> messages;
+
+    void onMessage(const std::string& message);
 };
 
 #endif // MQTTINTERFACE_HPP

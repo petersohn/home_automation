@@ -1,6 +1,5 @@
 #include "GpioInput.hpp"
 
-#include "debug.hpp"
 #include "tools/string.hpp"
 
 #include <Arduino.h>
@@ -45,16 +44,14 @@ int encodeState(const State& state) {
 
 }
 
-GpioInput::GpioInput(uint8_t pin, CycleType cycleType, unsigned interval)
-        : pin(pin), cycleType(cycleType), interval(interval) {
+GpioInput::GpioInput(std::ostream& debug, uint8_t pin, CycleType cycleType,
+    unsigned interval)
+    : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
     pinMode(pin, INPUT);
     lastChanged = millis();
     bool currentState = digitalRead(pin);
     state = encodeState({currentState, currentState});
-    debug("starting value=");
-    debug(currentState);
-    debug(" state=");
-    debugln(state);
+    debug << "starting value=" << currentState << " state=" << state << std::endl;
     attachInterrupt(pin, [this]() { onChange(); }, CHANGE);
 }
 

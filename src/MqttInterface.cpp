@@ -3,11 +3,11 @@
 #include "client.hpp"
 
 MqttInterface::~MqttInterface() {
-    mqtt::unsubscribe(topic);
+    mqttClient.unsubscribe(topic);
 }
 
 void MqttInterface::start() {
-    mqtt::subscribe(topic,
+    mqttClient.subscribe(topic,
             [this](const std::string& message) {
                 onMessage(message);
             });

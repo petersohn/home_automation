@@ -1,12 +1,13 @@
 #include "PowerSupplyInterface.hpp"
-#include "debug.hpp"
 
 #include <Arduino.h>
 
-PowerSupplyInterface::PowerSupplyInterface(uint8_t powerSwitchPin,
-        uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
-        unsigned forceOffTime, unsigned checkTime, const std::string& initialState)
-    : powerSwitchPin(powerSwitchPin)
+PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug,
+        uint8_t powerSwitchPin, uint8_t resetSwitchPin, uint8_t powerCheckPin,
+        unsigned pushTime, unsigned forceOffTime, unsigned checkTime,
+        const std::string& initialState)
+    : debug(debug)
+    , powerSwitchPin(powerSwitchPin)
     , resetSwitchPin(resetSwitchPin)
     , powerCheckPin(powerCheckPin)
     , pushTime(pushTime)
@@ -83,12 +84,12 @@ void PowerSupplyInterface::execute(const std::string& command) {
 void PowerSupplyInterface::update(Actions /*action*/) {
     auto now = millis();
     if (powerButtonRelease != 0 && now > powerButtonRelease) {
-        debugln("power button release");
+        debug << "power button release" << std::endl;
         release(powerSwitchPin);
         powerButtonRelease = 0;
     }
     if (resetButtonRelease != 0 && now > resetButtonRelease) {
-        debugln("reset button release");
+        debug << "reset button release" << std::endl;
         release(resetSwitchPin);
         resetButtonRelease = 0;
     }
@@ -97,11 +98,11 @@ void PowerSupplyInterface::update(Actions /*action*/) {
         return;
     }
 
-    debugln("check");
+    debug << "check" << std::endl;
     if (digitalRead(powerCheckPin) !=
             (targetState == TargetState::On ? 1 : 0) &&
             powerButtonRelease == 0) {
-        debugln("power button press");
+        debug << "power button press" << std::endl;
         pullDown(powerSwitchPin);
         powerButtonRelease = millis() + pushTime;
     }

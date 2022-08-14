@@ -1,6 +1,6 @@
 #include "client.hpp"
 #include "config.hpp"
-#include "debug.hpp"
+#include "DebugStream.hpp"
 #include "rtc.hpp"
 #include "WifiConnection.hpp"
 #include "common/Action.hpp"
@@ -10,7 +10,9 @@
 #include <ESP8266WiFi.h>
 
 #include <cstring>
+#include <sstream>
 #include <limits>
+#include <ostream>
 
 extern "C" {
 #include "user_interface.h"
@@ -20,7 +22,6 @@ namespace {
 
 constexpr unsigned long timeLimit =
         std::numeric_limits<unsigned long>::max() - 60000;
-WifiConnection wifiConnection;
 
 void setDeviceName() {
     static char* name = nullptr;
@@ -36,6 +37,10 @@ void setDeviceName() {
     wifi_station_set_hostname(name);
 }
 
+std::ostream debug(new PrintStreambuf(Serial));
+WifiConnection wifiConnection(debug);
+MqttClient mqttClient(debug);
+
 } // unnamed namespace
 
 void setup()
@@ -43,21 +48,21 @@ void setup()
     WiFi.mode(WIFI_STA);
     rtcInit();
     wifiConnection.init();
-    initConfig();
+    initConfig(debug, mqttClient);
     setDeviceName();
 }
 
 void loop()
 {
     if (millis() >= timeLimit) {
-        debugln("Approaching timer overflow. Rebooting.");
-        mqtt::disconnect();
+        debug << "Approaching timer overflow. Rebooting." << std::endl;
+        mqttClient.disconnect();
         ESP.restart();
     }
 
     if (wifiConnection.connectIfNeeded(
             globalConfig.wifiSSID, globalConfig.wifiPassword)) {
-        mqtt::loop();
+        mqttClient.loop();
     }
 
     for (const auto& interface : deviceConfig.interfaces) {

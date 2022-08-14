@@ -1,5 +1,4 @@
 #include "DhtSensor.hpp"
-#include "debug.hpp"
 
 #include "tools/string.hpp"
 
@@ -13,19 +12,20 @@ bool isOk(float value) {
 
 } // unnamed namespace
 
-DhtSensor::DhtSensor(uint8_t pin, int type) : dht(pin, type) {
-	dht.begin();
+DhtSensor::DhtSensor(std::ostream& debug, uint8_t pin, int type)
+    : debug(debug), dht(pin, type) {
+    dht.begin();
 }
 
 std::vector<std::string> DhtSensor::measure() {
     float temperature = dht.readTemperature();
     if (!isOk(temperature)) {
-    	debugln("temperature fail");
+        debug << "temperature fail" << std::endl;
         return {};
     }
     float humidity = dht.readHumidity();
     if (!isOk(humidity)) {
-    	debugln("humidity fail");
+        debug << "humidity fail" << std::endl;
         return {};
     }
     return {tools::floatToString(temperature, 1), tools::floatToString(humidity, 1)};

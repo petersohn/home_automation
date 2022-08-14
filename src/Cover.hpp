@@ -3,10 +3,13 @@
 
 #include "common/Interface.hpp"
 
+#include <ostream>
+
 class Cover : public Interface {
 public:
-    Cover(uint8_t upMovementPin, uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-            bool invertInput, bool invertOutput, unsigned closedPosition);
+    Cover(std::ostream& debug, uint8_t upMovementPin, uint8_t downMovementPin,
+        uint8_t upPin, uint8_t downPin, bool invertInput, bool invertOutput,
+        unsigned closedPosition);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -42,6 +45,8 @@ private:
         bool isReallyMoving() const;
         void log(const std::string& msg);
     };
+
+    std::ostream& debug;
 
     const std::string debugPrefix;
     Movement up;

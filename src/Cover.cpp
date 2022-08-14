@@ -1,11 +1,12 @@
 #include "Cover.hpp"
 
 #include "ArduinoJson.hpp"
-#include "debug.hpp"
 #include "rtc.hpp"
 #include "tools/string.hpp"
 
 #include <Arduino.h>
+
+using namespace ArduinoJson;
 
 namespace {
 bool getActualValue(bool value, bool invert) {
@@ -50,7 +51,7 @@ void Cover::Movement::stop() {
 }
 
 void Cover::Movement::log(const std::string& msg) {
-    debugln(debugPrefix + msg);
+    parent.debug << debugPrefix << msg << std::endl;
 }
 
 bool Cover::Movement::isMoving() const {
@@ -123,16 +124,18 @@ int Cover::Movement::update() {
     return newPosition;
 }
 
-Cover::Cover(uint8_t upMovementPin, uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-            bool invertInput, bool invertOutput, unsigned closedPosition) :
-        debugPrefix("Cover " + tools::intToString(upPin) + "." +
-                tools::intToString(downPin) + ": "),
-        up(*this, upMovementPin, upPin, 100, 1, "up"),
-        down(*this, downMovementPin, downPin, 0, -1, "down"),
-        invertInput(invertInput),
-        invertOutput(invertOutput),
-        closedPosition(closedPosition),
-        positionId(rtcNext())
+Cover::Cover(std::ostream& debug, uint8_t upMovementPin,
+        uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
+        bool invertInput, bool invertOutput, unsigned closedPosition)
+        : debug(debug)
+        , debugPrefix("Cover " + tools::intToString(upPin) + "." +
+            tools::intToString(downPin) + ": ")
+        , up(*this, upMovementPin, upPin, 100, 1, "up")
+        , down(*this, downMovementPin, downPin, 0, -1, "down")
+        , invertInput(invertInput)
+        , invertOutput(invertOutput)
+        , closedPosition(closedPosition)
+        , positionId(rtcNext())
          {
     position = rtcGet(positionId) - 1;
     log("Initial position: " + tools::intToString(position));
@@ -266,5 +269,5 @@ void Cover::stop() {
 }
 
 void Cover::log(const std::string& msg) {
-    debugln(debugPrefix + msg);
+    debug << debugPrefix << msg << std::endl;
 }

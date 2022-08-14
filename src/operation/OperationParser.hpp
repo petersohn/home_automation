@@ -18,7 +18,7 @@ public:
     Parser(const std::vector<std::unique_ptr<InterfaceConfig>>& interfaces,
             InterfaceConfig* defaultInterface);
 
-    std::unique_ptr<Operation> parse(const JsonObject& data,
+    std::unique_ptr<Operation> parse(const ArduinoJson::JsonObject& data,
             const char* fieldName, const char* templateFieldName);
     const std::unordered_set<InterfaceConfig*>& getUsedInterfaces() const& {
         return usedInterfaces;
@@ -28,10 +28,10 @@ public:
     }
 
 private:
-    std::unique_ptr<Operation> doParse(const JsonVariant& data);
+    std::unique_ptr<Operation> doParse(const ArduinoJson::JsonVariant& data);
     std::vector<std::unique_ptr<Operation>> parseOperands(
-            const JsonObject& object);
-    std::vector<MappingElement> parseMappingElements(const JsonObject& object);
+            const ArduinoJson::JsonObject& object);
+    std::vector<MappingElement> parseMappingElements(const ArduinoJson::JsonObject& object);
 
     std::vector<InterfaceConfig*> interfaces;
     InterfaceConfig* defaultInterface;

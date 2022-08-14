@@ -3,14 +3,17 @@
 
 #include "common/Sensor.hpp"
 
+#include <ostream>
+
 #include <DHT.h>
 
 class DhtSensor : public Sensor {
 public:
-    DhtSensor(uint8_t pin, int type);
+    DhtSensor(std::ostream& debug, uint8_t pin, int type);
 
     std::vector<std::string> measure() override;
 private:
+    std::ostream& debug;
     DHT dht;
 };
 

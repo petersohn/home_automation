@@ -1,11 +1,11 @@
 #include "HM3301Sensor.hpp"
 
-#include "debug.hpp"
 #include "tools/string.hpp"
 
 #include <Wire.h>
 
-HM3301Sensor::HM3301Sensor(int sda, int scl) {
+HM3301Sensor::HM3301Sensor(std::ostream& debug, int sda, int scl)
+    : debug(debug) {
     Wire.pins(sda, scl);
     initialize();
 }
@@ -17,7 +17,7 @@ std::vector<std::string> HM3301Sensor::measure() {
 
     uint8_t buf[30];
     if (sensor.read_sensor_value(buf, 29)) {
-        debugln("HM330X read failed.");
+        debug << "HM330X read failed." << std::endl;
         initialized = false;
         return {};
     }
@@ -37,7 +37,7 @@ bool HM3301Sensor::initialize() {
     }
 
     if (sensor.init()) {
-        debugln("HM330X init failed.");
+        debug << "HM330X init failed." << std::endl;
         return false;
     }
 

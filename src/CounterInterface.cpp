@@ -1,6 +1,5 @@
 #include "CounterInterface.hpp"
 
-#include "debug.hpp"
 #include "common/Sensor.hpp"
 #include "tools/string.hpp"
 
@@ -46,12 +45,12 @@ private:
     unsigned long lastMeasurement = 0;
 };
 
-CounterInterface::CounterInterface(std::string name,
+CounterInterface::CounterInterface(std::ostream& debug, std::string name,
         uint8_t pin, int bounceTime, float multiplier, int interval, int offset,
         std::vector<std::string> pulse)
         : bounceTime(bounceTime),
           interval(interval),
-          sensorInterface(createCounterSensor(multiplier), std::move(name),
+          sensorInterface(debug, createCounterSensor(multiplier), std::move(name),
           interval, offset, std::move(pulse)) {
     pinMode(pin, INPUT);
     resetMinInterval();

@@ -1,8 +1,13 @@
 #include "SensorInterface.hpp"
 
-#include "debug.hpp"
-
 #include <Arduino.h>
+
+SensorInterface::SensorInterface(std::ostream& debug,
+        std::unique_ptr<Sensor>&& sensor,
+        std::string name, int interval, int offset,
+        std::vector<std::string> pulse)
+        : debug(debug), sensor(std::move(sensor)), name(std::move(name)),
+          interval(interval), offset(offset), pulse(std::move(pulse)) {}
 
 void SensorInterface::start() {
     // When connected to the network, all sensors make a measurement.
@@ -21,16 +26,16 @@ void SensorInterface::update(Actions action) {
             nextExecution += ((now - nextExecution) / interval + 1) * interval;
         }
         auto values = sensor->measure();
-        debug(name);
+        debug << name;
         if (values.empty()) {
-            debugln(": Measurement failed. Trying again.");
+            debug << ": Measurement failed. Trying again." << std::endl;
             nextRetry = now + 1000;
         } else {
-            debug(": Measurement successful:");
+            debug << ": Measurement successful:";
             for (const std::string& value : values) {
-                debug(" " + value);
+                debug << " " << value;
             }
-            debugln();
+            debug << std::endl;
             nextRetry = 0;
             action.fire(values);
             pulseSent = false;

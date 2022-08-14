@@ -1,6 +1,5 @@
 #include "GpioOutput.hpp"
 
-#include "debug.hpp"
 #include "rtc.hpp"
 #include "tools/string.hpp"
 
@@ -23,36 +22,33 @@ bool GpioOutput::getOutput() {
     return invert ? !value : value;
 }
 
-GpioOutput::GpioOutput(uint8_t pin, bool defaultValue, bool invert)
-        : pin(pin), rtcId(rtcNext()), invert(invert) {
+GpioOutput::GpioOutput(
+    std::ostream& debug, uint8_t pin, bool defaultValue, bool invert)
+        : debug(debug), pin(pin), rtcId(rtcNext()), invert(invert) {
     pinMode(pin, OUTPUT);
     RtcData rtcData = rtcGet(rtcId);
-    debug("Pin ");
-    debug(pin);
-    debug(": ");
+    debug << "Pin " << pin << ": ";
     if ((rtcData & rtcSetMask) == 0) {
         value = defaultValue;
-        debug("default value ");
+        debug << "default value ";
     } else {
         value = rtcData & rtcValueMask;
-        debug("from RTC ");
+        debug << "from RTC ";
     }
-    debugln(value);
+    debug << std::endl;
     setValue();
 }
 
 void GpioOutput::execute(const std::string& command) {
     bool newValue = value;
-    debug("Pin: ");
-    debug(pin);
-    debugln(": executing command: " + command);
+    debug << "Pin " << pin << " executing command: " << command << std::endl;
 
     std::size_t position = 0;
     std::string commandName = tools::nextToken(command, ' ', position);
 
     if (commandName == "toggle") {
         if (nextBlink != 0) {
-            debugln("Cannot toggle while blinking.");
+            debug << "Cannot toggle while blinking." << std::endl;
         } else {
             toggle();
         }
@@ -71,7 +67,7 @@ void GpioOutput::execute(const std::string& command) {
     }
 
     if (!tools::getBoolValue(commandName, newValue)) {
-        debugln("Invalid command.");
+        debug << "Invalid command." << std::endl;
         return;
     }
 
@@ -111,10 +107,7 @@ void GpioOutput::clearBlink() {
 
 void GpioOutput::setValue() {
     bool output = getOutput();
-    debug("Pin ");
-    debug(pin);
-    debug(": value=");
-    debugln(output);
+    debug << "Pin " << pin << ": value=" << output << std::endl;
     digitalWrite(pin, output);
     RtcData rtcData = rtcSetMask;
     if (value) {

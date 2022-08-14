@@ -7,6 +7,8 @@
 #include <functional>
 #include <memory>
 
+using namespace ArduinoJson;
+
 namespace operation {
 
 namespace {

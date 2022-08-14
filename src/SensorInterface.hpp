@@ -5,19 +5,21 @@
 #include "common/Sensor.hpp"
 
 #include <memory>
+#include <ostream>
 
 class SensorInterface : public Interface {
 public:
-    SensorInterface(std::unique_ptr<Sensor>&& sensor, std::string name,
-            int interval, int offset, std::vector<std::string> pulse)
-            : sensor(std::move(sensor)), name(std::move(name)),
-              interval(interval), offset(offset), pulse(std::move(pulse)) {}
+    SensorInterface(std::ostream& debug, std::unique_ptr<Sensor>&& sensor,
+            std::string name, int interval, int offset,
+            std::vector<std::string> pulse);
 
     void start() override;
     void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
+    std::ostream& debug;
+
     std::unique_ptr<Sensor> sensor;
     std::string name;
     int interval;

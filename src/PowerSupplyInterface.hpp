@@ -3,21 +3,26 @@
 
 #include "common/Interface.hpp"
 
+#include <ostream>
+
 class PowerSupplyInterface : public Interface {
 public:
     enum class TargetState {
         Off, On, Dontcare
     };
 
-    PowerSupplyInterface(uint8_t powerSwitchPin, uint8_t resetSwitchPin,
-            uint8_t powerCheckPin, unsigned pushTime, unsigned forceOffTime,
-            unsigned checkTime, const std::string& initialState);
+    PowerSupplyInterface(std::ostream& debug, uint8_t powerSwitchPin,
+            uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
+            unsigned forceOffTime, unsigned checkTime,
+            const std::string& initialState);
 
     void start() override;
     void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
+    std::ostream& debug;
+
     const uint8_t powerSwitchPin;
     const uint8_t resetSwitchPin;
     const uint8_t powerCheckPin;
