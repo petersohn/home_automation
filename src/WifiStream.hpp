@@ -6,9 +6,9 @@
 
 class WifiStreambuf: public std::streambuf {
 public:
-	WifiStreambuf(int port): server(port) {
-		server.begin();
-	}
+    WifiStreambuf(int port): server(port) {
+        server.begin();
+    }
 
 protected:
     virtual int overflow(int ch) override;

@@ -135,8 +135,8 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
     bool result = false;
     client->setServer(server.address.c_str(), server.port).setClient(*wifiClient)
             .setCallback([this](const char* topic, const unsigned char* payload, unsigned length) {
-    			onMessageReceived(topic, payload, length);
-    		});
+                onMessageReceived(topic, payload, length);
+            });
     std::string clientId = deviceConfig.name + "-" + getMac();
     debug << "clientId=" + clientId << std::endl;
     if (deviceConfig.availabilityTopic.length() != 0) {
@@ -274,11 +274,8 @@ void MqttClient::unsubscribe(const std::string& topic) {
 
 void MqttClient::publish(
         const std::string& topic, const std::string& payload, bool retain) {
-    debug << "Publishing to " << topic << std::endl;
-    if (client->publish(topic.c_str(), payload.c_str(), retain)) {
-        debug << "Success." << std::endl;
-    } else {
-        debug << "Failure." << std::endl;
+    if (!client->publish(topic.c_str(), payload.c_str(), retain)) {
+        debug << "Publishing to " << topic << " failed." << std::endl;
     }
 }
 

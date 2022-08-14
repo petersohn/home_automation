@@ -2,6 +2,7 @@
 #include "config.hpp"
 #include "DebugStream.hpp"
 #include "WifiStream.hpp"
+#include "MqttStream.hpp"
 #include "rtc.hpp"
 #include "WifiConnection.hpp"
 #include "common/Action.hpp"
@@ -43,6 +44,7 @@ std::ostream debug(&debugStream);
 WifiConnection wifiConnection(debug);
 MqttClient mqttClient(debug);
 std::unique_ptr<WifiStreambuf> wifiStream;
+std::unique_ptr<MqttStreambuf> mqttStream;
 
 } // unnamed namespace
 
@@ -53,6 +55,12 @@ void setup()
     wifiConnection.init();
     initConfig(debug, debugStream, mqttClient);
     setDeviceName();
+
+    if (deviceConfig.debugTopic != "") {
+        mqttStream = std::make_unique<MqttStreambuf>(
+            mqttClient, deviceConfig.debugTopic);
+        debugStream.add(mqttStream.get());
+    }
 }
 
 void loop()

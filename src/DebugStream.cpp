@@ -30,7 +30,7 @@ int DebugStreambuf::overflow(int ch)
 int DebugStreambuf::sync()
 {
     for (auto buf : bufs) {
-        if (buf->pubsync() == 0) {
+        if (buf->pubsync() != 0) {
             return 0;
         }
     }
