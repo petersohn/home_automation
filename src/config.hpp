@@ -8,6 +8,7 @@
 #include <ostream>
 
 class MqttClient;
+class DebugStreambuf;
 
 struct ServerConfig {
     std::string address;
@@ -25,15 +26,22 @@ struct GlobalConfig {
 struct DeviceConfig {
     std::string name;
     std::string availabilityTopic;
-    bool debug = false;
+    std::unique_ptr<std::streambuf> debug;
     int debugPort = 2534;
     std::string debugTopic;
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces;
+
+    DeviceConfig() = default;
+    DeviceConfig(const DeviceConfig&) = delete;
+    DeviceConfig& operator=(const DeviceConfig&) = delete;
+    DeviceConfig(DeviceConfig&&) = default;
+	DeviceConfig& operator=(DeviceConfig&&) = default;
 };
 
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
-void initConfig(std::ostream& debug, MqttClient& mqttClient);
+void initConfig(std::ostream& debug, DebugStreambuf& debugStream,
+    MqttClient& mqttClient);
 
 #endif // CONFIG_HPP

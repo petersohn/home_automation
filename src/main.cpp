@@ -1,6 +1,7 @@
 #include "client.hpp"
 #include "config.hpp"
 #include "DebugStream.hpp"
+#include "WifiStream.hpp"
 #include "rtc.hpp"
 #include "WifiConnection.hpp"
 #include "common/Action.hpp"
@@ -37,9 +38,11 @@ void setDeviceName() {
     wifi_station_set_hostname(name);
 }
 
-std::ostream debug(new PrintStreambuf(Serial));
+DebugStreambuf debugStream;
+std::ostream debug(&debugStream);
 WifiConnection wifiConnection(debug);
 MqttClient mqttClient(debug);
+std::unique_ptr<WifiStreambuf> wifiStream;
 
 } // unnamed namespace
 
@@ -48,7 +51,7 @@ void setup()
     WiFi.mode(WIFI_STA);
     rtcInit();
     wifiConnection.init();
-    initConfig(debug, mqttClient);
+    initConfig(debug, debugStream, mqttClient);
     setDeviceName();
 }
 
@@ -60,9 +63,18 @@ void loop()
         ESP.restart();
     }
 
-    if (wifiConnection.connectIfNeeded(
-            globalConfig.wifiSSID, globalConfig.wifiPassword)) {
+    const bool isConnected = wifiConnection.connectIfNeeded(
+        globalConfig.wifiSSID, globalConfig.wifiPassword);
+    if (isConnected) {
+        if (!wifiStream && deviceConfig.debugPort != 0) {
+            wifiStream = std::make_unique<WifiStreambuf>(
+                deviceConfig.debugPort);
+            debugStream.add(wifiStream.get());
+        }
         mqttClient.loop();
+    } else if (wifiStream) {
+        debugStream.remove(wifiStream.get());
+        wifiStream.reset();
     }
 
     for (const auto& interface : deviceConfig.interfaces) {

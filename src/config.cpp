@@ -16,6 +16,7 @@
 #include "PowerSupplyInterface.hpp"$
 #include "SensorInterface.hpp"
 #include "StatusInterface.hpp"
+#include "DebugStream.hpp"
 #include "common/CommandAction.hpp"
 #include "operation/OperationParser.hpp"
 #include "tools/collection.hpp"
@@ -54,11 +55,10 @@ void parseTo(const JsonObject& jsonObject, std::string& target,
 
 class ConfigParser {
 public:
-    ConfigParser(std::ostream& debug, MqttClient& mqttClient)
-        : debug(debug), mqttClient(mqttClient) {}
+    ConfigParser(std::ostream& debug, DebugStreambuf& debugStream, MqttClient& mqttClient)
+        : debug(debug), debugStream(debugStream), mqttClient(mqttClient) {}
     void parse() {
         SPIFFS.begin();
-        deviceConfig.debug = true;
 
         deviceConfig = readDeviceConfig("/device_config.json");
         globalConfig = readGlobalConfig("/global_config.json");
@@ -66,6 +66,7 @@ public:
 
 private:
     std::ostream& debug;
+    DebugStreambuf& debugStream;
     MqttClient& mqttClient;
 
     ParsedData parseFile(const char* filename) {
@@ -425,24 +426,18 @@ private:
             return result;
         }
 
-        PARSE(*data.root, result, debug);
-        if (result.debug) {
-            deviceConfig.debug = result.debug;
+        bool isDebug = false;
+        parseTo(*data.root, isDebug, "debug");
+        if (isDebug) {
             Serial.begin(115200);
+            result.debug = std::make_unique<PrintStreambuf>(Serial);
+            debugStream.add(result.debug.get());
         }
 
-//        PARSE(*data.root, result, debugPort);
-//        if (result.debugPort != 0) {
-//            wifiDebugger = std::make_unique<WiFiDebugger>(result.debugPort);
-//        }
-
+        PARSE(*data.root, result, debugPort);
+        PARSE(*data.root, result, debugTopic);
         debug << "\nStarting up...\n" << "Debug port = "
             << result.debugPort << "\n";
-
-        // PARSE(*data.root, result, debugTopic);
-        // if (!result.debugTopic.empty()) {
-        //     mqttDebugger = std::make_unique<MqttDebugger>(result.debugTopic);
-        // }
 
         PARSE(*data.root, result, name);
         PARSE(*data.root, result, availabilityTopic);
@@ -460,6 +455,6 @@ private:
 GlobalConfig globalConfig;
 DeviceConfig deviceConfig;
 
-void initConfig(std::ostream& debug, MqttClient& mqttClient) {
-    ConfigParser(debug, mqttClient).parse();
+void initConfig(std::ostream& debug, DebugStreambuf& debugStream, MqttClient& mqttClient) {
+    ConfigParser(debug, debugStream, mqttClient).parse();
 }
