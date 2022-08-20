@@ -2,6 +2,7 @@
 #define SENSORINTERFACE_HPP
 
 #include "common/Interface.hpp"
+#include "common/EspApi.hpp"
 #include "common/Sensor.hpp"
 
 #include <memory>
@@ -9,7 +10,8 @@
 
 class SensorInterface : public Interface {
 public:
-    SensorInterface(std::ostream& debug, std::unique_ptr<Sensor>&& sensor,
+    SensorInterface(std::ostream& debug, EspApi& esp,
+            std::unique_ptr<Sensor>&& sensor,
             std::string name, int interval, int offset,
             std::vector<std::string> pulse);
 
@@ -19,6 +21,7 @@ public:
 
 private:
     std::ostream& debug;
+    EspApi& esp;
 
     std::unique_ptr<Sensor> sensor;
     std::string name;

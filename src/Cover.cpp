@@ -3,8 +3,6 @@
 #include "ArduinoJson.hpp"
 #include "tools/string.hpp"
 
-#include <Arduino.h>
-
 using namespace ArduinoJson;
 
 namespace {
@@ -25,24 +23,24 @@ Cover::Movement::Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin,
         direction(direction),
         timeId(parent.rtc.next()),
         debugPrefix(parent.debugPrefix + directionName + ": ") {
-    pinMode(inputPin, INPUT);
-    pinMode(outputPin, OUTPUT);
+    parent.esp.pinMode(inputPin, GpioMode::input);
+    parent.esp.pinMode(outputPin, GpioMode::output);
     moveTime = parent.rtc.get(timeId);
 }
 
 void Cover::Movement::start() {
     auto value = getActualValue(true, parent.invertOutput);
     log("Start " + tools::intToString(parent.invertOutput) + " " + tools::intToString(value));
-    digitalWrite(outputPin, value);
+    parent.esp.digitalWrite(outputPin, value);
     if (!isStarted()) {
-        startedTime = millis();
+        startedTime = parent.esp.millis();
     }
 }
 
 void Cover::Movement::stop() {
     auto value = getActualValue(false, parent.invertOutput);
     log("stop " + tools::intToString(parent.invertOutput) + " " + tools::intToString(value));
-    digitalWrite(outputPin, value);
+    parent.esp.digitalWrite(outputPin, value);
     if (startedTime != 0) {
         startedTime = 0;
         parent.stateChanged = true;
@@ -54,7 +52,7 @@ void Cover::Movement::log(const std::string& msg) {
 }
 
 bool Cover::Movement::isMoving() const {
-    return getActualValue(digitalRead(inputPin), parent.invertInput);
+    return getActualValue(parent.esp.digitalRead(inputPin), parent.invertInput);
 }
 
 bool Cover::Movement::isStarted() const {
@@ -67,7 +65,7 @@ bool Cover::Movement::isReallyMoving() const {
 
 int Cover::Movement::update() {
     int newPosition = parent.position;
-    auto now = millis();
+    auto now = parent.esp.millis();
     bool moving = isMoving();
 
     if (moving) {
@@ -123,10 +121,11 @@ int Cover::Movement::update() {
     return newPosition;
 }
 
-Cover::Cover(std::ostream& debug, Rtc& rtc, uint8_t upMovementPin,
+Cover::Cover(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
         bool invertInput, bool invertOutput, unsigned closedPosition)
         : debug(debug)
+        , esp(esp)
         , rtc(rtc)
         , debugPrefix("Cover " + tools::intToString(upPin) + "." +
             tools::intToString(downPin) + ": ")

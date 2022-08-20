@@ -2,14 +2,15 @@
 #define GPIOOUTPUT_HPP
 
 #include "common/Interface.hpp"
+#include "common/EspApi.hpp"
 #include "common/rtc.hpp"
 
 #include <ostream>
 
 class GpioOutput : public Interface {
 public:
-    GpioOutput(std::ostream& debug, Rtc& rtc, uint8_t pin, bool defaultValue,
-        bool invert);
+    GpioOutput(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin,
+        bool defaultValue, bool invert);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -17,6 +18,7 @@ public:
 
 private:
     std::ostream& debug;
+    EspApi& esp;
     Rtc& rtc;
 
     void toggle();

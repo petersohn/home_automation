@@ -3,23 +3,21 @@
 #include "common/Sensor.hpp"
 #include "tools/string.hpp"
 
-#include <Arduino.h>
-#include <FunctionalInterrupt.h>
-
 #include <memory>
 
 class CounterInterface::CounterSensor : public Sensor {
 public:
-    CounterSensor(float multiplier) : multiplier(multiplier) {}
+    CounterSensor(EspApi& esp, float multiplier)
+        : esp(esp), multiplier(multiplier) {}
 
     std::vector<std::string> measure() override {
+        auto now = esp.millis();
         if (lastMeasurement == 0) {
-            lastMeasurement = millis();
+            lastMeasurement = now;
             number = 0;
             return {};
         }
 
-        auto now = millis();
         auto timeDifference = now - lastMeasurement;
         float averageResult = normalize(number, timeDifference);
         float maxResult = normalize(max, timeDifference);
@@ -34,31 +32,34 @@ public:
         max = std::max(max, maxRate);
     }
 private:
-    float normalize(float number, float timeDifference) {
-        // mesure in ticks per second
-        return number * 1000.0f / timeDifference * multiplier;
-    }
+    EspApi& esp;
 
     float multiplier;
     unsigned number = 0;
     float max = 0;
     unsigned long lastMeasurement = 0;
+
+    float normalize(float number, float timeDifference) {
+        // mesure in ticks per second
+        return number * 1000.0f / timeDifference * multiplier;
+    }
 };
 
-CounterInterface::CounterInterface(std::ostream& debug, std::string name,
-        uint8_t pin, int bounceTime, float multiplier, int interval, int offset,
-        std::vector<std::string> pulse)
-        : bounceTime(bounceTime),
+CounterInterface::CounterInterface(std::ostream& debug, EspApi& esp,
+        std::string name, uint8_t pin, int bounceTime, float multiplier,
+        int interval, int offset, std::vector<std::string> pulse)
+        : esp(esp),
+          bounceTime(bounceTime),
           interval(interval),
-          sensorInterface(debug, createCounterSensor(multiplier), std::move(name),
+          sensorInterface(debug, esp, createCounterSensor(multiplier), std::move(name),
           interval, offset, std::move(pulse)) {
-    pinMode(pin, INPUT);
+    esp.pinMode(pin, GpioMode::input);
     resetMinInterval();
-    attachInterrupt(pin, [this]() { onRise(); }, RISING);
+    esp.attachInterrupt(pin, [this]() { onRise(); }, InterruptMode::rise);
 }
 
 void CounterInterface::onRise() {
-    long now = millis();
+    long now = esp.millis();
     int difference = now - lastRise;
     if (difference > bounceTime) {
         ++riseCount;
@@ -70,7 +71,7 @@ void CounterInterface::onRise() {
 
 auto CounterInterface::createCounterSensor(float multiplier)
         -> std::unique_ptr<CounterSensor> {
-    auto result = std::make_unique<CounterSensor>(multiplier);
+    auto result = std::make_unique<CounterSensor>(esp, multiplier);
     counterSensor = result.get();
     return result;
 }

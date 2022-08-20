@@ -2,8 +2,7 @@
 #define WIFICONNECTION_HPP
 
 #include "common/rtc.hpp"
-
-#include <Arduino.h>
+#include "common/EspApi.hpp"
 
 extern "C" {
 #include <user_interface.h>
@@ -14,11 +13,13 @@ extern "C" {
 
 class WifiConnection {
 public:
-    WifiConnection(std::ostream& debug, Rtc& rtc): debug(debug), rtc(rtc) {}
+    WifiConnection(std::ostream& debug, EspApi& esp, Rtc& rtc)
+        : debug(debug), esp(esp), rtc(rtc) {}
     void init();
     bool connectIfNeeded(const std::string& ssid, const std::string& password);
 private:
     std::ostream& debug;
+    EspApi& esp;
     Rtc& rtc;
 
     unsigned long nextAttempt = 0;

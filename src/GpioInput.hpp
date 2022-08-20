@@ -2,6 +2,7 @@
 #define GPIOINPUT_HPP
 
 #include "common/Interface.hpp"
+#include "common/EspApi.hpp"
 
 #include <ostream>
 
@@ -11,7 +12,7 @@ public:
         none, single, multi
     };
 
-    GpioInput(std::ostream& debug, uint8_t pin, CycleType cycleType,
+    GpioInput(std::ostream& debug, EspApi& esp, uint8_t pin, CycleType cycleType,
         unsigned interval = 10);
 
     void start() override;
@@ -20,6 +21,7 @@ public:
 
 private:
     std::ostream& debug;
+    EspApi& esp;
 
     const uint8_t pin;
     const CycleType cycleType;

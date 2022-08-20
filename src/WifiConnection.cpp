@@ -31,7 +31,7 @@ void WifiConnection::init() {
 }
 
 void WifiConnection::connectionFailed() {
-    auto now = millis();
+    auto now = esp.millis();
     if (lastConnectionFailure == 0) {
         debug << "\nConnection failed for the first time. Trying again."
             << std::endl;
@@ -66,7 +66,7 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
         return true;
     }
 
-    auto now = millis();
+    auto now = esp.millis();
     if (now < nextAttempt) {
         return false;
     }

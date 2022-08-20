@@ -1,6 +1,8 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
+#include "common/EspApi.hpp"
+
 #include <PubSubClient.h>
 
 #include <functional>
@@ -18,7 +20,7 @@ class JsonObject;
 
 class MqttClient {
 public:
-    MqttClient(std::ostream& debug);
+    MqttClient(std::ostream& debug, EspApi& esp);
 
     void loop();
     void disconnect();
@@ -47,6 +49,7 @@ private:
           std::function<void(const std::string&)>>;
 
     std::ostream& debug;
+    EspApi& esp;
 
     unsigned long nextConnectionAttempt = 0;
     unsigned long availabilityReceiveTimeLimit = 0;

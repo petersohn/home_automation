@@ -1,25 +1,24 @@
 #include "SensorInterface.hpp"
 
-#include <Arduino.h>
-
-SensorInterface::SensorInterface(std::ostream& debug,
+SensorInterface::SensorInterface(std::ostream& debug, EspApi& esp,
         std::unique_ptr<Sensor>&& sensor,
         std::string name, int interval, int offset,
         std::vector<std::string> pulse)
-        : debug(debug), sensor(std::move(sensor)), name(std::move(name)),
+        : debug(debug), esp(esp), sensor(std::move(sensor)),
+            name(std::move(name)),
           interval(interval), offset(offset), pulse(std::move(pulse)) {}
 
 void SensorInterface::start() {
     // When connected to the network, all sensors make a measurement.
     // Afterwards, measurements are shifted by offset.
-    nextExecution = millis() - offset;
+    nextExecution = esp.millis() - offset;
 }
 
 void SensorInterface::execute(const std::string& /*command*/) {
 }
 
 void SensorInterface::update(Actions action) {
-    long now = millis();
+    long now = esp.millis();
     if ((nextExecution != 0 && now >= nextExecution)
             || (nextRetry != 0 && now >= nextRetry)) {
         if (now >= nextExecution) {

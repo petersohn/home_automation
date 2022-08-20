@@ -55,10 +55,11 @@ void parseTo(const JsonObject& jsonObject, std::string& target,
 
 class ConfigParser {
 public:
-    ConfigParser(std::ostream& debug, DebugStreambuf& debugStream, Rtc& rtc,
-            MqttClient& mqttClient)
+    ConfigParser(std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp,
+            Rtc& rtc, MqttClient& mqttClient)
         : debug(debug)
         , debugStream(debugStream)
+        , esp(esp)
         , rtc(rtc)
         , mqttClient(mqttClient) {}
 
@@ -72,6 +73,7 @@ public:
 private:
     std::ostream& debug;
     DebugStreambuf& debugStream;
+    EspApi& esp;
     Rtc& rtc;
     MqttClient& mqttClient;
 
@@ -193,7 +195,7 @@ private:
 
     std::unique_ptr<Interface> createSensorInterface(const JsonObject& data,
             std::unique_ptr<Sensor>&& sensor) {
-        return std::make_unique<SensorInterface>(debug,
+        return std::make_unique<SensorInterface>(debug, esp,
                 std::move(sensor), data.get<std::string>("name"),
                 getInterval(data), getOffset(data), getPulse(data));
     }
@@ -214,13 +216,13 @@ private:
         if (type == "input") {
             uint8_t pin = 0;
             return getPin(data, pin)
-                    ?  std::make_unique<GpioInput>(debug,
+                    ?  std::make_unique<GpioInput>(debug, esp,
                             pin, getCycleType(data.get<std::string>("cycle")))
                     : nullptr;
         } else if (type == "output") {
             uint8_t pin = 0;
             return getPin(data, pin)
-                    ?  std::make_unique<GpioOutput>(debug, rtc,
+                    ?  std::make_unique<GpioOutput>(debug, esp, rtc,
                             pin, data["default"], data["invert"])
                     : nullptr;
         } else if (type == "analog") {
@@ -260,7 +262,7 @@ private:
         } else if (type == "counter") {
             uint8_t pin = 0;
             return getPin(data, pin)
-                    ?  std::make_unique<CounterInterface>(debug,
+                    ?  std::make_unique<CounterInterface>(debug, esp,
                             data.get<std::string>("name"),
                             pin, getJsonWithDefault(data["bounceTime"], 0),
                             getJsonWithDefault(data["multiplier"], 1.0f),
@@ -274,7 +276,7 @@ private:
         } else if (type == "keepalive") {
             uint8_t pin = 0;
             return getPin(data, pin)
-                    ?  std::make_unique<KeepaliveInterface>(
+                    ?  std::make_unique<KeepaliveInterface>(esp,
                             pin, getJsonWithDefault(data["interval"], 10000),
                             getJsonWithDefault(data["resetInterval"], 10))
                     : nullptr;
@@ -285,7 +287,7 @@ private:
             return (getRequiredValue(data, "powerSwitchPin", powerSwitchPin)
                     && getRequiredValue(data, "resetSwitchPin", resetSwitchPin)
                     && getRequiredValue(data, "powerCheckPin", powerCheckPin))
-                    ?  std::make_unique<PowerSupplyInterface>(debug,
+                    ?  std::make_unique<PowerSupplyInterface>(debug, esp,
                             powerSwitchPin, resetSwitchPin, powerCheckPin,
                             getJsonWithDefault(data["pushTime"], 200),
                             getJsonWithDefault(data["forceOffTime"], 6000),
@@ -301,7 +303,7 @@ private:
                     && getRequiredValue(data, "downMovementPin", downMovementPin)
                     && getRequiredValue(data, "upPin", upPin)
                     && getRequiredValue(data, "downPin", downPin))
-                    ?  std::make_unique<Cover>(debug, rtc,
+                    ?  std::make_unique<Cover>(debug, esp, rtc,
                             upMovementPin, downMovementPin, upPin, downPin,
                             getJsonWithDefault(data["invertInput"], false),
                             getJsonWithDefault(data["invertOutput"], false),
@@ -461,7 +463,7 @@ private:
 GlobalConfig globalConfig;
 DeviceConfig deviceConfig;
 
-void initConfig(std::ostream& debug, DebugStreambuf& debugStream, Rtc& rtc,
-        MqttClient& mqttClient) {
-    ConfigParser(debug, debugStream, rtc, mqttClient).parse();
+void initConfig(std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp,
+        Rtc& rtc, MqttClient& mqttClient) {
+    ConfigParser(debug, debugStream, esp, rtc, mqttClient).parse();
 }

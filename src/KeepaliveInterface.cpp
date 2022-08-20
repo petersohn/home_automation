@@ -1,11 +1,9 @@
 #include "KeepaliveInterface.hpp"
 
-#include <Arduino.h>
-
-KeepaliveInterface::KeepaliveInterface(uint8_t pin, unsigned interval,
-        unsigned resetInterval)
-        : pin(pin), interval(interval), resetInterval(resetInterval) {
-    pinMode(pin, OUTPUT);
+KeepaliveInterface::KeepaliveInterface(EspApi& esp, uint8_t pin,
+        unsigned interval, unsigned resetInterval)
+        : esp(esp), pin(pin), interval(interval), resetInterval(resetInterval) {
+    esp.pinMode(pin, GpioMode::output);
 }
 
 void KeepaliveInterface::start() {
@@ -16,15 +14,15 @@ void KeepaliveInterface::execute(const std::string& /*command*/) {
 }
 
 void KeepaliveInterface::update(Actions /*action*/) {
-    if (millis() > this->nextReset) {
+    if (esp.millis() > this->nextReset) {
         this->reset();
     }
 }
 
 void KeepaliveInterface::reset() {
-        digitalWrite(this->pin, 0);
-        delay(this->resetInterval);
-        digitalWrite(this->pin, 1);
-        this->nextReset = millis() + this->interval;
+        esp.digitalWrite(this->pin, 0);
+        esp.delay(this->resetInterval);
+        esp.digitalWrite(this->pin, 1);
+        this->nextReset = esp.millis() + this->interval;
 }
 

@@ -2,6 +2,7 @@
 #define POWERSUPPLYINTERFACE_HPP
 
 #include "common/Interface.hpp"
+#include "common/EspApi.hpp"
 
 #include <ostream>
 
@@ -11,7 +12,8 @@ public:
         Off, On, Dontcare
     };
 
-    PowerSupplyInterface(std::ostream& debug, uint8_t powerSwitchPin,
+    PowerSupplyInterface(std::ostream& debug, EspApi& esp,
+            uint8_t powerSwitchPin,
             uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
             unsigned forceOffTime, unsigned checkTime,
             const std::string& initialState);
@@ -22,6 +24,7 @@ public:
 
 private:
     std::ostream& debug;
+    EspApi& esp;
 
     const uint8_t powerSwitchPin;
     const uint8_t resetSwitchPin;

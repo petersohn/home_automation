@@ -24,8 +24,9 @@ constexpr unsigned availabilityReceiveTimeout = 2000;
 
 } // unnamed namespace
 
-MqttClient::MqttClient(std::ostream& debug)
+MqttClient::MqttClient(std::ostream& debug, EspApi& esp)
     : debug(debug)
+    , esp(esp)
     , backoff(initialBackoff)
     , wifiClient(std::make_unique<WiFiClient>())
     , client(std::make_unique<PubSubClient>())
@@ -51,9 +52,9 @@ std::string MqttClient::getStatusMessage(bool available, bool restarted) {
     if (available) {
         message["restarted"] = restarted;
         message["ip"] = WiFi.localIP().toString();
-        message["uptime"] = millis();
+        message["uptime"] = esp.millis();
         message["rssi"] = WiFi.RSSI();
-        message["freeMemory"] = ESP.getFreeHeap();
+        message["freeMemory"] = esp.getFreeHeap();
     }
     std::string result;
     message.printTo(result);
@@ -65,7 +66,7 @@ void MqttClient::resetAvailabilityReceive() {
 }
 
 void MqttClient::connectionBackoff() {
-    nextConnectionAttempt = millis() + backoff;
+    nextConnectionAttempt = esp.millis() + backoff;
     backoff = std::min(backoff * 2, maxBackoff);
 }
 
@@ -95,10 +96,10 @@ void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
     if (availabilityReceiveTimeLimit != 0) {
         debug << "Got expected message." << std::endl;
         resetAvailabilityReceive();
-        nextStatusSend = millis();
+        nextStatusSend = esp.millis();
     } else if (!available) {
         debug << "Refreshing availability state." << std::endl;
-        nextStatusSend = millis();
+        nextStatusSend = esp.millis();
     }
 }
 
@@ -156,7 +157,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
                 client->disconnect();
             }
             availabilityReceiveTimeLimit =
-                    millis() + availabilityReceiveTimeout;
+                    esp.millis() + availabilityReceiveTimeout;
         }
     } else {
         result = client->connect(
@@ -190,7 +191,7 @@ MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
     }
 
     if (availabilityReceiveTimeLimit != 0) {
-        if (availabilityReceiveTimeLimit > millis()) {
+        if (availabilityReceiveTimeLimit > esp.millis()) {
             return ConnectStatus::connecting;
         }
 
@@ -202,7 +203,7 @@ MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
 }
 
 void MqttClient::sendStatusMessage(bool restarted) {
-    auto now = millis();
+    auto now = esp.millis();
     if (deviceConfig.availabilityTopic.length() != 0 && now >= nextStatusSend) {
         debug << "Sending status message to topic "
                 << deviceConfig.availabilityTopic << std::endl;
@@ -221,7 +222,7 @@ void MqttClient::sendStatusMessage(bool restarted) {
 
 
 void MqttClient::loop() {
-    if (millis() >= nextConnectionAttempt) {
+    if (esp.millis() >= nextConnectionAttempt) {
         switch (connectIfNeeded()) {
         case ConnectStatus::connectionSuccessful:
             if (initialized) {
@@ -231,7 +232,7 @@ void MqttClient::loop() {
                 for (const auto& interface : deviceConfig.interfaces) {
                     interface->interface->start();
                 }
-                nextStatusSend = millis();
+                nextStatusSend = esp.millis();
                 sendStatusMessage(restarted);
                 restarted = false;
                 resetConnectionBackoff();

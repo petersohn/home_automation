@@ -3,12 +3,13 @@
 
 #include "common/Interface.hpp"
 #include "common/rtc.hpp"
+#include "common/EspApi.hpp"
 
 #include <ostream>
 
 class Cover : public Interface {
 public:
-    Cover(std::ostream& debug, Rtc& rtc, uint8_t upMovementPin,
+    Cover(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
         bool invertInput, bool invertOutput, unsigned closedPosition);
 
@@ -48,6 +49,7 @@ private:
     };
 
     std::ostream& debug;
+    EspApi& esp;
     Rtc& rtc;
 
     const std::string debugPrefix;

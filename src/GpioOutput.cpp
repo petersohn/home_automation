@@ -4,8 +4,6 @@
 
 #include <cstdlib>
 
-#include <Arduino.h>
-
 namespace {
 
 constexpr int rtcSetMask = 2;
@@ -22,9 +20,10 @@ bool GpioOutput::getOutput() {
 }
 
 GpioOutput::GpioOutput(
-    std::ostream& debug, Rtc& rtc, uint8_t pin, bool defaultValue, bool invert)
-        : debug(debug), rtc(rtc), pin(pin), rtcId(rtc.next()), invert(invert) {
-    pinMode(pin, OUTPUT);
+    std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin, bool defaultValue,
+    bool invert)
+        : debug(debug), esp(esp), rtc(rtc), pin(pin), rtcId(rtc.next()), invert(invert) {
+    esp.pinMode(pin, GpioMode::output);
     Rtc::Data rtcData = rtc.get(rtcId);
     debug << "Pin " << pin << ": ";
     if ((rtcData & rtcSetMask) == 0) {
@@ -60,7 +59,7 @@ void GpioOutput::execute(const std::string& command) {
         if (blinkOn == 0 || blinkOff == 0) {
             clearBlink();
         } else {
-            nextBlink = millis();
+            nextBlink = esp.millis();
         }
         return;
     }
@@ -78,13 +77,13 @@ void GpioOutput::execute(const std::string& command) {
 }
 
 void GpioOutput::update(Actions action) {
-    if (nextBlink != 0 && nextBlink <= millis()) {
+    if (nextBlink != 0 && nextBlink <= esp.millis()) {
         toggle();
         nextBlink += value ? blinkOn : blinkOff;
     }
 
     if (changed) {
-        bool localValue = digitalRead(pin);
+        bool localValue = esp.digitalRead(pin);
         action.fire({tools::intToString(invert ? !localValue : localValue),
             tools::intToString(blinkOn), tools::intToString(blinkOff)});
         changed = false;
@@ -107,7 +106,7 @@ void GpioOutput::clearBlink() {
 void GpioOutput::setValue() {
     bool output = getOutput();
     debug << "Pin " << pin << ": value=" << output << std::endl;
-    digitalWrite(pin, output);
+    esp.digitalWrite(pin, output);
     Rtc::Data rtcData = rtcSetMask;
     if (value) {
         rtcData |= rtcValueMask;

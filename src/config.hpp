@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 
 #include "common/InterfaceConfig.hpp"
+#include "common/EspApi.hpp"
 #include "common/rtc.hpp"
 
 #include <string>
@@ -42,7 +43,7 @@ struct DeviceConfig {
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
-void initConfig(std::ostream& debug, DebugStreambuf& debugStream, Rtc& rtc,
-    MqttClient& mqttClient);
+void initConfig(std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp,
+    Rtc& rtc, MqttClient& mqttClient);
 
 #endif // CONFIG_HPP

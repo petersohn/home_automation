@@ -3,13 +3,14 @@
 
 #include "SensorInterface.hpp"
 #include "common/Interface.hpp"
+#include "common/EspApi.hpp"
 
 #include <ostream>
 
 class CounterInterface : public Interface {
 public:
-    CounterInterface(std::ostream& debug, std::string name, uint8_t pin,
-            int bounceTime, float multiplier, int interval,
+    CounterInterface(std::ostream& debug, EspApi& esp, std::string name,
+            uint8_t pin, int bounceTime, float multiplier, int interval,
             int offset, std::vector<std::string> pulse);
 
     void start() override;
@@ -22,6 +23,8 @@ private:
     std::unique_ptr<CounterSensor> createCounterSensor(float multiplier);
     void onRise();
     void resetMinInterval();
+
+    EspApi& esp;
 
     CounterSensor* counterSensor  = nullptr;
     int bounceTime;

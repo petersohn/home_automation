@@ -1,12 +1,11 @@
 #include "PowerSupplyInterface.hpp"
 
-#include <Arduino.h>
-
-PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug,
+PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug, EspApi& esp,
         uint8_t powerSwitchPin, uint8_t resetSwitchPin, uint8_t powerCheckPin,
         unsigned pushTime, unsigned forceOffTime, unsigned checkTime,
         const std::string& initialState)
     : debug(debug)
+    , esp(esp)
     , powerSwitchPin(powerSwitchPin)
     , resetSwitchPin(resetSwitchPin)
     , powerCheckPin(powerCheckPin)
@@ -21,9 +20,9 @@ PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug,
         targetState = TargetState::Off;
     }
 
-    pinMode(powerSwitchPin, INPUT);
-    pinMode(resetSwitchPin, INPUT);
-    pinMode(powerCheckPin, INPUT);
+    esp.pinMode(powerSwitchPin, GpioMode::input);
+    esp.pinMode(resetSwitchPin, GpioMode::input);
+    esp.pinMode(powerCheckPin, GpioMode::input);
 }
 
 void PowerSupplyInterface::start() {
@@ -31,13 +30,13 @@ void PowerSupplyInterface::start() {
 
 void PowerSupplyInterface::pullDown(uint8_t pin)
 {
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, 0);
+    esp.pinMode(pin, GpioMode::output);
+    esp.digitalWrite(pin, 0);
 }
 
 void PowerSupplyInterface::release(uint8_t pin)
 {
-    pinMode(pin, INPUT);
+    esp.pinMode(pin, GpioMode::input);
 }
 
 
@@ -62,9 +61,9 @@ void PowerSupplyInterface::execute(const std::string& command) {
     }
     if (command == "forceOff") {
         targetState = TargetState::Off;
-        if (digitalRead(powerCheckPin) != 0) {
+        if (esp.digitalRead(powerCheckPin) != 0) {
             pullDown(powerSwitchPin);
-            powerButtonRelease = millis() + forceOffTime;
+            powerButtonRelease = esp.millis() + forceOffTime;
         }
         return;
     }
@@ -73,16 +72,16 @@ void PowerSupplyInterface::execute(const std::string& command) {
             targetState = TargetState::On;
             nextCheck = 0;
         }
-        if (digitalRead(powerCheckPin) != 0) {
+        if (esp.digitalRead(powerCheckPin) != 0) {
             pullDown(resetSwitchPin);
-            resetButtonRelease = millis() + pushTime;
+            resetButtonRelease = esp.millis() + pushTime;
         }
         return;
     }
 }
 
 void PowerSupplyInterface::update(Actions /*action*/) {
-    auto now = millis();
+    auto now = esp.millis();
     if (powerButtonRelease != 0 && now > powerButtonRelease) {
         debug << "power button release" << std::endl;
         release(powerSwitchPin);
@@ -99,12 +98,12 @@ void PowerSupplyInterface::update(Actions /*action*/) {
     }
 
     debug << "check" << std::endl;
-    if (digitalRead(powerCheckPin) !=
+    if (esp.digitalRead(powerCheckPin) !=
             (targetState == TargetState::On ? 1 : 0) &&
             powerButtonRelease == 0) {
         debug << "power button press" << std::endl;
         pullDown(powerSwitchPin);
-        powerButtonRelease = millis() + pushTime;
+        powerButtonRelease = esp.millis() + pushTime;
     }
     nextCheck = now + checkTime;
 }

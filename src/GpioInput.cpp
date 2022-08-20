@@ -2,10 +2,6 @@
 
 #include "tools/string.hpp"
 
-#include <Arduino.h>
-#include <FunctionalInterrupt.h>
-
-#include <ets_sys.h>
 
 namespace {
 
@@ -44,15 +40,16 @@ int encodeState(const State& state) {
 
 }
 
-GpioInput::GpioInput(std::ostream& debug, uint8_t pin, CycleType cycleType,
+GpioInput::GpioInput(std::ostream& debug, EspApi& esp, uint8_t pin,
+        CycleType cycleType,
     unsigned interval)
-    : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
-    pinMode(pin, INPUT);
-    lastChanged = millis();
-    bool currentState = digitalRead(pin);
+    : debug(debug), esp(esp), pin(pin), cycleType(cycleType), interval(interval) {
+    esp.pinMode(pin, GpioMode::input);
+    lastChanged = esp.millis();
+    bool currentState = esp.digitalRead(pin);
     state = encodeState({currentState, currentState});
     debug << "starting value=" << currentState << " state=" << state << std::endl;
-    attachInterrupt(pin, [this]() { onChange(); }, CHANGE);
+    esp.attachInterrupt(pin, [this]() { onChange(); }, InterruptMode::change);
 }
 
 void GpioInput::start() {
@@ -64,12 +61,12 @@ void GpioInput::execute(const std::string& /*command*/) {
 
 void GpioInput::onChange() {
     State currentState = decodeState(state);
-    bool newState = digitalRead(pin);
+    bool newState = esp.digitalRead(pin);
     if (newState == currentState.real) {
         return;
     }
     currentState.real = newState;
-    auto now = millis();
+    auto now = esp.millis();
 
     if (now - lastChanged > interval) {
         if (currentState.real == currentState.saved) {
@@ -82,17 +79,21 @@ void GpioInput::onChange() {
 }
 
 void GpioInput::update(Actions action) {
-    ETS_GPIO_INTR_DISABLE();
-    auto now = millis();
-    State currentState = decodeState(state);
-    int currentCycles = cycles;
-    bool lastState = currentState.saved;
-    if (now - lastChanged > interval) {
-        currentState.saved = currentState.real;
+    int currentCycles = 0;
+    bool lastState = false;
+    State currentState{false, false};
+    {
+        auto guard = esp.disableInterrupt();
+        auto now = esp.millis();
+        currentState = decodeState(state);
+        currentCycles = cycles;
+        lastState = currentState.saved;
+        if (now - lastChanged > interval) {
+            currentState.saved = currentState.real;
+        }
+        cycles = 0;
+        state = encodeState(currentState);
     }
-    cycles = 0;
-    state = encodeState(currentState);
-    ETS_GPIO_INTR_ENABLE();
 
     switch (cycleType) {
     case CycleType::none:
