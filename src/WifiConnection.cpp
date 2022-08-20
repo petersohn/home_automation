@@ -35,6 +35,7 @@ void WifiConnection::connectionFailed() {
     if (lastConnectionFailure == 0) {
         debug << "\nConnection failed for the first time. Trying again."
             << std::endl;
+        lastConnectionFailure = now;
     } else {
         debug << "\nConnection failed. Trying again. Rebooting in "
             << static_cast<long>(lastConnectionFailure) + currentBackoff - now
@@ -45,7 +46,6 @@ void WifiConnection::connectionFailed() {
             ESP.restart();
         }
     }
-    lastConnectionFailure = now;
     connecting = false;
     nextAttempt += retryInterval;
 }
