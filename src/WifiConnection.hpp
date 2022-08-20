@@ -1,6 +1,8 @@
 #ifndef WIFICONNECTION_HPP
 #define WIFICONNECTION_HPP
 
+#include "common/rtc.hpp"
+
 #include <Arduino.h>
 
 extern "C" {
@@ -12,11 +14,12 @@ extern "C" {
 
 class WifiConnection {
 public:
-    WifiConnection(std::ostream& debug): debug(debug) {}
+    WifiConnection(std::ostream& debug, Rtc& rtc): debug(debug), rtc(rtc) {}
     void init();
     bool connectIfNeeded(const std::string& ssid, const std::string& password);
 private:
     std::ostream& debug;
+    Rtc& rtc;
 
     unsigned long nextAttempt = 0;
     bool connecting = false;

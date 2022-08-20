@@ -1,6 +1,5 @@
 #include "GpioOutput.hpp"
 
-#include "rtc.hpp"
 #include "tools/string.hpp"
 
 #include <cstdlib>
@@ -23,10 +22,10 @@ bool GpioOutput::getOutput() {
 }
 
 GpioOutput::GpioOutput(
-    std::ostream& debug, uint8_t pin, bool defaultValue, bool invert)
-        : debug(debug), pin(pin), rtcId(rtcNext()), invert(invert) {
+    std::ostream& debug, Rtc& rtc, uint8_t pin, bool defaultValue, bool invert)
+        : debug(debug), rtc(rtc), pin(pin), rtcId(rtc.next()), invert(invert) {
     pinMode(pin, OUTPUT);
-    RtcData rtcData = rtcGet(rtcId);
+    Rtc::Data rtcData = rtc.get(rtcId);
     debug << "Pin " << pin << ": ";
     if ((rtcData & rtcSetMask) == 0) {
         value = defaultValue;
@@ -109,9 +108,9 @@ void GpioOutput::setValue() {
     bool output = getOutput();
     debug << "Pin " << pin << ": value=" << output << std::endl;
     digitalWrite(pin, output);
-    RtcData rtcData = rtcSetMask;
+    Rtc::Data rtcData = rtcSetMask;
     if (value) {
         rtcData |= rtcValueMask;
     }
-    rtcSet(rtcId, rtcData);
+    rtc.set(rtcId, rtcData);
 }

@@ -1,9 +1,9 @@
 #include "client.hpp"
 #include "config.hpp"
 #include "DebugStream.hpp"
+#include "EspRtc.hpp"
 #include "WifiStream.hpp"
 #include "MqttStream.hpp"
-#include "rtc.hpp"
 #include "WifiConnection.hpp"
 #include "common/Action.hpp"
 #include "common/Interface.hpp"
@@ -41,7 +41,8 @@ void setDeviceName() {
 
 DebugStreambuf debugStream;
 std::ostream debug(&debugStream);
-WifiConnection wifiConnection(debug);
+EspRtc rtc;
+WifiConnection wifiConnection(debug, rtc);
 MqttClient mqttClient(debug);
 std::unique_ptr<WifiStreambuf> wifiStream;
 std::unique_ptr<MqttStreambuf> mqttStream;
@@ -51,8 +52,7 @@ std::unique_ptr<MqttStreambuf> mqttStream;
 void setup()
 {
     WiFi.mode(WIFI_STA);
-    rtcInit();
-    initConfig(debug, debugStream, mqttClient);
+    initConfig(debug, debugStream, rtc, mqttClient);
     setDeviceName();
 
     if (deviceConfig.debugTopic != "") {

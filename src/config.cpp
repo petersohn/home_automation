@@ -55,8 +55,13 @@ void parseTo(const JsonObject& jsonObject, std::string& target,
 
 class ConfigParser {
 public:
-    ConfigParser(std::ostream& debug, DebugStreambuf& debugStream, MqttClient& mqttClient)
-        : debug(debug), debugStream(debugStream), mqttClient(mqttClient) {}
+    ConfigParser(std::ostream& debug, DebugStreambuf& debugStream, Rtc& rtc,
+            MqttClient& mqttClient)
+        : debug(debug)
+        , debugStream(debugStream)
+        , rtc(rtc)
+        , mqttClient(mqttClient) {}
+
     void parse() {
         SPIFFS.begin();
 
@@ -67,6 +72,7 @@ public:
 private:
     std::ostream& debug;
     DebugStreambuf& debugStream;
+    Rtc& rtc;
     MqttClient& mqttClient;
 
     ParsedData parseFile(const char* filename) {
@@ -214,7 +220,7 @@ private:
         } else if (type == "output") {
             uint8_t pin = 0;
             return getPin(data, pin)
-                    ?  std::make_unique<GpioOutput>(debug,
+                    ?  std::make_unique<GpioOutput>(debug, rtc,
                             pin, data["default"], data["invert"])
                     : nullptr;
         } else if (type == "analog") {
@@ -295,7 +301,7 @@ private:
                     && getRequiredValue(data, "downMovementPin", downMovementPin)
                     && getRequiredValue(data, "upPin", upPin)
                     && getRequiredValue(data, "downPin", downPin))
-                    ?  std::make_unique<Cover>(debug,
+                    ?  std::make_unique<Cover>(debug, rtc,
                             upMovementPin, downMovementPin, upPin, downPin,
                             getJsonWithDefault(data["invertInput"], false),
                             getJsonWithDefault(data["invertOutput"], false),
@@ -455,6 +461,7 @@ private:
 GlobalConfig globalConfig;
 DeviceConfig deviceConfig;
 
-void initConfig(std::ostream& debug, DebugStreambuf& debugStream, MqttClient& mqttClient) {
-    ConfigParser(debug, debugStream, mqttClient).parse();
+void initConfig(std::ostream& debug, DebugStreambuf& debugStream, Rtc& rtc,
+        MqttClient& mqttClient) {
+    ConfigParser(debug, debugStream, rtc, mqttClient).parse();
 }

@@ -1,7 +1,5 @@
 #include "WifiConnection.hpp"
 
-#include "rtc.hpp"
-
 #include <ESP8266WiFi.h>
 extern "C" {
 #include <user_interface.h>
@@ -20,12 +18,12 @@ constexpr unsigned long connectionTimeout = 40000;
 void WifiConnection::setBackoff(unsigned long value) {
     debug << "New backoff: " << value << std::endl;
     currentBackoff = value;
-    rtcSet(backoffRtcId, currentBackoff);
+    rtc.set(backoffRtcId, currentBackoff);
 }
 
 void WifiConnection::init() {
-    backoffRtcId = rtcNext();
-    currentBackoff = rtcGet(backoffRtcId);
+    backoffRtcId = rtc.next();
+    currentBackoff = rtc.get(backoffRtcId);
     if (currentBackoff == 0) {
         currentBackoff = initialBackoff;
     }

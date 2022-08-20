@@ -1,7 +1,6 @@
 #include "Cover.hpp"
 
 #include "ArduinoJson.hpp"
-#include "rtc.hpp"
 #include "tools/string.hpp"
 
 #include <Arduino.h>
@@ -24,11 +23,11 @@ Cover::Movement::Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin,
         outputPin(outputPin),
         endPosition(endPosition),
         direction(direction),
-        timeId(rtcNext()),
+        timeId(parent.rtc.next()),
         debugPrefix(parent.debugPrefix + directionName + ": ") {
     pinMode(inputPin, INPUT);
     pinMode(outputPin, OUTPUT);
-    moveTime = rtcGet(timeId);
+    moveTime = parent.rtc.get(timeId);
 }
 
 void Cover::Movement::start() {
@@ -102,7 +101,7 @@ int Cover::Movement::update() {
             stop();
             if (moveStartPosition == 100 - endPosition) {
                 moveTime = now - moveStartTime;
-                rtcSet(timeId, moveTime);
+                parent.rtc.set(timeId, moveTime);
                 log("Move time: " + tools::intToString(moveTime));
             }
         }
@@ -124,10 +123,11 @@ int Cover::Movement::update() {
     return newPosition;
 }
 
-Cover::Cover(std::ostream& debug, uint8_t upMovementPin,
+Cover::Cover(std::ostream& debug, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
         bool invertInput, bool invertOutput, unsigned closedPosition)
         : debug(debug)
+        , rtc(rtc)
         , debugPrefix("Cover " + tools::intToString(upPin) + "." +
             tools::intToString(downPin) + ": ")
         , up(*this, upMovementPin, upPin, 100, 1, "up")
@@ -135,9 +135,9 @@ Cover::Cover(std::ostream& debug, uint8_t upMovementPin,
         , invertInput(invertInput)
         , invertOutput(invertOutput)
         , closedPosition(closedPosition)
-        , positionId(rtcNext())
+        , positionId(rtc.next())
          {
-    position = rtcGet(positionId) - 1;
+    position = rtc.get(positionId) - 1;
     log("Initial position: " + tools::intToString(position));
     stop();
 }
@@ -220,7 +220,7 @@ void Cover::update(Actions action) {
 
     if (newPosition != position || stateChanged) {
         position = newPosition;
-        rtcSet(positionId, position + 1);
+        rtc.set(positionId, position + 1);
         std::string stateName;
 
         if (up.isStarted()) {
