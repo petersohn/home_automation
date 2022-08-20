@@ -19,49 +19,49 @@
 							<builder buildPath="${workspace_loc:/home_automation}/Release" command="${sloeber.make_location}make" id="io.sloeber.sketch.builder.1833769558" keepEnvironmentInBuildfile="false" name="Arduino sketch builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="io.sloeber.sketch.builder"/>
 							<tool id="io.sloeber.tool.sketch.compiler.cpp.1432396943" name="Arduino C++ Compiler" superClass="io.sloeber.tool.sketch.compiler.cpp">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.cpp.sketch.option.incpath.1483627664" name="Include Paths (-I)" superClass="io.sloeber.compiler.cpp.sketch.option.incpath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/OneWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DallasTemperature}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Wire}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/esp8266/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.1156095381" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
 							<tool id="io.sloeber.tool.compiler.c.881144257" name="Arduino C Compiler" superClass="io.sloeber.tool.compiler.c">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.c.sketch.option.incpath.695779225" name="Include Paths (-I)" superClass="io.sloeber.compiler.c.sketch.option.incpath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/OneWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DallasTemperature}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Wire}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/esp8266/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.1236170514" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
 							<tool id="io.sloeber.tool.sketch.compiler.s.1261624139" name="Arduino Assembler" superClass="io.sloeber.tool.sketch.compiler.s">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.asm.sketch.option.incpath.2009403096" name="Include Paths (-I)" superClass="io.sloeber.compiler.asm.sketch.option.incpath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/OneWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ESP8266WiFi/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/PubSubClient/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DallasTemperature}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Wire}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/esp8266/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/core}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/core/variant}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/DHT_sensor_library}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/ArduinoJson/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_Unified_Sensor}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.1094414370" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>
