@@ -1,7 +1,5 @@
 #include "WifiConnection.hpp"
 
-#include <ESP8266WiFi.h>
-
 namespace {
 
 constexpr int checkInterval = 500;
@@ -29,30 +27,31 @@ void WifiConnection::init() {
 
 void WifiConnection::connectionFailed() {
     auto now = esp.millis();
+    debug << "Connection failed";
     if (lastConnectionFailure == 0) {
-        debug << "\nConnection failed for the first time. Trying again."
+        debug << " for the first time. Trying again."
             << std::endl;
         lastConnectionFailure = now;
     } else {
-        debug << "\nConnection failed. Trying again. Rebooting in "
-            << static_cast<long>(lastConnectionFailure) + currentBackoff - now
-            << " ms (backoff=" << currentBackoff << " ms)" << std::endl;
         if (now > lastConnectionFailure + currentBackoff) {
-            debug << "Failure to connect, rebooting." << std::endl;
+            debug << ", rebooting." << std::endl;
             setBackoff(std::min(currentBackoff * 2, maximumBackoff));
             esp.restart(true);
         }
+        debug << ", trying again. Rebooting in "
+            << static_cast<long>(lastConnectionFailure) + currentBackoff - now
+            << " ms" << std::endl;
     }
     connecting = false;
     nextAttempt += retryInterval;
 }
 
 bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string& password) {
-    int status = WiFi.status();
-    if (status == WL_CONNECTED) {
+    auto status = wifi.getStatus();
+    if (status == WifiStatus::Connected) {
         if (connecting) {
             debug << "\nConnection to wifi successful. IP address = "
-                << WiFi.localIP().toString().c_str() << std::endl;
+                << wifi.getIp() << std::endl;
             connecting = false;
 //            if (wifiDebugger) {
 //                wifiDebugger->begin();
@@ -70,7 +69,7 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
 
     if (!connecting) {
         debug << "Connecting to SSID " << ssid << "..." << std::endl;
-        WiFi.begin(ssid.c_str(), password.c_str());
+        wifi.begin(ssid, password);
         connecting = true;
         nextAttempt = now;
         connectionStarted = now;
@@ -78,13 +77,9 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
     }
 
     switch (status) {
-    case WL_NO_SHIELD:
-        debug << "Device error." << std::endl;
-        // never retry
-        nextAttempt = static_cast<unsigned long>(-1);
+    case WifiStatus::Connected:
         break;
-    case WL_IDLE_STATUS:
-    case WL_DISCONNECTED:
+    case WifiStatus::Connecting:
         debug << "Waiting for wifi connection ("
             << connectionStarted + connectionTimeout - now
             << " remaining)..." << std::endl;
@@ -94,18 +89,25 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
             nextAttempt += checkInterval;
         }
         break;
-    case WL_CONNECT_FAILED:
+    case WifiStatus::Disconnected:
+        debug << "Not connected. This should not happen." << std::endl;
         connectionFailed();
         break;
-    case WL_NO_SSID_AVAIL:
+    case WifiStatus::ConnectionFailed:
+        connectionFailed();
+        break;
+    case WifiStatus::ApNotFound:
         debug << "SSID not found." << std::endl;
         connectionFailed();
         break;
-    case WL_CONNECTED:
+    case WifiStatus::WrongPassword:
+        debug << "Wrong password." << std::endl;
+        connectionFailed();
         break;
     default:
+        debug << "This should not happen." << std::endl;
         connectionFailed();
         break;
     }
-    return status == WL_CONNECTED;
+    return status == WifiStatus::Connected;
 }

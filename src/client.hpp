@@ -2,6 +2,7 @@
 #define CLIENT_HPP
 
 #include "common/EspApi.hpp"
+#include "common/Wifi.hpp"
 
 #include <PubSubClient.h>
 
@@ -20,7 +21,7 @@ class JsonObject;
 
 class MqttClient {
 public:
-    MqttClient(std::ostream& debug, EspApi& esp);
+    MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi);
 
     void loop();
     void disconnect();
@@ -50,6 +51,7 @@ private:
 
     std::ostream& debug;
     EspApi& esp;
+    Wifi& wifi;
 
     unsigned long nextConnectionAttempt = 0;
     unsigned long availabilityReceiveTimeLimit = 0;
@@ -64,7 +66,6 @@ private:
     std::vector<Message> receivedMessages;
     std::vector<Subscription> subscriptions;
 
-    std::string getMac();
     std::string getStatusMessage(bool available, bool restarted);
     void resetAvailabilityReceive();
     void connectionBackoff();

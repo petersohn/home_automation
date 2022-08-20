@@ -3,7 +3,6 @@
 #include "ArduinoJson.hpp"
 #include "config.hpp"
 #include "common/Interface.hpp"
-#include "tools/string.hpp"
 #include "ArduinoJson.hpp"
 
 #include <ESP8266WiFi.h>
@@ -24,23 +23,14 @@ constexpr unsigned availabilityReceiveTimeout = 2000;
 
 } // unnamed namespace
 
-MqttClient::MqttClient(std::ostream& debug, EspApi& esp)
+MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi)
     : debug(debug)
     , esp(esp)
+    , wifi(wifi)
     , backoff(initialBackoff)
     , wifiClient(std::make_unique<WiFiClient>())
     , client(std::make_unique<PubSubClient>())
 {
-}
-
-std::string MqttClient::getMac() {
-    std::uint8_t mac[6];
-    WiFi.macAddress(mac);
-    tools::Join result{":"};
-    for (int i = 0; i < 6; ++i) {
-        result.add(tools::intToString(mac[i], 16));
-    }
-    return result.get();
 }
 
 std::string MqttClient::getStatusMessage(bool available, bool restarted) {
@@ -48,12 +38,11 @@ std::string MqttClient::getStatusMessage(bool available, bool restarted) {
     JsonObject& message = buffer.createObject();
     message["name"] = deviceConfig.name.c_str();
     message["available"] = available;
-    message["mac"] = getMac();
+    message["mac"] = wifi.getMac();
     if (available) {
         message["restarted"] = restarted;
-        message["ip"] = WiFi.localIP().toString();
+        message["ip"] = wifi.getIp();
         message["uptime"] = esp.millis();
-        message["rssi"] = WiFi.RSSI();
         message["freeMemory"] = esp.getFreeHeap();
     }
     std::string result;
@@ -79,7 +68,7 @@ void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
     auto name = message.get<std::string>("name");
     auto mac = message.get<std::string>("mac");
 
-    debug << "Got availability: available=" << tools::intToString(available)
+    debug << "Got availability: available=" << available
         << " name=" << name << " mac=" << mac << std::endl;
 
     if (name != deviceConfig.name) {
@@ -87,7 +76,7 @@ void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
         return;
     }
 
-    if (mac != getMac() && available) {
+    if (mac != wifi.getMac() && available) {
         debug << "Device collision." << std::endl;
         client->disconnect();
         connectionBackoff();
@@ -138,7 +127,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
             .setCallback([this](const char* topic, const unsigned char* payload, unsigned length) {
                 onMessageReceived(topic, payload, length);
             });
-    std::string clientId = deviceConfig.name + "-" + getMac();
+    std::string clientId = deviceConfig.name + "-" + wifi.getMac();
     debug << "clientId=" + clientId << std::endl;
     if (deviceConfig.availabilityTopic.length() != 0) {
         willMessage = getStatusMessage(false, false);
@@ -171,8 +160,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
 MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
     if (!client->connected()) {
         initialized = false;
-        debug << "Client status = " + tools::intToString(client->state())
-            << std::endl;
+        debug << "Client status = " + client->state() << std::endl;
         debug << "Connecting to MQTT broker..." << std::endl;
         for (const ServerConfig& server : globalConfig.servers) {
             if (tryToConnect(server)) {

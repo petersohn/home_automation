@@ -3,6 +3,7 @@
 #include "DebugStream.hpp"
 #include "EspApiImpl.hpp"
 #include "EspRtc.hpp"
+#include "EspWifi.hpp"
 #include "WifiStream.hpp"
 #include "MqttStream.hpp"
 #include "WifiConnection.hpp"
@@ -44,8 +45,10 @@ DebugStreambuf debugStream;
 std::ostream debug(&debugStream);
 EspApiImpl esp;
 EspRtc rtc;
-WifiConnection wifiConnection(debug, esp, rtc);
-MqttClient mqttClient(debug, esp);
+EspWifi wifi;
+
+WifiConnection wifiConnection(debug, esp, rtc, wifi);
+MqttClient mqttClient(debug, esp, wifi);
 std::unique_ptr<WifiStreambuf> wifiStream;
 std::unique_ptr<MqttStreambuf> mqttStream;
 
