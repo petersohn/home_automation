@@ -18,6 +18,7 @@ constexpr unsigned long connectionTimeout = 40000;
 } // unnamed namespace
 
 void WifiConnection::setBackoff(unsigned long value) {
+    debug << "New backoff: " << value << std::endl;
     currentBackoff = value;
     rtcSet(backoffRtcId, currentBackoff);
 }
@@ -28,6 +29,7 @@ void WifiConnection::init() {
     if (currentBackoff == 0) {
         currentBackoff = initialBackoff;
     }
+    debug << "Initial backoff: " << currentBackoff << std::endl;
 }
 
 void WifiConnection::connectionFailed() {
@@ -37,11 +39,11 @@ void WifiConnection::connectionFailed() {
             << std::endl;
     } else {
         debug << "\nConnection failed. Trying again. Rebooting in "
-            << now - lastConnectionFailure - currentBackoff
+            << static_cast<long>(lastConnectionFailure) + currentBackoff - now
             << " ms (backoff=" << currentBackoff << " ms)" << std::endl;
         if (now > lastConnectionFailure + currentBackoff) {
             debug << "Failure to connect, rebooting." << std::endl;
-            setBackoff(std::max(currentBackoff * 2, maximumBackoff));
+            setBackoff(std::min(currentBackoff * 2, maximumBackoff));
             ESP.restart();
         }
     }

@@ -52,7 +52,6 @@ void setup()
 {
     WiFi.mode(WIFI_STA);
     rtcInit();
-    wifiConnection.init();
     initConfig(debug, debugStream, mqttClient);
     setDeviceName();
 
@@ -61,6 +60,8 @@ void setup()
             mqttClient, deviceConfig.debugTopic);
         debugStream.add(mqttStream.get());
     }
+
+    wifiConnection.init();
 }
 
 void loop()
