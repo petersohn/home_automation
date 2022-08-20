@@ -14,7 +14,7 @@ public:
 
     virtual unsigned long millis() override;
     virtual void delay(unsigned long ms) override;
-    virtual void restart() override;
+    virtual void restart(bool hard) override;
 
     virtual uint32_t getFreeHeap() override;
 

@@ -40,8 +40,12 @@ void EspApiImpl::delay(unsigned long ms) {
     ::delay(ms);
 }
 
-void EspApiImpl::restart() {
-    ESP.restart();
+void EspApiImpl::restart(bool hard) {
+    if (hard) {
+        ESP.reset();
+    } else {
+        ESP.restart();
+    }
 }
 
 uint32_t EspApiImpl::getFreeHeap() {

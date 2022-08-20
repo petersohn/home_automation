@@ -42,7 +42,7 @@ public:
 
     virtual unsigned long millis() = 0;
     virtual void delay(unsigned long ms) = 0;
-    virtual void restart() = 0;
+    virtual void restart(bool hard) = 0;
 
     virtual uint32_t getFreeHeap() = 0;
 

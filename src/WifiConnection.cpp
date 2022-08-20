@@ -1,9 +1,6 @@
 #include "WifiConnection.hpp"
 
 #include <ESP8266WiFi.h>
-extern "C" {
-#include <user_interface.h>
-}
 
 namespace {
 
@@ -43,7 +40,7 @@ void WifiConnection::connectionFailed() {
         if (now > lastConnectionFailure + currentBackoff) {
             debug << "Failure to connect, rebooting." << std::endl;
             setBackoff(std::min(currentBackoff * 2, maximumBackoff));
-            ESP.restart();
+            esp.restart(true);
         }
     }
     connecting = false;
