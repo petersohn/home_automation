@@ -22,6 +22,7 @@ private:
 
     unsigned long nextAttempt = 0;
     bool connecting = false;
+    bool connected = false;
     unsigned backoffRtcId = 0;
     unsigned long currentBackoff = 0;
     unsigned long lastConnectionFailure = 0;

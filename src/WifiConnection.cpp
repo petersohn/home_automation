@@ -2,7 +2,7 @@
 
 namespace {
 
-constexpr int checkInterval = 500;
+constexpr int checkInterval = 1000;
 constexpr int retryInterval = 5000;
 constexpr unsigned long initialBackoff = 60000;
 constexpr unsigned long maximumBackoff = 600000;
@@ -49,18 +49,18 @@ void WifiConnection::connectionFailed() {
 bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string& password) {
     auto status = wifi.getStatus();
     if (status == WifiStatus::Connected) {
-        if (connecting) {
+        if (!connected) {
             debug << "\nConnection to wifi successful. IP address = "
                 << wifi.getIp() << std::endl;
-            connecting = false;
-//            if (wifiDebugger) {
-//                wifiDebugger->begin();
-//            }
+            connected = true;
             setBackoff(initialBackoff);
             lastConnectionFailure = 0;
         }
+        connecting = false;
         return true;
     }
+
+    connected = false;
 
     auto now = esp.millis();
     if (now < nextAttempt) {
@@ -83,7 +83,7 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
         debug << "Waiting for wifi connection ("
             << connectionStarted + connectionTimeout - now
             << " remaining)..." << std::endl;
-        if (connecting && now > connectionStarted + connectionTimeout) {
+        if (now > connectionStarted + connectionTimeout) {
             connectionFailed();
         } else {
             nextAttempt += checkInterval;
