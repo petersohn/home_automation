@@ -450,8 +450,8 @@ private:
         }
 
         debug << "\nStarting up...\n" << "Debug port = "
-            << result.debugPort << ", reset pin = " << result.resetPin
-            << std::endl;
+            << result.debugPort << ", reset pin = "
+            << static_cast<int>(result.resetPin) << std::endl;
 
         PARSE(*data.root, result, name);
         PARSE(*data.root, result, availabilityTopic);
