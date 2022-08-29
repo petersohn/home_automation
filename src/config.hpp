@@ -6,6 +6,7 @@
 #include "common/rtc.hpp"
 
 #include <string>
+#include <limits>
 #include <vector>
 #include <ostream>
 
@@ -31,6 +32,7 @@ struct DeviceConfig {
     std::unique_ptr<std::streambuf> debug;
     int debugPort = 2534;
     std::string debugTopic;
+    uint8_t resetPin = std::numeric_limits<uint8_t>::max();
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces;
 
     DeviceConfig() = default;

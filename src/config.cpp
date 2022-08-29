@@ -444,8 +444,14 @@ private:
 
         PARSE(*data.root, result, debugPort);
         PARSE(*data.root, result, debugTopic);
+        PARSE(*data.root, result, resetPin);
+        if (result.resetPin <= 16) {
+            esp.pinMode(result.resetPin, GpioMode::input);
+        }
+
         debug << "\nStarting up...\n" << "Debug port = "
-            << result.debugPort << "\n";
+            << result.debugPort << ", reset pin = " << result.resetPin
+            << std::endl;
 
         PARSE(*data.root, result, name);
         PARSE(*data.root, result, availabilityTopic);

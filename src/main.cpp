@@ -24,7 +24,7 @@ extern "C" {
 
 namespace {
 
-constexpr unsigned long timeLimit =
+constexpr unsigned long timeLimit = 
         std::numeric_limits<unsigned long>::max() - 60000;
 
 void setDeviceName() {
@@ -74,7 +74,7 @@ void loop()
     if (millis() >= timeLimit) {
         debug << "Approaching timer overflow. Rebooting." << std::endl;
         mqttClient.disconnect();
-        ESP.restart();
+        esp.restart(true);
     }
 
     const bool isConnected = wifiConnection.connectIfNeeded(
