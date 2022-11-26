@@ -18,7 +18,7 @@ void SensorInterface::execute(const std::string& /*command*/) {
 }
 
 void SensorInterface::update(Actions action) {
-    long now = esp.millis();
+    auto now = esp.millis();
     if ((nextExecution != 0 && now >= nextExecution)
             || (nextRetry != 0 && now >= nextRetry)) {
         if (now >= nextExecution) {

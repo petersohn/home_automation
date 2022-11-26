@@ -27,8 +27,8 @@ private:
     std::string name;
     int interval;
     int offset;
-    long nextExecution = 0;
-    long nextRetry = 0;
+    unsigned long nextExecution = 0;
+    unsigned long nextRetry = 0;
     std::vector<std::string> pulse;
     bool pulseSent = true;
 };

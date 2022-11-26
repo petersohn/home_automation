@@ -46,7 +46,7 @@ std::string intToString(int value, unsigned radix) {
     return result;
 }
 
-std::string floatToString(float value, int decimals) {
+std::string floatToString(double value, int decimals) {
     int intpart = static_cast<int>(value);
     std::string result = intToString(intpart);
     value -= intpart;

@@ -9,6 +9,7 @@
 #include "AnalogSensor.hpp"
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
+#include "Hlw8012Interface.hpp"
 #include "HM3301Sensor.hpp"
 #include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
@@ -17,6 +18,7 @@
 #include "SensorInterface.hpp"
 #include "StatusInterface.hpp"
 #include "DebugStream.hpp"
+#include "JsonParser.hpp"
 #include "common/CommandAction.hpp"
 #include "operation/OperationParser.hpp"
 #include "tools/collection.hpp"
@@ -30,28 +32,6 @@ using namespace ArduinoJson;
 
 namespace {
 
-struct ParsedData {
-    std::unique_ptr<DynamicJsonBuffer> buffer = std::make_unique<DynamicJsonBuffer>(512);
-    JsonObject* root = nullptr;
-};
-
-template<typename T>
-void parseTo(const JsonObject& jsonObject, T& target, const char* name) {
-    auto value = jsonObject.get<JsonVariant>(name);
-    if (value.is<T>()) {
-        target = value.as<T>();
-    }
-}
-
-void parseTo(const JsonObject& jsonObject, std::string& target,
-        const char* name) {
-    auto value = jsonObject.get<const char*>(name);
-    if (value) {
-        target = value;
-    }
-}
-
-#define PARSE(from, to, name) parseTo((from), (to).name, #name)
 
 class ConfigParser {
 public:
@@ -61,7 +41,8 @@ public:
         , debugStream(debugStream)
         , esp(esp)
         , rtc(rtc)
-        , mqttClient(mqttClient) {}
+        , mqttClient(mqttClient)
+        , jsonParser(debug) {}
 
     void parse() {
         SPIFFS.begin();
@@ -77,28 +58,14 @@ private:
     Rtc& rtc;
     MqttClient& mqttClient;
 
-    ParsedData parseFile(const char* filename) {
-        ParsedData result;
-        File f = SPIFFS.open(filename, "r");
-        if (!f) {
-            debug << "Could not open file: " <<  filename << std::endl;
-            return result;
-        }
-        result.root = &result.buffer->parseObject(f);
-        if (*result.root == JsonObject::invalid()) {
-            debug << "Could not parse JSON file: " << filename << std::endl;
-            result.root = nullptr;
-        }
-
-        return result;
-    }
+    JsonParser jsonParser;
 
     ServerConfig parseServerConfig(const JsonObject& data) {
         ServerConfig result;
-        PARSE(data, result, address);
-        PARSE(data, result, port);
-        PARSE(data, result, username);
-        PARSE(data, result, password);
+        PARSE(jsonParser, data, result, address);
+        PARSE(jsonParser, data, result, port);
+        PARSE(jsonParser, data, result, username);
+        PARSE(jsonParser, data, result, password);
         return result;
     }
 
@@ -113,13 +80,13 @@ private:
 
     GlobalConfig readGlobalConfig(const char* filename) {
         GlobalConfig result;
-        ParsedData data = parseFile(filename);
+        ParsedData data = jsonParser.parseFile(filename);
         if (!data.root) {
             return result;
         }
 
-        PARSE(*data.root, result, wifiSSID);
-        PARSE(*data.root, result, wifiPassword);
+        PARSE(jsonParser, *data.root, result, wifiSSID);
+        PARSE(jsonParser, *data.root, result, wifiPassword);
 
         JsonArray& servers = data.root->get<JsonVariant>("servers");
         if (servers == JsonArray::invalid()) {
@@ -309,6 +276,13 @@ private:
                             getJsonWithDefault(data["invertOutput"], false),
                             getJsonWithDefault(data["closedPosition"], 0))
                     : nullptr;
+        } else if (type == "hlw8012") {
+            uint8_t powerPin = 0;
+            return (getRequiredValue(data, "powerPin", powerPin))
+                    ?  std::make_unique<Hlw8012Interface>(debug, esp,
+                            data.get<std::string>("name"), getInterval(data),
+                            getOffset(data), powerPin)
+                    : nullptr;
         } else if (type == "status") {
             return std::make_unique<StatusInterface>(mqttClient);
         } else {
@@ -342,7 +316,7 @@ private:
             result.emplace_back(std::make_unique<InterfaceConfig>());
             InterfaceConfig& interfaceConfig = *result.back();
 
-            PARSE(interface, interfaceConfig, name);
+            PARSE(jsonParser, interface, interfaceConfig, name);
 
             std::string commandTopic = interface["commandTopic"];
             if (!commandTopic.empty()) {
@@ -429,22 +403,22 @@ private:
 
     DeviceConfig readDeviceConfig(const char* filename) {
         DeviceConfig result;
-        ParsedData data = parseFile(filename);
+        ParsedData data = jsonParser.parseFile(filename);
         if (!data.root) {
             return result;
         }
 
         bool isDebug = false;
-        parseTo(*data.root, isDebug, "debug");
+        jsonParser.parseTo(*data.root, isDebug, "debug");
         if (isDebug) {
             Serial.begin(115200);
             result.debug = std::make_unique<PrintStreambuf>(Serial);
             debugStream.add(result.debug.get());
         }
 
-        PARSE(*data.root, result, debugPort);
-        PARSE(*data.root, result, debugTopic);
-        PARSE(*data.root, result, resetPin);
+        PARSE(jsonParser, *data.root, result, debugPort);
+        PARSE(jsonParser, *data.root, result, debugTopic);
+        PARSE(jsonParser, *data.root, result, resetPin);
         if (result.resetPin <= 16) {
             esp.pinMode(result.resetPin, GpioMode::input);
         }
@@ -453,8 +427,8 @@ private:
             << result.debugPort << ", reset pin = "
             << static_cast<int>(result.resetPin) << std::endl;
 
-        PARSE(*data.root, result, name);
-        PARSE(*data.root, result, availabilityTopic);
+        PARSE(jsonParser, *data.root, result, name);
+        PARSE(jsonParser, *data.root, result, availabilityTopic);
 
         parseInterfaces(*data.root, result.interfaces);
         parseActions(*data.root, result.interfaces);

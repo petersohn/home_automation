@@ -67,6 +67,11 @@
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301/1.0.2</locationURI>
 		</link>
 		<link>
+			<name>libraries/HLW8012</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/HLW8012/1.1.1</locationURI>
+		</link>
+		<link>
 			<name>libraries/OneWire</name>
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/OneWire/2.3.5</locationURI>

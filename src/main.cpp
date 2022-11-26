@@ -24,7 +24,7 @@ extern "C" {
 
 namespace {
 
-constexpr unsigned long timeLimit = 
+constexpr unsigned long timeLimit =
         std::numeric_limits<unsigned long>::max() - 60000;
 
 void setDeviceName() {
