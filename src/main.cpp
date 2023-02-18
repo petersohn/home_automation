@@ -8,6 +8,7 @@
 #include "MqttStream.hpp"
 #include "WifiConnection.hpp"
 #include "common/Action.hpp"
+#include "common/Backoff.hpp"
 #include "common/Interface.hpp"
 
 #include <Arduino.h>
@@ -47,8 +48,11 @@ EspApiImpl esp;
 EspRtc rtc;
 EspWifi wifi;
 
-WifiConnection wifiConnection(debug, esp, rtc, wifi);
-MqttClient mqttClient(debug, esp, wifi);
+Backoff wifiBackoff(debug, "wifi: ", esp, rtc, 120000, 1200000);
+WifiConnection wifiConnection(debug, esp, wifiBackoff, wifi);
+
+Backoff mqttBackoff(debug, "mqtt: ", esp, rtc, 180000, 1800000);
+MqttClient mqttClient(debug, esp, wifi, mqttBackoff);
 std::unique_ptr<WifiStreambuf> wifiStream;
 std::unique_ptr<MqttStreambuf> mqttStream;
 
@@ -65,8 +69,6 @@ void setup()
             mqttClient, deviceConfig.debugTopic);
         debugStream.add(mqttStream.get());
     }
-
-    wifiConnection.init();
 }
 
 void loop()

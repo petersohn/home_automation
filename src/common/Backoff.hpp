@@ -1,8 +1,8 @@
 #ifndef COMMON_BACKOFF_HPP
 #define COMMON_BACKOFF_HPP
 
-#include "common/rtc.hpp"
-#include "common/EspApi.hpp"
+#include "rtc.hpp"
+#include "EspApi.hpp"
 
 #include <functional>
 #include <ostream>

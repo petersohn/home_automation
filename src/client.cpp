@@ -22,11 +22,13 @@ constexpr unsigned availabilityReceiveTimeout = 2000;
 
 } // unnamed namespace
 
-MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi)
+MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi,
+        Backoff& backoff)
     : debug(debug)
     , esp(esp)
     , wifi(wifi)
-    , backoff(initialBackoff)
+    , backoff(backoff)
+    , currentBackoff(initialBackoff)
     , wifiClient(std::make_unique<WiFiClient>())
     , client(std::make_unique<PubSubClient>())
 {
@@ -54,12 +56,12 @@ void MqttClient::resetAvailabilityReceive() {
 }
 
 void MqttClient::connectionBackoff() {
-    nextConnectionAttempt = esp.millis() + backoff;
-    backoff = std::min(backoff * 2, maxBackoff);
+    nextConnectionAttempt = esp.millis() + currentBackoff;
+    currentBackoff = std::min(currentBackoff * 2, maxBackoff);
 }
 
 void MqttClient::resetConnectionBackoff() {
-    backoff = initialBackoff;
+    currentBackoff = initialBackoff;
 }
 
 void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
@@ -212,6 +214,7 @@ void MqttClient::loop() {
     if (esp.millis() >= nextConnectionAttempt) {
         switch (connectIfNeeded()) {
         case ConnectStatus::connectionSuccessful:
+            backoff.good();
             if (initialized) {
                 sendStatusMessage(false);
             } else {
@@ -226,6 +229,7 @@ void MqttClient::loop() {
             }
             break;
         case ConnectStatus::connectionFailed:
+            backoff.bad();
             connectionBackoff();
             break;
         case ConnectStatus::connecting:
