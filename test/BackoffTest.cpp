@@ -39,13 +39,13 @@ struct Fixture : public EspTestBase {
 };
 
 BOOST_FIXTURE_TEST_CASE(Good, Fixture) {
-    test(5, true);
-    test(10, true);
-    test(10, true);
-    test(15, true);
-    test(30, true);
-    test(50, true);
-    test(50, true);
+    BOOST_REQUIRE_NO_THROW(test(5, true));
+    BOOST_REQUIRE_NO_THROW(test(10, true));
+    BOOST_REQUIRE_NO_THROW(test(10, true));
+    BOOST_REQUIRE_NO_THROW(test(15, true));
+    BOOST_REQUIRE_NO_THROW(test(30, true));
+    BOOST_REQUIRE_NO_THROW(test(50, true));
+    BOOST_REQUIRE_NO_THROW(test(50, true));
 }
 
 BOOST_FIXTURE_TEST_CASE(Bad, Fixture) {
@@ -77,6 +77,22 @@ BOOST_FIXTURE_TEST_CASE(Bad, Fixture) {
     BOOST_REQUIRE_NO_THROW(test(10, false));
     BOOST_REQUIRE_NO_THROW(test(10, false));
     BOOST_REQUIRE_NO_THROW(test(10, false));
+    BOOST_REQUIRE_NO_THROW(test(10, false, true));
+}
+
+BOOST_FIXTURE_TEST_CASE(ResetAfterFix, Fixture) {
+    BOOST_REQUIRE_NO_THROW(test(5, false));
+    BOOST_REQUIRE_NO_THROW(test(5, false));
+    BOOST_REQUIRE_NO_THROW(test(6, false, true));
+
+    BOOST_REQUIRE_NO_THROW(test(5, false));
+    BOOST_REQUIRE_NO_THROW(test(6, true));
+
+    BOOST_REQUIRE_NO_THROW(test(50, false));
+    BOOST_REQUIRE_NO_THROW(test(11, false, true));
+
+    BOOST_REQUIRE_NO_THROW(test(10, false));
+    BOOST_REQUIRE_NO_THROW(test(11, false));
     BOOST_REQUIRE_NO_THROW(test(10, false, true));
 }
 
