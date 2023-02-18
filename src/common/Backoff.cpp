@@ -27,19 +27,19 @@ void Backoff::good() {
 
 void Backoff::bad() {
     auto now = esp.millis();
-    debug << "Connection failed";
+    debug << prefix << "Connection failed" ;
     if (lastFailure == 0) {
-        debug << prefix << " for the first time. Trying again."
+        debug << " for the first time. Trying again."
             << std::endl;
         lastFailure = now;
     } else {
         if (now > lastFailure + currentBackoff) {
-            debug << prefix << ", rebooting." << std::endl;
+            debug << ", rebooting." << std::endl;
             setBackoff(std::min(currentBackoff * 2, maximumBackoff));
             esp.restart(true);
             return;
         }
-        debug << prefix << ", trying again. Rebooting in "
+        debug << ", trying again. Rebooting in "
             << static_cast<long>(lastFailure) + currentBackoff - now
             << " ms" << std::endl;
     }

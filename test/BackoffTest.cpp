@@ -4,8 +4,6 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 
-#include <iostream>
-
 BOOST_AUTO_TEST_SUITE(BackoffTest)
 
 struct Fixture : public EspTestBase {
@@ -19,7 +17,7 @@ struct Fixture : public EspTestBase {
         esp.restarted = false;
         rtc.reset();
         backoff = std::make_unique<Backoff>(
-                std::cerr, "test: ", esp, rtc, 10, 50);
+                debug, "test: ", esp, rtc, 10, 50);
     }
 
     void test(unsigned long delay, bool good, bool shouldRestart = false) {
