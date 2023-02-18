@@ -4,7 +4,7 @@
 #include "Operation.hpp"
 #include "../common/InterfaceConfig.hpp"
 
-#include "../ArduinoJson.hpp"
+#include "common/ArduinoJson.hpp"
 
 #include <memory>
 #include <unordered_set>

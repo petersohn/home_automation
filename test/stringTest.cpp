@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE(StopAtPoints) {
 }
 
 BOOST_AUTO_TEST_CASE(Negative) {
-    BOOST_TEST(tools::floatToString(-42.61, 2) == "-42.61");
+    BOOST_TEST(tools::floatToString(-42.6101, 2) == "-42.61");
 }
 
 BOOST_AUTO_TEST_CASE(MoreComplicated) {

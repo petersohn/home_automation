@@ -1,6 +1,6 @@
 #include "config.hpp"
 
-#include "ArduinoJson.hpp"
+#include "common/ArduinoJson.hpp"
 #include "client.hpp"
 #include "CounterInterface.hpp"
 #include "Cover.hpp"

@@ -1,9 +1,8 @@
 #include "client.hpp"
 
-#include "ArduinoJson.hpp"
 #include "config.hpp"
+#include "common/ArduinoJson.hpp"
 #include "common/Interface.hpp"
-#include "ArduinoJson.hpp"
 
 #include <ESP8266WiFi.h>
 

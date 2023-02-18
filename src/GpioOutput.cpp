@@ -25,7 +25,7 @@ GpioOutput::GpioOutput(
         : debug(debug), esp(esp), rtc(rtc), pin(pin), rtcId(rtc.next()), invert(invert) {
     esp.pinMode(pin, GpioMode::output);
     Rtc::Data rtcData = rtc.get(rtcId);
-    debug << "Pin " << pin << ": ";
+    debug << "Pin " << static_cast<int>(pin) << ": ";
     if ((rtcData & rtcSetMask) == 0) {
         value = defaultValue;
         debug << "default value ";
@@ -39,7 +39,7 @@ GpioOutput::GpioOutput(
 
 void GpioOutput::execute(const std::string& command) {
     bool newValue = value;
-    debug << "Pin " << pin << " executing command: " << command << std::endl;
+    debug << "Pin " << static_cast<int>(pin) << " executing command: " << command << std::endl;
 
     std::size_t position = 0;
     std::string commandName = tools::nextToken(command, ' ', position);
@@ -105,7 +105,7 @@ void GpioOutput::clearBlink() {
 
 void GpioOutput::setValue() {
     bool output = getOutput();
-    debug << "Pin " << pin << ": value=" << output << std::endl;
+    debug << "Pin " << static_cast<int>(pin) << ": value=" << output << std::endl;
     esp.digitalWrite(pin, output);
     Rtc::Data rtcData = rtcSetMask;
     if (value) {

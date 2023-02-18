@@ -10,38 +10,8 @@ constexpr unsigned long connectionTimeout = 40000;
 
 } // unnamed namespace
 
-void WifiConnection::setBackoff(unsigned long value) {
-    debug << "New backoff: " << value << std::endl;
-    currentBackoff = value;
-    rtc.set(backoffRtcId, currentBackoff);
-}
-
-void WifiConnection::init() {
-    backoffRtcId = rtc.next();
-    currentBackoff = rtc.get(backoffRtcId);
-    if (currentBackoff == 0) {
-        currentBackoff = initialBackoff;
-    }
-    debug << "Initial backoff: " << currentBackoff << std::endl;
-}
-
 void WifiConnection::connectionFailed() {
-    auto now = esp.millis();
-    debug << "Connection failed";
-    if (lastConnectionFailure == 0) {
-        debug << " for the first time. Trying again."
-            << std::endl;
-        lastConnectionFailure = now;
-    } else {
-        if (now > lastConnectionFailure + currentBackoff) {
-            debug << ", rebooting." << std::endl;
-            setBackoff(std::min(currentBackoff * 2, maximumBackoff));
-            esp.restart(true);
-        }
-        debug << ", trying again. Rebooting in "
-            << static_cast<long>(lastConnectionFailure) + currentBackoff - now
-            << " ms" << std::endl;
-    }
+    backoff.bad();
     connecting = false;
     nextAttempt += retryInterval;
 }
@@ -53,8 +23,7 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
             debug << "\nConnection to wifi successful. IP address = "
                 << wifi.getIp() << std::endl;
             connected = true;
-            setBackoff(initialBackoff);
-            lastConnectionFailure = 0;
+            backoff.good();
         }
         connecting = false;
         return true;

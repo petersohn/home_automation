@@ -1,7 +1,7 @@
 #include "Hlw8012Interface.hpp"
 
 #include "tools/string.hpp"
-#include "ArduinoJson.hpp"
+#include "common/ArduinoJson.hpp"
 
 using namespace ArduinoJson;
 

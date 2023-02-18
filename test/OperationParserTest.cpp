@@ -1,3 +1,4 @@
+#include "common/ArduinoJson.hpp"
 #include "common/Interface.hpp"
 #include "operation/OperationParser.hpp"
 
@@ -7,6 +8,8 @@
 
 #include <iostream>
 #include <string>
+
+using namespace ArduinoJson;
 
 BOOST_AUTO_TEST_SUITE(OperationParserTest)
 

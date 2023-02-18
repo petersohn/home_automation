@@ -1,7 +1,7 @@
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
 
-#include "ArduinoJson.hpp"
+#include "common/ArduinoJson.hpp"
 
 #include <memory>
 #include <ostream>
