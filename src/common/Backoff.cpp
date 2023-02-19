@@ -20,9 +20,11 @@ Backoff::Backoff(std::ostream& debug, const char* prefix, EspApi& esp, Rtc& rtc,
 }
 
 void Backoff::good() {
-    debug << prefix << "Reset backoff" << std::endl;
-    setBackoff(initialBackoff);
-    lastFailure = 0;
+    if (lastFailure != 0) {
+        debug << prefix << "Reset backoff" << std::endl;
+        setBackoff(initialBackoff);
+        lastFailure = 0;
+    }
 }
 
 void Backoff::bad() {

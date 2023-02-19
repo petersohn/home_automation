@@ -4,12 +4,8 @@
 #include "common/ArduinoJson.hpp"
 #include "common/Interface.hpp"
 
-#include <ESP8266WiFi.h>
-
 #include <algorithm>
 #include <vector>
-
-static_assert(MQTT_MAX_PACKET_SIZE == 256, "check MQTT packet size");
 
 using namespace ArduinoJson;
 
@@ -23,14 +19,13 @@ constexpr unsigned availabilityReceiveTimeout = 2000;
 } // unnamed namespace
 
 MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi,
-        Backoff& backoff)
+        Backoff& backoff, MqttConnection& connection)
     : debug(debug)
     , esp(esp)
     , wifi(wifi)
     , backoff(backoff)
     , currentBackoff(initialBackoff)
-    , wifiClient(std::make_unique<WiFiClient>())
-    , client(std::make_unique<PubSubClient>())
+    , connection(connection)
 {
 }
 
@@ -79,7 +74,7 @@ void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
 
     if (mac != wifi.getMac() && available) {
         debug << "Device collision." << std::endl;
-        client->disconnect();
+        connection.disconnect();
         connectionBackoff();
     }
 
@@ -95,11 +90,9 @@ void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
 
 void MqttClient::onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length) {
-    receivedMessages.push_back(Message{topic,
-            std::string{reinterpret_cast<const char*>(payload), length}});
 }
 
-void MqttClient::handleMessage(const Message& message) {
+void MqttClient::handleMessage(const MqttConnection::Message& message) {
     debug << "Message received on topic " + message.topic << std::endl;
     if (message.topic == deviceConfig.availabilityTopic) {
         debug << message.payload << std::endl;
@@ -123,57 +116,54 @@ void MqttClient::handleMessage(const Message& message) {
 bool MqttClient::tryToConnect(const ServerConfig& server) {
     debug << "Connecting to " << server.address << ":" << server.port
         << " as " << server.username << std::endl;
-    bool result = false;
-    client->setServer(server.address.c_str(), server.port).setClient(*wifiClient)
-            .setCallback([this](const char* topic, const unsigned char* payload, unsigned length) {
-                onMessageReceived(topic, payload, length);
-            });
     std::string clientId = deviceConfig.name + "-" + wifi.getMac();
     debug << "clientId=" + clientId << std::endl;
-    if (deviceConfig.availabilityTopic.length() != 0) {
+
+    std::optional<MqttConnection::Message> will;
+    bool hasAvailability = deviceConfig.availabilityTopic.length() != 0;
+    if (hasAvailability) {
         willMessage = getStatusMessage(false, false);
-        result = client->connect(
-                clientId.c_str(),
-                server.username.c_str(),
-                server.password.c_str(),
-                deviceConfig.availabilityTopic.c_str(), 0, true,
-                willMessage.c_str());
-        if (result) {
-            debug << "Connected to server. Listening to availability topic."
-                << std::endl;
-            result = client->subscribe(deviceConfig.availabilityTopic.c_str());
-            if (!result) {
-                debug << "Failed to listen to availability topic." << std::endl;
-                client->disconnect();
-            }
-            availabilityReceiveTimeLimit =
-                    esp.millis() + availabilityReceiveTimeout;
-        }
-    } else {
-        result = client->connect(
-                clientId.c_str(),
-                server.username.c_str(),
-                server.password.c_str());
+        will = MqttConnection::Message{
+            deviceConfig.availabilityTopic, willMessage, true};
     }
+
+    bool result = connection.connect(
+            server.address, server.port,
+            server.username, server.password, clientId, will,
+            [this](MqttConnection::Message message) {
+                receivedMessages.emplace_back(std::move(message));
+            });
+
+    if (hasAvailability && result) {
+        debug << "Connected to server. Listening to availability topic."
+            << std::endl;
+        result = connection.subscribe(deviceConfig.availabilityTopic);
+        if (!result) {
+            debug << "Failed to listen to availability topic." << std::endl;
+            connection.disconnect();
+        }
+        availabilityReceiveTimeLimit =
+                esp.millis() + availabilityReceiveTimeout;
+    }
+
     return result;
 }
 
 MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
-    if (!client->connected()) {
+    if (!connection.isConnected()) {
         initialized = false;
-        debug << "Client status = " + client->state() << std::endl;
         debug << "Connecting to MQTT broker..." << std::endl;
         for (const ServerConfig& server : globalConfig.servers) {
             if (tryToConnect(server)) {
                 debug << "Connection successful." << std::endl;
                 for (const auto& element : subscriptions) {
-                    client->subscribe(element.first.c_str());
+                    connection.subscribe(element.first);
                 }
                 break;
             }
         }
 
-        if (!client->connected()) {
+        if (!connection.isConnected()) {
             debug << "Connection failed." << std::endl;
             return ConnectStatus::connectionFailed;
         }
@@ -198,8 +188,8 @@ void MqttClient::sendStatusMessage(bool restarted) {
                 << deviceConfig.availabilityTopic << std::endl;
         std::string message = getStatusMessage(true, restarted);
         debug << message << std::endl;
-        if (client->publish(deviceConfig.availabilityTopic.c_str(),
-                message.c_str(), true)) {
+        if (connection.publish(MqttConnection::Message{
+                deviceConfig.availabilityTopic, message, true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;
@@ -237,7 +227,7 @@ void MqttClient::loop() {
         }
     }
 
-    client->loop();
+    connection.loop();
 
     for (const auto& message : receivedMessages) {
         handleMessage(message);
@@ -248,8 +238,8 @@ void MqttClient::loop() {
 void MqttClient::subscribe(const std::string& topic,
         std::function<void(const std::string&)> callback) {
     subscriptions.emplace_back(topic, callback);
-    if (client->connected()) {
-        client->subscribe(topic.c_str());
+    if (connection.isConnected()) {
+        connection.subscribe(topic);
     }
 }
 
@@ -259,8 +249,8 @@ void MqttClient::unsubscribe(const std::string& topic) {
             [&topic](const Subscription& element) {
                 return element.first == topic;
             }), subscriptions.end());
-    if (client->connected()) {
-        client->unsubscribe(topic.c_str());
+    if (connection.isConnected()) {
+        connection.unsubscribe(topic);
     }
 }
 
@@ -269,15 +259,15 @@ void MqttClient::publish(
     if (!initialized) {
         return;
     }
-    if (!client->publish(topic.c_str(), payload.c_str(), retain)) {
+    if (!connection.publish(MqttConnection::Message{topic, payload, retain})) {
         debug << "Publishing to " << topic << " failed." << std::endl;
     }
 }
 
 void MqttClient::disconnect() {
-    client->disconnect();
+    connection.disconnect();
 }
 
 bool MqttClient::isConnected() const {
-    return client->connected();
+    return connection.isConnected();
 }

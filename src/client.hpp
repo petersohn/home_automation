@@ -4,8 +4,7 @@
 #include "common/EspApi.hpp"
 #include "common/Backoff.hpp"
 #include "common/Wifi.hpp"
-
-#include <PubSubClient.h>
+#include "common/MqttConnection.hpp"
 
 #include <functional>
 #include <string>
@@ -22,7 +21,8 @@ class JsonObject;
 
 class MqttClient {
 public:
-    MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff);
+    MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff,
+            MqttConnection& connection);
 
     void loop();
     void disconnect();
@@ -35,12 +35,8 @@ public:
 
     MqttClient(const MqttClient&) = delete;
     MqttClient& operator=(const MqttClient&) = delete;
-private:
-    struct Message {
-        std::string topic;
-        std::string payload;
-    };
 
+private:
     enum class ConnectStatus {
         connecting,
         connectionSuccessful,
@@ -54,18 +50,17 @@ private:
     EspApi& esp;
     Wifi& wifi;
     Backoff& backoff;
+    MqttConnection& connection;
 
     unsigned long nextConnectionAttempt = 0;
     unsigned long availabilityReceiveTimeLimit = 0;
     unsigned currentBackoff;
     unsigned long nextStatusSend = 0;
     bool initialized = false;
-    std::unique_ptr<Client> wifiClient;
     std::string willMessage;
     bool restarted = true;
-    std::unique_ptr<PubSubClient> client;
 
-    std::vector<Message> receivedMessages;
+    std::vector<MqttConnection::Message> receivedMessages;
     std::vector<Subscription> subscriptions;
 
     std::string getStatusMessage(bool available, bool restarted);
@@ -75,7 +70,7 @@ private:
     void handleAvailabilityMessage(const ArduinoJson::JsonObject& message);
     void onMessageReceived(
         const char* topic, const unsigned char* payload, unsigned length);
-    void handleMessage(const Message& message);
+    void handleMessage(const MqttConnection::Message& message);
     bool tryToConnect(const ServerConfig& server);
     ConnectStatus connectIfNeeded();
     void sendStatusMessage(bool restarted);

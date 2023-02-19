@@ -14,7 +14,7 @@
 #include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
 #include "PublishAction.hpp"
-#include "PowerSupplyInterface.hpp"$
+#include "PowerSupplyInterface.hpp"
 #include "SensorInterface.hpp"
 #include "StatusInterface.hpp"
 #include "DebugStream.hpp"
@@ -353,7 +353,8 @@ private:
             if (!data["payload"].success() && !data["template"].success()) {
                 data.set("template", "%1");
             }
-            result = std::make_unique<PublishAction>(debug, mqttClient, topic,
+            result = std::make_unique<PublishAction>(debug, esp, mqttClient,
+                    topic,
                     operationParser.parse(data, "payload", "template"),
                     data.get<bool>("retain"),
                     data.get<unsigned>("minimumSendInterval"));

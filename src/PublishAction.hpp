@@ -2,6 +2,7 @@
 #define PUBLISHACTION_HPP
 
 #include "common/Action.hpp"
+#include "common/EspApi.hpp"
 #include "operation/Operation.hpp"
 #include "client.hpp"
 
@@ -9,7 +10,7 @@
 
 class PublishAction : public Action {
 public:
-    PublishAction(std::ostream& debug, MqttClient& mqttClient,
+    PublishAction(std::ostream& debug, EspApi& esp, MqttClient& mqttClient,
             const std::string& topic,
         std::unique_ptr<operation::Operation>&& operation,
         bool retain, unsigned minimumSendInterval);
@@ -18,6 +19,7 @@ public:
 
 private:
     std::ostream& debug;
+    EspApi& esp;
     MqttClient& mqttClient;
 
     std::string topic;
