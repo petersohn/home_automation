@@ -1,5 +1,5 @@
 #include "EspTestBase.hpp"
-#include "common/Backoff.hpp"
+#include "common/BackoffImpl.hpp"
 
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -7,7 +7,7 @@
 BOOST_AUTO_TEST_SUITE(BackoffTest)
 
 struct Fixture : public EspTestBase {
-    std::unique_ptr<Backoff> backoff;
+    std::unique_ptr<BackoffImpl> backoff;
 
     Fixture() {
         reset();
@@ -16,7 +16,7 @@ struct Fixture : public EspTestBase {
     void reset() {
         esp.restarted = false;
         rtc.reset();
-        backoff = std::make_unique<Backoff>(
+        backoff = std::make_unique<BackoffImpl>(
                 debug, "test: ", esp, rtc, 10, 50);
     }
 

@@ -4,6 +4,7 @@
 #include "TestStream.hpp"
 #include "FakeEspApi.hpp"
 #include "FakeRtc.hpp"
+#include "FakeWifi.hpp"
 
 #include <ostream>
 
@@ -13,6 +14,7 @@ public:
     std::ostream debug;
     FakeEspApi esp;
     FakeRtc rtc;
+    FakeWifi wifi;
 
     EspTestBase();
 };

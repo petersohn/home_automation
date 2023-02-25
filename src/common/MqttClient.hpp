@@ -74,6 +74,13 @@ private:
 
     MqttConfig config;
 
+    enum class InitState {
+        Begin,
+        ReceivedAvailable,
+        ReceivedOtherDevice,
+        Done,
+    } initState;
+
     unsigned long nextConnectionAttempt = 0;
     unsigned long availabilityReceiveTimeLimit = 0;
     unsigned currentBackoff;
@@ -85,13 +92,15 @@ private:
     std::vector<MqttConnection::Message> receivedMessages;
     std::vector<Subscription> subscriptions;
 
-    std::string getStatusMessage(bool available, bool restarted);
-    void resetAvailabilityReceive();
+    std::string getStatusMessage(bool restarted);
+    void availabiltyReceiveSuccess();
+    std::string currentStateDebug() const;
+    void availabiltyReceiveFail();
     void connectionBackoff();
     void resetConnectionBackoff();
-    void handleAvailabilityMessage(const ArduinoJson::JsonObject& message);
-    void onMessageReceived(
-        const char* topic, const unsigned char* payload, unsigned length);
+    void handleAvailabilityMessage(bool available);
+    void refreshAvailability();
+    void handleStatusMessage(const ArduinoJson::JsonObject& message);
     void handleMessage(const MqttConnection::Message& message);
     bool tryToConnect(const ServerConfig& server);
     ConnectStatus connectIfNeeded();

@@ -9,7 +9,7 @@
 #include "MqttConnectionImpl.hpp"
 #include "WifiConnection.hpp"
 #include "common/Action.hpp"
-#include "common/Backoff.hpp"
+#include "common/BackoffImpl.hpp"
 #include "common/Interface.hpp"
 
 #include <Arduino.h>
@@ -49,10 +49,10 @@ EspApiImpl esp;
 EspRtc rtc;
 EspWifi wifi;
 
-Backoff wifiBackoff(debug, "wifi: ", esp, rtc, 120000, 1200000);
+BackoffImpl wifiBackoff(debug, "wifi: ", esp, rtc, 120000, 1200000);
 WifiConnection wifiConnection(debug, esp, wifiBackoff, wifi);
 
-Backoff mqttBackoff(debug, "mqtt: ", esp, rtc, 180000, 1800000);
+BackoffImpl mqttBackoff(debug, "mqtt: ", esp, rtc, 180000, 1800000);
 MqttConnectionImpl mqttConnection;
 MqttClient mqttClient(debug, esp, wifi, mqttBackoff, mqttConnection,
         []() {

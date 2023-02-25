@@ -1,6 +1,7 @@
-#include "Backoff.hpp"
+#include "BackoffImpl.hpp"
 
-Backoff::Backoff(std::ostream& debug, const char* prefix, EspApi& esp, Rtc& rtc,
+BackoffImpl::BackoffImpl(
+        std::ostream& debug, const char* prefix, EspApi& esp, Rtc& rtc,
         unsigned long initialBackoff, unsigned long maximumBackoff)
     : debug(debug)
     , prefix(prefix)
@@ -19,7 +20,7 @@ Backoff::Backoff(std::ostream& debug, const char* prefix, EspApi& esp, Rtc& rtc,
     debug << prefix << "Initial backoff: " << currentBackoff << std::endl;
 }
 
-void Backoff::good() {
+void BackoffImpl::good() {
     if (lastFailure != 0) {
         debug << prefix << "Reset backoff" << std::endl;
         setBackoff(initialBackoff);
@@ -27,7 +28,7 @@ void Backoff::good() {
     }
 }
 
-void Backoff::bad() {
+void BackoffImpl::bad() {
     auto now = esp.millis();
     debug << prefix << "Connection failed" ;
     if (lastFailure == 0) {
@@ -47,7 +48,7 @@ void Backoff::bad() {
     }
 }
 
-void Backoff::setBackoff(unsigned long value) {
+void BackoffImpl::setBackoff(unsigned long value) {
     debug << prefix << "New backoff: " << value << std::endl;
     currentBackoff = value;
     rtc.set(backoffRtcId, currentBackoff);

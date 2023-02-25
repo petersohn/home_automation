@@ -3,6 +3,8 @@
 #include "ArduinoJson.hpp"
 #include "Interface.hpp"
 
+#include "../tools/string.hpp"
+
 #include <algorithm>
 #include <vector>
 
@@ -24,24 +26,22 @@ MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi,
     , esp(esp)
     , wifi(wifi)
     , backoff(backoff)
-    , currentBackoff(initialBackoff)
     , connection(connection)
     , onConnected(std::move(onConnected))
+    , initState(InitState::Begin)
+    , currentBackoff(initialBackoff)
 {
 }
 
-std::string MqttClient::getStatusMessage(bool available, bool restarted) {
+std::string MqttClient::getStatusMessage(bool restarted) {
     DynamicJsonBuffer buffer(200);
     JsonObject& message = buffer.createObject();
     message["name"] = config.name.c_str();
-    message["available"] = available;
     message["mac"] = wifi.getMac();
-    if (available) {
-        message["restarted"] = restarted;
-        message["ip"] = wifi.getIp();
-        message["uptime"] = esp.millis();
-        message["freeMemory"] = esp.getFreeHeap();
-    }
+    message["restarted"] = restarted;
+    message["ip"] = wifi.getIp();
+    message["uptime"] = esp.millis();
+    message["freeMemory"] = esp.getFreeHeap();
     std::string result;
     message.printTo(result);
     return result;
@@ -51,8 +51,17 @@ void MqttClient::setConfig(MqttConfig config_) {
     config = std::move(config_);
 }
 
-void MqttClient::resetAvailabilityReceive() {
+void MqttClient::availabiltyReceiveSuccess() {
     availabilityReceiveTimeLimit = 0;
+    initState = InitState::Done;
+}
+
+void MqttClient::availabiltyReceiveFail() {
+    debug << "Device collision." << std::endl;
+    connection.disconnect();
+    connectionBackoff();
+    availabilityReceiveTimeLimit = 0;
+    initState = InitState::Begin;
 }
 
 void MqttClient::connectionBackoff() {
@@ -64,46 +73,97 @@ void MqttClient::resetConnectionBackoff() {
     currentBackoff = initialBackoff;
 }
 
-void MqttClient::handleAvailabilityMessage(const JsonObject& message) {
-    bool available = message.get<bool>("available");
+void MqttClient::refreshAvailability() {
+    debug << "Refreshing availability." << std::endl;
+    nextStatusSend = esp.millis();
+}
+
+void MqttClient::handleStatusMessage(const JsonObject& message) {
     auto name = message.get<std::string>("name");
     auto mac = message.get<std::string>("mac");
 
-    debug << "Got availability: available=" << available
-        << " name=" << name << " mac=" << mac << std::endl;
+    debug << "Got status: state=" << currentStateDebug() << " name=" << name
+            << " mac=" << mac << std::endl;
 
     if (name != config.name) {
         debug << "Another device, not interested." << std::endl;
         return;
     }
 
-    if (mac != wifi.getMac() && available) {
-        debug << "Device collision." << std::endl;
-        connection.disconnect();
-        connectionBackoff();
-    }
-
-    if (availabilityReceiveTimeLimit != 0) {
-        debug << "Got expected message." << std::endl;
-        resetAvailabilityReceive();
-        nextStatusSend = esp.millis();
-    } else if (!available) {
-        debug << "Refreshing availability state." << std::endl;
-        nextStatusSend = esp.millis();
+    if (mac != wifi.getMac()) {
+        switch (initState) {
+        case InitState::ReceivedAvailable:
+        case InitState::Done:
+            availabiltyReceiveFail();
+            break;
+        case InitState::Begin:
+            initState = InitState::ReceivedOtherDevice;
+            break;
+        case InitState::ReceivedOtherDevice:
+            break;
+        }
+    } else if (initState != InitState::Done) {
+        availabiltyReceiveSuccess();
     }
 }
 
-void MqttClient::onMessageReceived(
-        const char* topic, const unsigned char* payload, unsigned length) {
+void MqttClient::handleAvailabilityMessage(bool available)
+{
+    debug << "Got availability state=" << currentStateDebug() <<
+            " available=" << available << std::endl;
+    if (available) {
+        switch (initState) {
+        case InitState::Begin:
+            if (config.topics.statusTopic.size() != 0) {
+                initState = InitState::ReceivedAvailable;
+            } else {
+                availabiltyReceiveFail();
+            }
+            break;
+        case InitState::ReceivedOtherDevice:
+            availabiltyReceiveFail();
+            break;
+        case InitState::ReceivedAvailable:
+        case InitState::Done:
+            break;
+        }
+    } else {
+        if (initState == InitState::Done) {
+            refreshAvailability();
+        } else {
+            availabiltyReceiveSuccess();
+        }
+    }
+}
+
+std::string MqttClient::currentStateDebug() const
+{
+    switch (initState) {
+    case InitState::Begin:
+        return "Begin";
+    case InitState::ReceivedAvailable:
+        return "ReceivedAvailable";
+    case InitState::ReceivedOtherDevice:
+        return "ReceivedOtherDevice";
+    case InitState::Done:
+        return "Done";
+    }
+
+    return "Invalid";
 }
 
 void MqttClient::handleMessage(const MqttConnection::Message& message) {
     debug << "Message received on topic " + message.topic << std::endl;
     if (message.topic == config.topics.availabilityTopic) {
+        bool isAvailable = false;
+        if (tools::getBoolValue(message.payload, isAvailable)) {
+            handleAvailabilityMessage(isAvailable);
+        }
+    } else if (message.topic == config.topics.statusTopic) {
         debug << message.payload << std::endl;
         DynamicJsonBuffer buffer(200);
         auto& json = buffer.parseObject(message.payload);
-        handleAvailabilityMessage(json);
+        handleStatusMessage(json);
     }
 
     auto iterator = std::find_if(
@@ -127,9 +187,8 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
     std::optional<MqttConnection::Message> will;
     bool hasAvailability = config.topics.availabilityTopic.length() != 0;
     if (hasAvailability) {
-        willMessage = getStatusMessage(false, false);
         will = MqttConnection::Message{
-            config.topics.availabilityTopic, willMessage, true};
+            config.topics.availabilityTopic, "0", true};
     }
 
     bool result = connection.connect(
@@ -139,16 +198,34 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
                 receivedMessages.emplace_back(std::move(message));
             });
 
-    if (hasAvailability && result) {
+    if (!result) {
+        return false;
+    }
+
+    if (hasAvailability) {
         debug << "Connected to server. Listening to availability topic."
             << std::endl;
         result = connection.subscribe(config.topics.availabilityTopic);
         if (!result) {
             debug << "Failed to listen to availability topic." << std::endl;
             connection.disconnect();
+            return false;
         }
+
+        if (config.topics.statusTopic.size() != 0) {
+            result = connection.subscribe(config.topics.statusTopic);
+            if (!result) {
+                debug << "Failed to listen to status topic." << std::endl;
+                connection.disconnect();
+                return false;
+            }
+        }
+
+        initState = InitState::Begin;
         availabilityReceiveTimeLimit =
                 esp.millis() + availabilityReceiveTimeout;
+    } else {
+        initState = InitState::Done;
     }
 
     return result;
@@ -174,34 +251,50 @@ MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
         }
     }
 
-    if (availabilityReceiveTimeLimit != 0) {
+    if (initState != InitState::Done) {
         if (availabilityReceiveTimeLimit > esp.millis()) {
             return ConnectStatus::connecting;
         }
 
         debug << "Did not get availability topic in time. "
                 "Assuming we are first." << std::endl;
-        resetAvailabilityReceive();
+        availabiltyReceiveSuccess();
     }
     return ConnectStatus::connectionSuccessful;
 }
 
 void MqttClient::sendStatusMessage(bool restarted) {
     auto now = esp.millis();
-    if (config.topics.availabilityTopic.length() != 0 && now >= nextStatusSend) {
-        debug << "Sending status message to topic "
+    if (now < nextStatusSend) {
+        return;
+    }
+
+    if (config.topics.availabilityTopic.length() != 0) {
+        debug << "Sending availability message to topic "
                 << config.topics.availabilityTopic << std::endl;
-        std::string message = getStatusMessage(true, restarted);
-        debug << message << std::endl;
         if (connection.publish(MqttConnection::Message{
-                config.topics.availabilityTopic, message, true})) {
+                config.topics.availabilityTopic, "1", true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;
         }
-        nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
-                * statusSendInterval;
     }
+
+    if (config.topics.statusTopic.length() != 0) {
+        debug << "Sending status message to topic "
+                << config.topics.statusTopic << std::endl;
+        std::string message = getStatusMessage(restarted);
+        debug << message << std::endl;
+        if (connection.publish(MqttConnection::Message{
+                config.topics.statusTopic, message, true})) {
+            debug << "Success." << std::endl;
+        } else {
+            debug << "Failure." << std::endl;
+        }
+    }
+
+    nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
+            * statusSendInterval;
 }
 
 
@@ -228,6 +321,7 @@ void MqttClient::loop() {
             connectionBackoff();
             break;
         case ConnectStatus::connecting:
+            backoff.good();
             break;
         }
     }
