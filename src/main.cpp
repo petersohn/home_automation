@@ -70,9 +70,9 @@ void setup()
     WiFi.mode(WIFI_STA);
     initConfig(debug, debugStream, esp, rtc, mqttClient);
     mqttClient.setConfig(MqttConfig{
-			deviceConfig.name,
-			std::move(globalConfig.servers),
-			std::move(deviceConfig.topics),
+            deviceConfig.name,
+            std::move(globalConfig.servers),
+            std::move(deviceConfig.topics),
     });
     setDeviceName();
 
