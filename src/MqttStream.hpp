@@ -1,7 +1,7 @@
 #ifndef MQTTSTREAM_HPP
 #define MQTTSTREAM_HPP
 
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 
 #include <sstream>
 

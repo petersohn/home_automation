@@ -1,5 +1,5 @@
 #include "StatusInterface.hpp"
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 #include "tools/string.hpp"
 
 void StatusInterface::start() {

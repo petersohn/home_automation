@@ -2,7 +2,7 @@
 #define STATUSINTERFACE_HPP
 
 #include "common/Interface.hpp"
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 
 class StatusInterface : public Interface {
 public:

@@ -4,7 +4,7 @@
 #include "common/Action.hpp"
 #include "common/EspApi.hpp"
 #include "operation/Operation.hpp"
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 
 #include <ostream>
 

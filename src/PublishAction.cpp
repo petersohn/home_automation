@@ -1,6 +1,6 @@
 #include "PublishAction.hpp"
 
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 #include "tools/string.hpp"
 
 PublishAction::PublishAction(std::ostream& debug, EspApi& esp,

@@ -1,6 +1,6 @@
 #include "MqttInterface.hpp"
 
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 
 MqttInterface::~MqttInterface() {
     mqttClient.unsubscribe(topic);

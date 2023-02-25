@@ -2,7 +2,7 @@
 #define MQTTINTERFACE_HPP
 
 #include "common/Interface.hpp"
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 
 class MqttInterface : public Interface {
 public:

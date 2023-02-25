@@ -4,21 +4,14 @@
 #include "common/InterfaceConfig.hpp"
 #include "common/EspApi.hpp"
 #include "common/rtc.hpp"
+#include "common/MqttClient.hpp"
 
 #include <string>
 #include <limits>
 #include <vector>
 #include <ostream>
 
-class MqttClient;
 class DebugStreambuf;
-
-struct ServerConfig {
-    std::string address;
-    uint16_t port = 0;
-    std::string username;
-    std::string password;
-};
 
 struct GlobalConfig {
     std::string wifiSSID;
@@ -28,7 +21,7 @@ struct GlobalConfig {
 
 struct DeviceConfig {
     std::string name;
-    std::string availabilityTopic;
+    TopicConfig topics;
     std::unique_ptr<std::streambuf> debug;
     int debugPort = 2534;
     std::string debugTopic;

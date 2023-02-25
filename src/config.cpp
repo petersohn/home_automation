@@ -1,7 +1,7 @@
 #include "config.hpp"
 
 #include "common/ArduinoJson.hpp"
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 #include "CounterInterface.hpp"
 #include "Cover.hpp"
 #include "DallasTemperatureSensor.hpp"
@@ -429,7 +429,8 @@ private:
             << static_cast<int>(result.resetPin) << std::endl;
 
         PARSE(jsonParser, *data.root, result, name);
-        PARSE(jsonParser, *data.root, result, availabilityTopic);
+        PARSE(jsonParser, *data.root, result.topics, availabilityTopic);
+        PARSE(jsonParser, *data.root, result.topics, statusTopic);
 
         parseInterfaces(*data.root, result.interfaces);
         parseActions(*data.root, result.interfaces);

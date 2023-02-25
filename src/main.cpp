@@ -1,4 +1,4 @@
-#include "client.hpp"
+#include "common/MqttClient.hpp"
 #include "config.hpp"
 #include "DebugStream.hpp"
 #include "EspApiImpl.hpp"
@@ -54,7 +54,12 @@ WifiConnection wifiConnection(debug, esp, wifiBackoff, wifi);
 
 Backoff mqttBackoff(debug, "mqtt: ", esp, rtc, 180000, 1800000);
 MqttConnectionImpl mqttConnection;
-MqttClient mqttClient(debug, esp, wifi, mqttBackoff, mqttConnection);
+MqttClient mqttClient(debug, esp, wifi, mqttBackoff, mqttConnection,
+        []() {
+            for (const auto& interface : deviceConfig.interfaces) {
+                interface->interface->start();
+            }
+        });
 std::unique_ptr<WifiStreambuf> wifiStream;
 std::unique_ptr<MqttStreambuf> mqttStream;
 
@@ -64,6 +69,11 @@ void setup()
 {
     WiFi.mode(WIFI_STA);
     initConfig(debug, debugStream, esp, rtc, mqttClient);
+    mqttClient.setConfig(MqttConfig{
+			deviceConfig.name,
+			std::move(globalConfig.servers),
+			std::move(deviceConfig.topics),
+    });
     setDeviceName();
 
     if (deviceConfig.debugTopic != "") {
