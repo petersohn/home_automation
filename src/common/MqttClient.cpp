@@ -93,8 +93,10 @@ void MqttClient::handleStatusMessage(const JsonObject& message) {
     if (mac != wifi.getMac()) {
         switch (initState) {
         case InitState::ReceivedAvailable:
-        case InitState::Done:
             availabiltyReceiveFail();
+            break;
+        case InitState::Done:
+            refreshAvailability();
             break;
         case InitState::Begin:
             initState = InitState::ReceivedOtherDevice;

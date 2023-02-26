@@ -92,10 +92,6 @@ public:
     std::vector<AvailabilityMessage> availabilityMessages;
     std::vector<ConnectionAttempt> connectionAttempts;
 
-    void loopUntil(unsigned long time, unsigned long delay = 100) {
-        delayUntil(time, delay, [&]() { mqttClient.loop(); });
-    }
-
     Fixture() {
         connectionId = server.connect({});
         server.subscribe(connectionId, "status", [this](
@@ -128,6 +124,32 @@ public:
 
         mqttClient.setConfig(
             MqttConfig{"test", {ServerConfig{}}, {"ava", "status"}});
+    }
+
+    void loopUntil(unsigned long time, unsigned long delay = 100) {
+        delayUntil(time, delay, [&]() { mqttClient.loop(); });
+    }
+
+    void sendStatusMessage(const std::string& mac) {
+        DynamicJsonBuffer buffer(200);
+        JsonObject& message = buffer.createObject();
+        message["name"] = "test";
+        message["mac"] = mac;
+        std::string result;
+        message.printTo(result);
+        server.publish(connectionId, {"status", std::move(result), true});
+    }
+
+    void sendSameDeviceStatus() {
+        sendStatusMessage(wifi.getMac());
+    }
+
+    void sendOtherDeviceStatus() {
+        sendStatusMessage("11:11:11:11:11:11");
+    }
+
+    void sendAvailability(bool value) {
+        server.publish(connectionId, {"ava", value ? "1" : "0", true});
     }
 
     void check(
@@ -176,6 +198,126 @@ BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
          {123600, false}, {183600, false}, {243600, true}},
         {{245600, true}},
         {{245600, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromSameDevice_Available_StatusFirst, Fixture) {
+    loopUntil(20, 5);
+    sendSameDeviceStatus();
+    loopUntil(40, 5);
+    sendAvailability(true);
+    loopUntil(60, 5);
+
+    BOOST_TEST(connection.isConnected());
+    check(
+        {{5, true}},
+        {{30, true}},
+        {{30, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromSameDevice_NotAvailable_StatusFirst, Fixture) {
+    loopUntil(20, 5);
+    sendSameDeviceStatus();
+    loopUntil(40, 5);
+    sendAvailability(false);
+    loopUntil(60, 5);
+
+    BOOST_TEST(connection.isConnected());
+    check(
+        {{5, true}},
+        {{30, true}, {50, false}},
+        {{30, true}, {50, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromSameDevice_Available_AvailabilityFirst, Fixture) {
+    loopUntil(20, 5);
+    sendAvailability(true);
+    loopUntil(40, 5);
+    sendSameDeviceStatus();
+    loopUntil(60, 5);
+
+    BOOST_TEST(connection.isConnected());
+    check(
+        {{5, true}},
+        {{50, true}},
+        {{50, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromSameDevice_NotAvailable_AvailabilityFirst, Fixture) {
+    loopUntil(20, 5);
+    sendAvailability(false);
+    loopUntil(40, 5);
+    sendSameDeviceStatus();
+    loopUntil(60, 5);
+
+    BOOST_TEST(connection.isConnected());
+    check(
+        {{5, true}},
+        {{30, true}},
+        {{30, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromOtherDevice_Available_StatusFirst, Fixture) {
+    loopUntil(20, 5);
+    sendOtherDeviceStatus();
+    loopUntil(40, 5);
+    sendAvailability(true);
+    loopUntil(60, 5);
+
+    BOOST_TEST(!connection.isConnected());
+    check(
+        {{5, true}},
+        {},
+        {{45, false}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromOtherDevice_NotAvailable_StatusFirst, Fixture) {
+    loopUntil(20, 5);
+    sendOtherDeviceStatus();
+    loopUntil(40, 5);
+    sendAvailability(false);
+    loopUntil(60, 5);
+
+    BOOST_TEST(connection.isConnected());
+    check(
+        {{5, true}},
+        {{50, true}},
+        {{50, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromOtherDevice_Available_AvailabilityFirst, Fixture) {
+    loopUntil(20, 5);
+    sendAvailability(true);
+    loopUntil(40, 5);
+    sendOtherDeviceStatus();
+    loopUntil(60, 5);
+
+    BOOST_TEST(!connection.isConnected());
+    check(
+        {{5, true}},
+        {},
+        {{45, false}});
+}
+
+BOOST_FIXTURE_TEST_CASE(
+        ConnectionFromOtherDevice_NotAvailable_AvailabilityFirst, Fixture) {
+    loopUntil(20, 5);
+    sendAvailability(false);
+    loopUntil(40, 5);
+    sendOtherDeviceStatus();
+    loopUntil(60, 5);
+
+    BOOST_TEST(connection.isConnected());
+    check(
+        {{5, true}},
+        {{30, true}, {50, false}},
+        {{30, true}, {50, true}});
 }
 
 BOOST_AUTO_TEST_SUITE_END()
