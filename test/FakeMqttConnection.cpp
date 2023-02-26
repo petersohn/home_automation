@@ -52,8 +52,21 @@ void FakeMqttServer::publish(size_t id, const MqttConnection::Message& message) 
     }
 }
 
-FakeMqttConnection::FakeMqttConnection(FakeMqttServer& server)
-    : server(server) {
+FakeMqttConnection::FakeMqttConnection(FakeMqttServer& server,
+            std::function<void(bool)> connectCallback)
+    : server(server)
+    , connectCallback(connectCallback) {
+}
+
+bool FakeMqttConnection::connectInner(const std::optional<Message>& will,
+    std::function<void(Message)> receiveFunc_) {
+    if (connectionId || !server.working) {
+        return false;
+    }
+
+    connectionId = server.connect(std::move(will));
+    receiveFunc = std::move(receiveFunc_);
+    return true;
 }
 
 bool FakeMqttConnection::connect(
@@ -62,13 +75,11 @@ bool FakeMqttConnection::connect(
         const std::string& /* clientId */,
         const std::optional<Message>& will,
         std::function<void(Message)> receiveFunc_) {
-    if (connectionId) {
-        return false;
+    auto result = connectInner(will, std::move(receiveFunc_));
+    if (connectCallback) {
+        connectCallback(result);
     }
-
-    connectionId = server.connect(std::move(will));
-    receiveFunc = std::move(receiveFunc_);
-    return true;
+    return result;
 }
 
 void FakeMqttConnection::disconnect() {

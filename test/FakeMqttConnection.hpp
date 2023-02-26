@@ -16,6 +16,8 @@ public:
     bool unsubscribe(size_t id, const std::string& topic);
     void publish(size_t id, const MqttConnection::Message& message);
 
+    bool working = true;
+
 private:
     size_t nextId = 0;
     std::map<
@@ -28,7 +30,8 @@ private:
 
 class FakeMqttConnection: public MqttConnection {
 public:
-    FakeMqttConnection(FakeMqttServer& server);
+    FakeMqttConnection(FakeMqttServer& server,
+            std::function<void(bool)> connectCallback);
     virtual bool connect(const std::string& host, uint16_t port,
             const std::string& username, const std::string& password,
             const std::string& clientId,
@@ -44,9 +47,13 @@ public:
 
 private:
     FakeMqttServer& server;
+    std::function<void(bool)> connectCallback;
     std::optional<size_t> connectionId;
     std::function<void(Message)> receiveFunc;
     std::vector<Message> queue;
+
+    bool connectInner(const std::optional<Message>& will,
+        std::function<void(Message)> receiveFunc);
 };
 
 

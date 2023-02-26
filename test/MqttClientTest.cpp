@@ -57,16 +57,40 @@ bool operator!=(const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) 
     return !(lhs == rhs);
 }
 
+struct ConnectionAttempt {
+    unsigned long time;
+    bool success;
+
+    ConnectionAttempt(unsigned long time, bool success)
+        : time(time), success(success) {}
+};
+
+std::ostream& operator<<(std::ostream& os, const ConnectionAttempt& msg) {
+    return os << msg.time << " -> " << msg.success;
+}
+
+bool operator==(const ConnectionAttempt& lhs, const ConnectionAttempt& rhs) {
+    return std::tie(lhs.time, lhs.success) ==
+        std::tie(rhs.time,rhs.success);
+}
+
+bool operator!=(const ConnectionAttempt& lhs, const ConnectionAttempt& rhs) {
+    return !(lhs == rhs);
+}
+
 class Fixture : public EspTestBase {
 public:
     FakeMqttServer server;
-    FakeMqttConnection connection{server};
+    FakeMqttConnection connection{server, [this](bool success) {
+            connectionAttempts.emplace_back(esp.millis(), success);
+        }};
     DummyBackoff backoff;
     MqttClient mqttClient{debug, esp, wifi, backoff, connection, []() {}};
 
     size_t connectionId;
     std::vector<StatusMessage> statusMessages;
     std::vector<AvailabilityMessage> availabilityMessages;
+    std::vector<ConnectionAttempt> connectionAttempts;
 
     void loopUntil(unsigned long time, unsigned long delay = 100) {
         delayUntil(time, delay, [&]() { mqttClient.loop(); });
@@ -106,8 +130,15 @@ public:
             MqttConfig{"test", {ServerConfig{}}, {"ava", "status"}});
     }
 
-    void check(const std::vector<StatusMessage>& expectedStatusMessages,
+    void check(
+            const std::vector<ConnectionAttempt>& expectedConnectionAttempts,
+            const std::vector<StatusMessage>& expectedStatusMessages,
             const std::vector<AvailabilityMessage>& expectedAvailabilityMessages) {
+        BOOST_CHECK_EQUAL_COLLECTIONS(
+                connectionAttempts.begin(),
+                connectionAttempts.end(),
+                expectedConnectionAttempts.begin(),
+                expectedConnectionAttempts.end());
         BOOST_CHECK_EQUAL_COLLECTIONS(
                 statusMessages.begin(),
                 statusMessages.end(),
@@ -126,8 +157,25 @@ BOOST_FIXTURE_TEST_CASE(NormalFlow, Fixture) {
     connection.disconnect();
     loopUntil(110000);
 
-    check({{2100, true}, {62100, false}, {100200, false}},
-            {{2100, true}, {62100, true}, {100000, false}, {100200, true}});
+    check(
+        {{100, true}, {100100, true}},
+        {{2100, true}, {62100, false}, {100200, false}},
+        {{2100, true}, {62100, true}, {100000, false}, {100200, true}}
+        );
+}
+
+BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
+    server.working = false;
+    loopUntil(200000);
+    server.working = true;
+    loopUntil(250000);
+
+    check(
+        {{100, false}, {600, false}, {1600, false}, {3600, false},
+         {7600, false}, {15600, false}, {31600, false}, {63600, false},
+         {123600, false}, {183600, false}, {243600, true}},
+        {{245600, true}},
+        {{245600, true}});
 }
 
 BOOST_AUTO_TEST_SUITE_END()
