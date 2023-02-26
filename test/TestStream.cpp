@@ -7,7 +7,11 @@ int TestStreambuf::sync() {
     if (s.back() == '\n') {
         s.resize(s.size() - 1);
     }
-    BOOST_TEST_MESSAGE(s);
+    if (esp) {
+        BOOST_TEST_MESSAGE(esp->millis() << " " << s);
+    } else {
+        BOOST_TEST_MESSAGE(s);
+    }
     this->str("");
     return 0;
 }

@@ -2,11 +2,60 @@
 #include "FakeMqttConnection.hpp"
 #include "DummyBackoff.hpp"
 #include "common/MqttClient.hpp"
+#include "common/ArduinoJson.hpp"
+#include "tools/string.hpp"
 
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 
+using namespace ArduinoJson;
+
 BOOST_AUTO_TEST_SUITE(MqttClientTest)
+
+struct StatusMessage {
+    unsigned long time;
+    bool restarted;
+
+    StatusMessage(unsigned long time, bool restarted)
+        : time(time), restarted(restarted) {}
+};
+
+bool operator==(const StatusMessage& lhs, const StatusMessage& rhs) {
+    return std::tie(lhs.time, lhs.restarted) == std::tie(rhs.time, rhs.restarted);
+}
+
+bool operator!=(const StatusMessage& lhs, const StatusMessage& rhs) {
+    return !(lhs == rhs);
+}
+
+std::ostream& operator<<(std::ostream& os, const StatusMessage& msg) {
+    os << msg.time;
+    if (msg.restarted) {
+        os << " restarted";
+    }
+    return os;
+}
+
+struct AvailabilityMessage {
+    unsigned long time;
+    bool isAvailable;
+
+    AvailabilityMessage(unsigned long time, bool isAvailable)
+        : time(time), isAvailable(isAvailable) {}
+};
+
+std::ostream& operator<<(std::ostream& os, const AvailabilityMessage& msg) {
+    return os << msg.time << " -> " << msg.isAvailable;
+}
+
+bool operator==(const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) {
+    return std::tie(lhs.time, lhs.isAvailable) ==
+        std::tie(rhs.time,rhs.isAvailable);
+}
+
+bool operator!=(const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) {
+    return !(lhs == rhs);
+}
 
 class Fixture : public EspTestBase {
 public:
@@ -14,6 +63,71 @@ public:
     FakeMqttConnection connection{server};
     DummyBackoff backoff;
     MqttClient mqttClient{debug, esp, wifi, backoff, connection, []() {}};
+
+    size_t connectionId;
+    std::vector<StatusMessage> statusMessages;
+    std::vector<AvailabilityMessage> availabilityMessages;
+
+    void loopUntil(unsigned long time, unsigned long delay = 100) {
+        delayUntil(time, delay, [&]() { mqttClient.loop(); });
+    }
+
+    Fixture() {
+        connectionId = server.connect({});
+        server.subscribe(connectionId, "status", [this](
+                    size_t id, MqttConnection::Message message) {
+                if (id == connectionId) {
+                    return;
+                }
+
+                DynamicJsonBuffer buffer(200);
+                auto& json = buffer.parseObject(message.payload);
+                auto name = json.get<std::string>("name");
+                auto uptime = json.get<unsigned long>("uptime");
+                auto restarted = json.get<bool>("restarted");
+
+                BOOST_TEST(uptime == esp.millis());
+                BOOST_TEST(name == "test");
+                statusMessages.emplace_back(uptime, restarted);
+            });
+        server.subscribe(connectionId, "ava", [this](
+                    size_t id, MqttConnection::Message message) {
+                if (id == connectionId) {
+                    return;
+                }
+
+                bool isAvailable = false;
+                auto res = tools::getBoolValue(message.payload, isAvailable);
+                BOOST_TEST_REQUIRE(res);
+                availabilityMessages.emplace_back(esp.millis(), isAvailable);
+            });
+
+        mqttClient.setConfig(
+            MqttConfig{"test", {ServerConfig{}}, {"ava", "status"}});
+    }
+
+    void check(const std::vector<StatusMessage>& expectedStatusMessages,
+            const std::vector<AvailabilityMessage>& expectedAvailabilityMessages) {
+        BOOST_CHECK_EQUAL_COLLECTIONS(
+                statusMessages.begin(),
+                statusMessages.end(),
+                expectedStatusMessages.begin(),
+                expectedStatusMessages.end());
+        BOOST_CHECK_EQUAL_COLLECTIONS(
+                availabilityMessages.begin(),
+                availabilityMessages.end(),
+                expectedAvailabilityMessages.begin(),
+                expectedAvailabilityMessages.end());
+    }
 };
+
+BOOST_FIXTURE_TEST_CASE(NormalFlow, Fixture) {
+    loopUntil(100000);
+    connection.disconnect();
+    loopUntil(110000);
+
+    check({{2100, true}, {62100, false}, {100200, false}},
+            {{2100, true}, {62100, true}, {100000, false}, {100200, true}});
+}
 
 BOOST_AUTO_TEST_SUITE_END()

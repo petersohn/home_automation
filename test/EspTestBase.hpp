@@ -17,6 +17,10 @@ public:
     FakeWifi wifi;
 
     EspTestBase();
+    ~EspTestBase();
+
+    void delayUntil(unsigned long time, unsigned long delay,
+            std::function<void()> func);
 };
 
 

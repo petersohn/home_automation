@@ -12,16 +12,17 @@ public:
     void disconnect(size_t id);
     bool subscribe(
             size_t id, const std::string& topic,
-            std::function<void(MqttConnection::Message)> callback);
+            std::function<void(size_t, MqttConnection::Message)> callback);
     bool unsubscribe(size_t id, const std::string& topic);
-    void publish(const MqttConnection::Message& message);
+    void publish(size_t id, const MqttConnection::Message& message);
 
 private:
     size_t nextId = 0;
     std::map<
         std::pair<std::string, size_t>,
-        std::function<void(MqttConnection::Message)>> subscriptions;
-    std::map<std::string, MqttConnection::Message> retainedMessages;
+        std::function<void(size_t, MqttConnection::Message)>> subscriptions;
+    std::map<std::string, std::pair<size_t, MqttConnection::Message>>
+        retainedMessages;
     std::map<size_t, MqttConnection::Message> wills;
 };
 
