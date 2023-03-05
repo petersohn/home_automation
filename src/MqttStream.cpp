@@ -1,22 +1,30 @@
 #include "MqttStream.hpp"
 
 int MqttStreambuf::overflow(int ch) {
-    if (!sending) {
-        return std::stringbuf::overflow(ch);
+    if (lock.isFree()) {
+        msg[length++] = static_cast<char>(ch);
+        if (length == maxLength) {
+            pubsync();
+        }
     }
     return ch;
 }
 
 int MqttStreambuf::sync() {
-    if (!sending) {
-        sending = true;
-        auto msg = this->str();
-        if (msg[msg.size() - 1] == '\n') {
-            msg.resize(msg.size() - 1);
-        }
-        mqttClient.publish(topic, msg, false);
-        sending = false;
+    if (length == 0) {
+        return 0;
     }
-    this->str("");
+
+    if (lock.isFree()) {
+        lock.lock();
+        if (msg[length - 1] == '\n') {
+            --length;
+        }
+        msg[length] = '\0';
+        mqttClient.publish(topic.c_str(), msg, false);
+        lock.unlock();
+    }
+
+    length = 0;
     return 0;
 }

@@ -320,8 +320,9 @@ private:
 
             std::string commandTopic = interface["commandTopic"];
             if (!commandTopic.empty()) {
-                mqttClient.subscribe(commandTopic,
-                        [&interfaceConfig](const std::string& command) {
+                mqttClient.subscribe(commandTopic.c_str(),
+                        [&interfaceConfig](const MqttConnection::Message& message) {
+                            std::string command{message.payload, message.payloadLength}; // FIXME
                             interfaceConfig.interface->execute(command);
                         });
             }

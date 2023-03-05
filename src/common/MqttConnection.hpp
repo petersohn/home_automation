@@ -2,27 +2,29 @@
 #define COMMON_MQTTCONNECTION_HPP
 
 #include <functional>
-#include <string>
 #include <optional>
+#include <cstdint>
 
 class MqttConnection {
 public:
     struct Message {
-        std::string topic;
-        std::string payload;
+        const char* topic;
+        const char* payload;
+        size_t payloadLength;
         bool retain;
     };
+    using ReceiveHandler = std::function<void(const Message&)>;
 
-    virtual bool connect(const std::string& host, uint16_t port,
-            const std::string& username, const std::string& password,
-            const std::string& clientId,
+    virtual bool connect(const char* host, uint16_t port,
+            const char* username, const char* password,
+            const char* clientId,
             const std::optional<Message>& will,
-            std::function<void(Message)> receiveFunc) = 0;
+            ReceiveHandler receiveFunc) = 0;
     virtual void disconnect() = 0;
     virtual bool isConnected() = 0;
 
-    virtual bool subscribe(const std::string& topic) = 0;
-    virtual bool unsubscribe(const std::string& topic) = 0;
+    virtual bool subscribe(const char* topic) = 0;
+    virtual bool unsubscribe(const char* topic) = 0;
     virtual bool publish(const Message& message) = 0;
     virtual void loop() = 0;
 

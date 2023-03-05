@@ -26,14 +26,4 @@ private:
     virtual int sync() override;
 };
 
-//class MqttStreambuf: public std::streambuf {
-//public:
-//    MqttStreambuf(Print& stream): stream(stream) {}
-//protected:
-//    virtual int overflow(int ch) override;
-//    virtual int sync() override;
-//private:
-//    Print& stream;
-//};
-
 #endif // DEBUGSTREAM_HPP

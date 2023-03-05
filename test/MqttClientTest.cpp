@@ -91,11 +91,13 @@ public:
     std::vector<StatusMessage> statusMessages;
     std::vector<AvailabilityMessage> availabilityMessages;
     std::vector<ConnectionAttempt> connectionAttempts;
+    const std::string deviceName =
+        "this name should be way long enough to fit";
 
     Fixture() {
         connectionId = server.connect({});
         server.subscribe(connectionId, "status", [this](
-                    size_t id, MqttConnection::Message message) {
+                    size_t id, FakeMessage message) {
                 if (id == connectionId) {
                     return;
                 }
@@ -107,11 +109,11 @@ public:
                 auto restarted = json.get<bool>("restarted");
 
                 BOOST_TEST(uptime == esp.millis());
-                BOOST_TEST(name == "test");
+                BOOST_TEST(name == deviceName);
                 statusMessages.emplace_back(uptime, restarted);
             });
         server.subscribe(connectionId, "ava", [this](
-                    size_t id, MqttConnection::Message message) {
+                    size_t id, FakeMessage message) {
                 if (id == connectionId) {
                     return;
                 }
@@ -123,7 +125,7 @@ public:
             });
 
         mqttClient.setConfig(
-            MqttConfig{"test", {ServerConfig{}}, {"ava", "status"}});
+            MqttConfig{deviceName, {ServerConfig{}}, {"ava", "status"}});
     }
 
     void loopUntil(unsigned long time, unsigned long delay = 100) {
@@ -133,7 +135,7 @@ public:
     void sendStatusMessage(const std::string& mac) {
         DynamicJsonBuffer buffer(200);
         JsonObject& message = buffer.createObject();
-        message["name"] = "test";
+        message["name"] = deviceName;
         message["mac"] = mac;
         std::string result;
         message.printTo(result);
@@ -318,6 +320,36 @@ BOOST_FIXTURE_TEST_CASE(
         {{5, true}},
         {{30, true}, {50, false}},
         {{30, true}, {50, true}});
+}
+
+BOOST_FIXTURE_TEST_CASE(Subscribe, Fixture) {
+    std::string received;
+
+    mqttClient.subscribe("someTopic",
+            [&](const char* payload) { received = payload; });
+    sendAvailability(false);
+    mqttClient.loop();
+    esp.delay(100);
+
+    server.publish(connectionId, FakeMessage{"otherTopic", "payload1"});
+    mqttClient.loop();
+    BOOST_TEST(received == "");
+
+    server.publish(connectionId, FakeMessage{"someTopic", "payload2"});
+    mqttClient.loop();
+    BOOST_TEST(received == "payload2");
+
+    server.publish(connectionId, FakeMessage{"otherTopic", "payload3"});
+    mqttClient.loop();
+    BOOST_TEST(received == "payload2");
+
+    server.publish(connectionId, FakeMessage{"someTopic", "payload4"});
+    mqttClient.loop();
+    BOOST_TEST(received == "payload4");
+
+    esp.delay(100000);
+    mqttClient.loop();
+    BOOST_TEST(received == "payload4");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

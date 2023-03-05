@@ -2,13 +2,14 @@
 #define MQTTSTREAM_HPP
 
 #include "common/MqttClient.hpp"
+#include "common/Lock.hpp"
 
-#include <sstream>
+#include <string>
 
-class MqttStreambuf: public std::stringbuf {
+class MqttStreambuf: public std::streambuf {
 public:
-	MqttStreambuf(MqttClient& mqttClient, std::string topic)
-        : mqttClient(mqttClient), topic(std::move(topic)) {
+    MqttStreambuf(Lock& lock, MqttClient& mqttClient, std::string topic)
+        : lock(lock), mqttClient(mqttClient), topic(std::move(topic)) {
     }
 
 protected:
@@ -16,10 +17,14 @@ protected:
     virtual int sync() override;
 
 private:
-    MqttClient& mqttClient;
-    std::string topic;
+    static constexpr size_t maxLength = 300;
 
-    bool sending = false;
+    Lock& lock;
+    MqttClient& mqttClient;
+    const std::string topic;
+    char msg[maxLength + 1];
+    size_t length = 0;
+
 };
 
 #endif // MQTTSTREAM_HPP

@@ -3,13 +3,14 @@
 #include "common/MqttClient.hpp"
 
 MqttInterface::~MqttInterface() {
-    mqttClient.unsubscribe(topic);
+    mqttClient.unsubscribe(topic.c_str());
 }
 
 void MqttInterface::start() {
-    mqttClient.subscribe(topic,
-            [this](const std::string& message) {
-                onMessage(message);
+    mqttClient.subscribe(topic.c_str(),
+            [this](const MqttConnection::Message& message) {
+                std::string payload(message.payload, message.payloadLength); // FIXME
+                onMessage(payload);
             });
 }
 

@@ -30,6 +30,6 @@ void PublishAction::fire(const InterfaceConfig& /*interface*/) {
         debug << "No value for " + topic << std::endl;
         return;
     }
-    mqttClient.publish(topic, value, retain);
+    mqttClient.publish(topic.c_str(), value.c_str(), retain);
     lastSend = now;
 }

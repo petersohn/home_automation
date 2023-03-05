@@ -5,6 +5,7 @@
 #include "Backoff.hpp"
 #include "Wifi.hpp"
 #include "MqttConnection.hpp"
+#include "ArduinoJson.hpp"
 
 #include <functional>
 #include <string>
@@ -14,10 +15,6 @@
 
 class Client;
 struct ServerConfig;
-
-namespace ArduinoJson {
-class JsonObject;
-}
 
 struct ServerConfig {
     std::string address;
@@ -47,10 +44,10 @@ public:
     void disconnect();
     bool isConnected() const;
 
-    void subscribe(const std::string& topic,
-            std::function<void(const std::string&)> callback);
-    void unsubscribe(const std::string& topic);
-    void publish(const std::string& topic, const std::string& payload, bool retain);
+    void subscribe(const char* topic,
+            std::function<void(const MqttConnection::Message&)> callback);
+    void unsubscribe(const char* topic);
+    void publish(const char* topic, const char* payload, bool retain);
 
     MqttClient(const MqttClient&) = delete;
     MqttClient& operator=(const MqttClient&) = delete;
@@ -63,7 +60,7 @@ private:
     };
 
     using Subscription = std::pair<std::string,
-          std::function<void(const std::string&)>>;
+          std::function<void(const MqttConnection::Message&)>>;
 
     std::ostream& debug;
     EspApi& esp;
@@ -86,15 +83,19 @@ private:
     unsigned currentBackoff;
     unsigned long nextStatusSend = 0;
     bool initialized = false;
-    std::string willMessage;
     bool restarted = true;
 
-    std::vector<MqttConnection::Message> receivedMessages;
+    static constexpr size_t statusMsgBufSize = 250;
+    static constexpr size_t statusMsgSize = 150;
+
+    ArduinoJson::StaticJsonBuffer<statusMsgBufSize> statusMsgBuf;
+    char statusMsg[statusMsgSize];
+
     std::vector<Subscription> subscriptions;
 
-    std::string getStatusMessage(bool restarted);
+    const char* getStatusMessage(bool restarted);
     void availabiltyReceiveSuccess();
-    std::string currentStateDebug() const;
+    const char* currentStateDebug() const;
     void availabiltyReceiveFail();
     void connectionBackoff();
     void resetConnectionBackoff();
