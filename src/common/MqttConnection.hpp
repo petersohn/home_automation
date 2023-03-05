@@ -12,6 +12,13 @@ public:
         const char* payload;
         size_t payloadLength;
         bool retain;
+
+        Message(const char* topic, const char* payload, size_t payloadLength,
+                bool retain)
+            : topic(topic)
+            , payload(payload)
+            , payloadLength(payloadLength)
+            , retain(retain) {}
     };
     using ReceiveHandler = std::function<void(const Message&)>;
 

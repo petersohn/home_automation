@@ -18,8 +18,8 @@ void MqttInterface::execute(const std::string& /*command*/) {
 }
 
 void MqttInterface::update(Actions action) {
-    for (const std::string& message : messages) {
-        action.fire({message});
+    for (std::string& message : messages) {
+        action.fire({std::move(message)});
     }
     messages.clear();
 }

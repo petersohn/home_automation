@@ -69,14 +69,26 @@ std::string floatToString(double value, int decimals) {
     return result;
 }
 
-bool getBoolValue(std::string input, bool& output) {
-    std::transform(input.begin(), input.end(), input.begin(),
-            [](char c) { return std::tolower(c); });
-    if (input == "1" || input == "on" || input == "true") {
+bool getBoolValue(const char* input, bool& output, int length) {
+    constexpr int maxLength = 5;
+    char buf[maxLength + 1];
+    if (length < 0) {
+        length = strnlen(input, maxLength);
+    } else {
+        length = std::min(length, maxLength);
+    }
+    std::transform(input, input + length, buf, [](char c) {
+            return std::tolower(c);
+        });
+    buf[length] = 0;
+
+    if (strcmp(buf, "1") == 0 || strcmp(buf, "on") == 0 ||
+            strcmp(buf, "true") == 0) {
         output = true;
         return true;
     }
-    if (input == "0" || input == "off" || input == "false") {
+    if (strcmp(buf, "0") == 0 || strcmp(buf, "off") == 0 ||
+            strcmp(buf, "false") == 0) {
         output = false;
         return true;
     }

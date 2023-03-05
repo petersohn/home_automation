@@ -27,7 +27,8 @@ std::string Template::evaluate() {
 
 std::string Conditional::evaluate() {
     bool value = false;
-    tools::getBoolValue(condition->evaluate(), value);
+    auto valueStr = condition->evaluate();
+    tools::getBoolValue(valueStr.c_str(), value, valueStr.size());
     return value ? then->evaluate() : else_->evaluate();
 }
 

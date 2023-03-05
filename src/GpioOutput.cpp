@@ -53,7 +53,7 @@ void GpioOutput::execute(const std::string& command) {
         return;
     }
 
-    if (commandName =="blink") {
+    if (commandName == "blink") {
        blinkOn = std::atoi(tools::nextToken(command, ' ', position).c_str());
        blinkOff = std::atoi(tools::nextToken(command, ' ', position).c_str());
         if (blinkOn == 0 || blinkOff == 0) {
@@ -64,7 +64,7 @@ void GpioOutput::execute(const std::string& command) {
         return;
     }
 
-    if (!tools::getBoolValue(commandName, newValue)) {
+    if (!tools::getBoolValue(commandName.c_str(), newValue, commandName.size())) {
         debug << "Invalid command." << std::endl;
         return;
     }

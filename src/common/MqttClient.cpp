@@ -156,8 +156,8 @@ void MqttClient::handleMessage(const MqttConnection::Message& message) {
     debug << "Message received on topic " << message.topic << std::endl;
     if (strcmp(message.topic, config.topics.availabilityTopic.c_str()) == 0) {
         bool isAvailable = false;
-        std::string pl(message.payload, message.payloadLength); // FIXME
-        if (tools::getBoolValue(pl, isAvailable)) {
+        if (tools::getBoolValue(
+                message.payload, isAvailable, message.payloadLength)) {
             handleAvailabilityMessage(isAvailable);
         }
         return;
@@ -200,7 +200,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
     bool hasAvailability = config.topics.availabilityTopic.length() != 0;
     if (hasAvailability) {
         will = MqttConnection::Message{
-            config.topics.availabilityTopic.c_str(), "0", true};
+            config.topics.availabilityTopic.c_str(), "0", 1, true};
     }
 
     bool result = connection.connect(
@@ -286,7 +286,7 @@ void MqttClient::sendStatusMessage(bool restarted) {
         debug << "Sending availability message to topic "
                 << config.topics.availabilityTopic << std::endl;
         if (connection.publish(MqttConnection::Message{
-                config.topics.availabilityTopic.c_str(), "1", true})) {
+                config.topics.availabilityTopic.c_str(), "1", 1, true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;
@@ -299,7 +299,8 @@ void MqttClient::sendStatusMessage(bool restarted) {
         const char* message = getStatusMessage(restarted);
         debug << message << std::endl;
         if (connection.publish(MqttConnection::Message{
-                config.topics.statusTopic.c_str(), message, true})) {
+                config.topics.statusTopic.c_str(), message,
+                0 /*not used*/, true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;

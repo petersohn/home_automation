@@ -102,6 +102,7 @@ public:
                     return;
                 }
 
+                BOOST_TEST_MESSAGE(message.payload);
                 DynamicJsonBuffer buffer(200);
                 auto& json = buffer.parseObject(message.payload);
                 auto name = json.get<std::string>("name");
@@ -119,7 +120,9 @@ public:
                 }
 
                 bool isAvailable = false;
-                auto res = tools::getBoolValue(message.payload, isAvailable);
+                auto res = tools::getBoolValue(
+                        message.payload.c_str(), isAvailable,
+                        message.payload.size());
                 BOOST_TEST_REQUIRE(res);
                 availabilityMessages.emplace_back(esp.millis(), isAvailable);
             });
@@ -326,7 +329,9 @@ BOOST_FIXTURE_TEST_CASE(Subscribe, Fixture) {
     std::string received;
 
     mqttClient.subscribe("someTopic",
-            [&](const char* payload) { received = payload; });
+            [&](const MqttConnection::Message& message) {
+                received = std::string{message.payload, message.payloadLength};
+            });
     sendAvailability(false);
     mqttClient.loop();
     esp.delay(100);

@@ -25,7 +25,7 @@ struct Bool {
 
    bool fromString(const std::string& s) {
        bool result = false;
-       tools::getBoolValue(s, result);
+       tools::getBoolValue(s.c_str(), result, s.size());
        return result;
    }
 };

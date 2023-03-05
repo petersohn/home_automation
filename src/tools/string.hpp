@@ -83,7 +83,7 @@ std::string substitute(const std::string& valueTemplate,
     return result;
 }
 
-bool getBoolValue(std::string input, bool& output);
+bool getBoolValue(const char* input, bool& output, int length = -1);
 
 } // namespace tools
 
