@@ -22,9 +22,8 @@ private:
 
     std::unique_ptr<CounterSensor> createCounterSensor(float multiplier);
     void onRise();
+    static void onRiseStatic(void* arg);
     void resetMinInterval();
-
-    EspApi& esp;
 
     CounterSensor* counterSensor  = nullptr;
     int bounceTime;

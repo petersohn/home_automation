@@ -67,11 +67,6 @@
 			<location>/home/petersohn/Arduino/libraries/Grove_-_Laser_PM2.5_Sensor_HM3301</location>
 		</link>
 		<link>
-			<name>libraries/HLW8012</name>
-			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/HLW8012/1.1.2</locationURI>
-		</link>
-		<link>
 			<name>libraries/OneWire</name>
 			<type>2</type>
 			<location>/home/petersohn/Arduino/libraries/OneWire</location>
@@ -80,11 +75,6 @@
 			<name>libraries/PubSubClient</name>
 			<type>2</type>
 			<location>/home/petersohn/Arduino/libraries/PubSubClient</location>
-		</link>
-		<link>
-			<name>libraries/SPI</name>
-			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp8266/hardware/esp8266/3.1.1/libraries/SPI</locationURI>
 		</link>
 		<link>
 			<name>libraries/Wire</name>

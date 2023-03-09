@@ -183,7 +183,7 @@ private:
         if (type == "input") {
             uint8_t pin = 0;
             return getPin(data, pin)
-                    ?  std::make_unique<GpioInput>(debug, esp,
+                    ?  std::make_unique<GpioInput>(debug,
                             pin, getCycleType(data.get<std::string>("cycle")))
                     : nullptr;
         } else if (type == "output") {
@@ -276,13 +276,13 @@ private:
                             getJsonWithDefault(data["invertOutput"], false),
                             getJsonWithDefault(data["closedPosition"], 0))
                     : nullptr;
-        } else if (type == "hlw8012") {
-            uint8_t powerPin = 0;
-            return (getRequiredValue(data, "powerPin", powerPin))
-                    ?  std::make_unique<Hlw8012Interface>(debug, esp,
-                            data.get<std::string>("name"), getInterval(data),
-                            getOffset(data), powerPin)
-                    : nullptr;
+//        } else if (type == "hlw8012") {
+//            uint8_t powerPin = 0;
+//            return (getRequiredValue(data, "powerPin", powerPin))
+//                    ?  std::make_unique<Hlw8012Interface>(debug, esp,
+//                            data.get<std::string>("name"), getInterval(data),
+//                            getOffset(data), powerPin)
+//                    : nullptr;
         } else if (type == "status") {
             return std::make_unique<StatusInterface>(mqttClient);
         } else {

@@ -2,6 +2,12 @@
 
 #include "tools/string.hpp"
 
+#include <Arduino.h>
+
+extern "C" {
+#include "c_types.h"
+#include "ets_sys.h"
+}
 
 namespace {
 
@@ -40,16 +46,19 @@ int encodeState(const State& state) {
 
 }
 
-GpioInput::GpioInput(std::ostream& debug, EspApi& esp, uint8_t pin,
-        CycleType cycleType,
-    unsigned interval)
-    : debug(debug), esp(esp), pin(pin), cycleType(cycleType), interval(interval) {
-    esp.pinMode(pin, GpioMode::input);
-    lastChanged = esp.millis();
-    bool currentState = esp.digitalRead(pin);
+void IRAM_ATTR GpioInput::onChangeStatic(void* arg) {
+    reinterpret_cast<GpioInput*>(arg)->onChange();
+}
+
+GpioInput::GpioInput(std::ostream& debug, uint8_t pin,
+        CycleType cycleType, unsigned interval)
+    : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
+    pinMode(pin, INPUT);
+    lastChanged = millis();
+    bool currentState = digitalRead(pin);
     state = encodeState({currentState, currentState});
     debug << "starting value=" << currentState << " state=" << state << std::endl;
-    esp.attachInterrupt(pin, [this]() { onChange(); }, InterruptMode::change);
+    attachInterruptArg(pin, onChangeStatic, this, CHANGE);
 }
 
 void GpioInput::start() {
@@ -61,12 +70,12 @@ void GpioInput::execute(const std::string& /*command*/) {
 
 void GpioInput::onChange() {
     State currentState = decodeState(state);
-    bool newState = esp.digitalRead(pin);
+    bool newState = digitalRead(pin);
     if (newState == currentState.real) {
         return;
     }
     currentState.real = newState;
-    auto now = esp.millis();
+    auto now = millis();
 
     if (now - lastChanged > interval) {
         if (currentState.real == currentState.saved) {
@@ -83,8 +92,8 @@ void GpioInput::update(Actions action) {
     bool lastState = false;
     State currentState{false, false};
     {
-        auto guard = esp.disableInterrupt();
-        auto now = esp.millis();
+        ETS_GPIO_INTR_DISABLE();
+        auto now = millis();
         currentState = decodeState(state);
         currentCycles = cycles;
         lastState = currentState.saved;
@@ -93,6 +102,7 @@ void GpioInput::update(Actions action) {
         }
         cycles = 0;
         state = encodeState(currentState);
+        ETS_GPIO_INTR_ENABLE();
     }
 
     switch (cycleType) {

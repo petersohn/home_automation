@@ -1,3 +1,5 @@
+#if 0
+
 #ifndef HLW8012INTERFACE_HPP
 #define HLW8012INTERFACE_HPP
 
@@ -32,3 +34,5 @@ private:
 };
 
 #endif // HLW8012INTERFACE_HPP
+
+#endif

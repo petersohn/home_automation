@@ -1,3 +1,5 @@
+#if 0
+
 #include "Hlw8012Interface.hpp"
 
 #include "tools/string.hpp"
@@ -113,3 +115,5 @@ void Hlw8012Interface::saveConfig() {
 
     jsonParser.saveToFile(configFileName, root);
 }
+
+#endif

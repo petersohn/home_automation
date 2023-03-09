@@ -3,15 +3,22 @@
 #include "common/Sensor.hpp"
 #include "tools/string.hpp"
 
+#include <Arduino.h>
+
+extern "C" {
+#include "c_types.h"
+#include "ets_sys.h"
+}
+
 #include <memory>
 
 class CounterInterface::CounterSensor : public Sensor {
 public:
-    CounterSensor(EspApi& esp, float multiplier)
-        : esp(esp), multiplier(multiplier) {}
+    CounterSensor(float multiplier)
+        : multiplier(multiplier) {}
 
     std::vector<std::string> measure() override {
-        auto now = esp.millis();
+        auto now = millis();
         if (lastMeasurement == 0) {
             lastMeasurement = now;
             number = 0;
@@ -32,8 +39,6 @@ public:
         max = std::max(max, maxRate);
     }
 private:
-    EspApi& esp;
-
     float multiplier;
     unsigned number = 0;
     float max = 0;
@@ -45,21 +50,25 @@ private:
     }
 };
 
+void IRAM_ATTR CounterInterface::onRiseStatic(void* arg) {
+    reinterpret_cast<CounterInterface*>(arg)->onRise();
+}
+
 CounterInterface::CounterInterface(std::ostream& debug, EspApi& esp,
         std::string name, uint8_t pin, int bounceTime, float multiplier,
         int interval, int offset, std::vector<std::string> pulse)
-        : esp(esp),
-          bounceTime(bounceTime),
+        : bounceTime(bounceTime),
           interval(interval),
           sensorInterface(debug, esp, createCounterSensor(multiplier), std::move(name),
           interval, offset, std::move(pulse)) {
-    esp.pinMode(pin, GpioMode::input);
+    pinMode(pin, INPUT);
     resetMinInterval();
-    esp.attachInterrupt(pin, [this]() { onRise(); }, InterruptMode::rise);
+    attachInterruptArg(pin, onRiseStatic, this, RISING);
 }
 
 void CounterInterface::onRise() {
-    long now = esp.millis();
+    long now = millis();
+
     int difference = now - lastRise;
     if (difference > bounceTime) {
         ++riseCount;
@@ -71,7 +80,7 @@ void CounterInterface::onRise() {
 
 auto CounterInterface::createCounterSensor(float multiplier)
         -> std::unique_ptr<CounterSensor> {
-    auto result = std::make_unique<CounterSensor>(esp, multiplier);
+    auto result = std::make_unique<CounterSensor>(multiplier);
     counterSensor = result.get();
     return result;
 }
