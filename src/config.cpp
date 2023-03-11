@@ -168,14 +168,14 @@ private:
     }
 
     GpioInput::CycleType getCycleType(const std::string& value) {
-        if (value == "none") {
-            return GpioInput::CycleType::none;
+        if (value == "single") {
+            return GpioInput::CycleType::single;
         }
         if (value == "multi") {
             return GpioInput::CycleType::multi;
         }
 
-        return GpioInput::CycleType::single;
+        return GpioInput::CycleType::none;
     }
 
     std::unique_ptr<Interface> parseInterface(const JsonObject& data) {

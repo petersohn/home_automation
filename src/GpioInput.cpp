@@ -53,12 +53,17 @@ void IRAM_ATTR GpioInput::onChangeStatic(void* arg) {
 GpioInput::GpioInput(std::ostream& debug, uint8_t pin,
         CycleType cycleType, unsigned interval)
     : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
-    pinMode(pin, INPUT);
-    lastChanged = millis();
-    bool currentState = digitalRead(pin);
-    state = encodeState({currentState, currentState});
-    debug << "starting value=" << currentState << " state=" << state << std::endl;
-    attachInterruptArg(pin, onChangeStatic, this, CHANGE);
+    if (cycleType == CycleType::none) {
+        bounce.attach(pin, INPUT);
+        bounce.interval(interval);
+    } else {
+        pinMode(pin, INPUT);
+        lastChanged = millis();
+        bool currentState = digitalRead(pin);
+        state = encodeState({currentState, currentState});
+        debug << "starting value=" << currentState << " state=" << state << std::endl;
+        attachInterruptArg(pin, onChangeStatic, this, CHANGE);
+    }
 }
 
 void GpioInput::start() {
@@ -88,6 +93,21 @@ void GpioInput::onChange() {
 }
 
 void GpioInput::update(Actions action) {
+    auto fire = [&action](int value) {
+        action.fire({tools::intToString(value)});
+    };
+
+    if (cycleType == CycleType::none) {
+        if (startup) {
+            fire(digitalRead(pin));
+            bounce.update();
+            startup = false;
+        } else if (bounce.update()) {
+            fire(bounce.read());
+        }
+        return;
+    }
+
     int currentCycles = 0;
     bool lastState = false;
     State currentState{false, false};
@@ -105,30 +125,21 @@ void GpioInput::update(Actions action) {
         ETS_GPIO_INTR_ENABLE();
     }
 
-    switch (cycleType) {
-    case CycleType::none:
-        currentCycles = 0;
-        break;
-    case CycleType::single:
-        if (currentCycles > 0) {
-            if (currentState.saved == lastState) {
-                currentCycles = 1;
-            } else {
-                currentCycles = 0;
-            }
+    if (cycleType == CycleType::single && currentCycles > 0) {
+        if (currentState.saved == lastState) {
+            currentCycles = 1;
+        } else {
+            currentCycles = 0;
         }
-        break;
-    default:
-        break;
     }
 
     for (int i = 0; i < currentCycles; ++i) {
-        action.fire({tools::intToString(!lastState)});
-        action.fire({tools::intToString(lastState)});
+        fire(!lastState);
+        fire(lastState);
     }
 
     if ((startup && currentCycles == 0) || currentState.saved != lastState) {
-        action.fire({tools::intToString(currentState.saved)});
+        fire(currentState.saved);
     }
 
     startup = false;
