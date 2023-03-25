@@ -1,3 +1,6 @@
 [submodule "test/ArduinoJson"]
 	path = test/ArduinoJson
 	url = https://github.com/bblanchon/ArduinoJson.git
+[submodule "src/SDS011"]
+	path = src/SDS011
+	url = https://github.com/ricki-z/SDS011.git
