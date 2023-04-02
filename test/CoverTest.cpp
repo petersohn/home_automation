@@ -254,7 +254,8 @@ BOOST_DATA_TEST_CASE_F(Fixture, Calibrate,
                 BOOST_TEST(getValue(0) == "OPEN");
             }
         };
-    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func5));
+    BOOST_REQUIRE_NO_THROW(loopFor(delay * 3, delay, func5));
+    BOOST_TEST(position == 4000 - delay);
 }
 
 BOOST_AUTO_TEST_SUITE_END();
