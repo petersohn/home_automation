@@ -72,25 +72,37 @@ public:
         interface.interface->execute("STOP");
     }
 
+    void setPosition(int value) {
+        interface.interface->execute(std::to_string(value));
+    }
+
     void loopFor(unsigned long time, unsigned long delay,
-            std::function<void(unsigned long delta)> func) {
+            std::function<void(unsigned long delta, size_t round)> func) {
         auto beginTime = esp.millis();
+        size_t round = 0;
         delayUntil(beginTime + time, delay, [&]() {
                 loop();
                 auto time = esp.millis() - beginTime;
-                BOOST_TEST_MESSAGE("time=" << time << " position=" << position);
-                BOOST_REQUIRE_NO_THROW(func(time));
+                ++round;
+                BOOST_TEST_CONTEXT(
+                        "round=" << round <<
+                        " time=" << time <<
+                        " position=" << position) {
+                    BOOST_REQUIRE_NO_THROW(func(time, round));
+                }
             });
     }
 };
 
-BOOST_FIXTURE_TEST_CASE(Open, Fixture) {
+auto delays = boost::unit_test::data::make({1, 10, 100, 500});
+
+BOOST_DATA_TEST_CASE_F(Fixture, Open, delays, delay) {
     esp.delay(10);
     loop();
 
     open();
-    auto func = [&](unsigned long time) {
-            if (time <= 20) {
+    auto func = [&](unsigned long time, size_t round) {
+            if (time <= 20 || round == 1) {
                 BOOST_TEST(isMovingUp());
                 BOOST_TEST(interface.storedValue.size() == 1);
                 BOOST_TEST(getValue(0) == "OPENING");
@@ -104,17 +116,17 @@ BOOST_FIXTURE_TEST_CASE(Open, Fixture) {
                 BOOST_TEST(getValue(1) == "100");
             }
         };
-    BOOST_REQUIRE_NO_THROW(loopFor(10100, 10, func));
+    BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
-BOOST_FIXTURE_TEST_CASE(Close, Fixture) {
+BOOST_DATA_TEST_CASE_F(Fixture, Close, delays, delay) {
     position = 10000;
     esp.delay(10);
     loop();
 
     close();
-    auto func = [&](unsigned long time) {
-            if (time <= 20) {
+    auto func = [&](unsigned long time, size_t round) {
+            if (time <= 20 || round == 1) {
                 BOOST_TEST(isMovingDown());
                 BOOST_TEST(interface.storedValue.size() == 1);
                 BOOST_TEST(getValue(0) == "CLOSING");
@@ -128,7 +140,96 @@ BOOST_FIXTURE_TEST_CASE(Close, Fixture) {
                 BOOST_TEST(getValue(1) == "0");
             }
         };
-    BOOST_REQUIRE_NO_THROW(loopFor(10100, 10, func));
+    BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
+}
+
+BOOST_DATA_TEST_CASE_F(Fixture, CalibrateFromClosed, delays, delay) {
+    esp.delay(10);
+    loop();
+
+    setPosition(40);
+    auto func1 = [&](unsigned long time, size_t round) {
+            if (time <= 20 || round == 1) {
+                BOOST_TEST(isMovingUp());
+                BOOST_TEST(interface.storedValue.size() == 1);
+                BOOST_TEST(getValue(0) == "OPENING");
+            } else {
+                BOOST_TEST(isMovingUp());
+                BOOST_TEST(getValue(0) == "OPENING");
+                BOOST_TEST(getValue(1) == "1");
+            }
+        };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func1));
+
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
+            BOOST_TEST(isMovingDown());
+            BOOST_TEST(getValue(0) == "OPEN");
+            BOOST_TEST(getValue(1) == "100");
+        }));
+
+    auto func2 = [&](unsigned long time, size_t round) {
+            if (time <= 20 || round == 1) {
+                BOOST_TEST(isMovingDown());
+                BOOST_TEST(getValue(0) == "CLOSING");
+                BOOST_TEST(getValue(1) == "100");
+            } else {
+                BOOST_TEST(isMovingDown());
+                BOOST_TEST(getValue(0) == "CLOSING");
+                BOOST_TEST(getValue(1) == "99");
+            }
+        };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func2));
+
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
+            BOOST_TEST(isMovingUp());
+            BOOST_TEST(getValue(0) == "CLOSED");
+            BOOST_TEST(getValue(1) == "0");
+        }));
+
+    auto func3 = [&](unsigned long time, size_t round) {
+            if (time <= 20 || round == 1) {
+                BOOST_TEST(isMovingUp());
+                BOOST_TEST(getValue(0) == "OPENING");
+                BOOST_TEST(getValue(1) == "0");
+            } else {
+                BOOST_TEST(isMovingUp());
+                BOOST_TEST(getValue(0) == "OPENING");
+                BOOST_TEST(getValue(1) == "1");
+            }
+        };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
+
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
+            BOOST_TEST(isMovingDown());
+            BOOST_TEST(getValue(0) == "OPEN");
+            BOOST_TEST(getValue(1) == "100");
+        }));
+
+    auto func4 = [&](unsigned long time, size_t round) {
+            if (time <= 20 || round == 1) {
+                BOOST_TEST(isMovingDown());
+                BOOST_TEST(getValue(0) == "CLOSING");
+                BOOST_TEST(getValue(1) == "100");
+            } else {
+                BOOST_TEST(isMovingDown());
+                BOOST_TEST(getValue(0) == "CLOSING");
+                BOOST_TEST(
+                    getValue(1) == std::to_string(
+                        100 - (time - delay) * 100 / maxPosition));
+            }
+        };
+    BOOST_REQUIRE_NO_THROW(loopFor(6000, delay, func4));
+
+    auto func5 = [&](unsigned long /*time*/, size_t round) {
+            BOOST_TEST(!isMovingDown());
+            BOOST_TEST(getValue(1) == "40");
+            if (round == 1) {
+                BOOST_TEST(getValue(0) == "CLOSING");
+            } else {
+                BOOST_TEST(getValue(0) == "OPEN");
+            }
+        };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func5));
 }
 
 BOOST_AUTO_TEST_SUITE_END();
