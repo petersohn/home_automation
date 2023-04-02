@@ -1,7 +1,7 @@
 #include "Cover.hpp"
 
-#include "common/ArduinoJson.hpp"
-#include "tools/string.hpp"
+#include "ArduinoJson.hpp"
+#include "../tools/string.hpp"
 
 using namespace ArduinoJson;
 

@@ -1,9 +1,9 @@
 #ifndef COVER_HPP
 #define COVER_HPP
 
-#include "common/Interface.hpp"
-#include "common/rtc.hpp"
-#include "common/EspApi.hpp"
+#include "Interface.hpp"
+#include "rtc.hpp"
+#include "EspApi.hpp"
 
 #include <ostream>
 
