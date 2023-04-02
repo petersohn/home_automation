@@ -3,6 +3,8 @@
 
 #include "common/EspApi.hpp"
 
+#include <map>
+
 class FakeEspApi : public EspApi {
 public:
     virtual void pinMode(uint8_t pin, GpioMode mode) override;
@@ -24,6 +26,7 @@ public:
     bool restarted = false;
 private:
     unsigned long time = 0;
+    std::map<uint8_t, bool> pinValues;
 };
 
 

@@ -123,7 +123,7 @@ int Cover::Movement::update() {
 
 Cover::Cover(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        bool invertInput, bool invertOutput, unsigned closedPosition)
+        bool invertInput, bool invertOutput, int closedPosition)
         : debug(debug)
         , esp(esp)
         , rtc(rtc)

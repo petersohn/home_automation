@@ -3,7 +3,7 @@
 #include "common/ArduinoJson.hpp"
 #include "common/MqttClient.hpp"
 #include "CounterInterface.hpp"
-#include "Cover.hpp"
+#include "common/Cover.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "DhtSensor.hpp"
 #include "AnalogSensor.hpp"

@@ -11,7 +11,7 @@ class Cover : public Interface {
 public:
     Cover(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        bool invertInput, bool invertOutput, unsigned closedPosition);
+        bool invertInput, bool invertOutput, int closedPosition);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -57,7 +57,7 @@ private:
     Movement down;
     const bool invertInput;
     const bool invertOutput;
-    const unsigned closedPosition;
+    const int closedPosition;
     const unsigned positionId;
 
     int position = -1;
