@@ -92,6 +92,17 @@ public:
                 }
             });
     }
+
+    void calibrateToPosition(int position, unsigned long delay) {
+        setPosition(position);
+        loopFor(41000, delay, [](unsigned long, size_t) {});
+        if (position <= 100) {
+            BOOST_TEST_REQUIRE(getValue(0) ==  "CLOSED");
+        } else {
+            BOOST_TEST_REQUIRE(getValue(0) ==  "OPEN");
+        }
+        BOOST_TEST_REQUIRE(getValue(1) == std::to_string(position));
+    }
 };
 
 auto delays = boost::unit_test::data::make({1, 10, 100, 500});
@@ -143,23 +154,37 @@ BOOST_DATA_TEST_CASE_F(Fixture, Close, delays, delay) {
     BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, CalibrateFromClosed, delays, delay) {
+BOOST_DATA_TEST_CASE_F(Fixture, Calibrate,
+        delays * boost::unit_test::data::make({0, 5000, 8000, 10000}),
+        delay, start) {
+    position = start;
     esp.delay(10);
     loop();
 
     setPosition(40);
-    auto func1 = [&](unsigned long time, size_t round) {
-            if (time <= 20 || round == 1) {
+
+    if (start == maxPosition) {
+        auto func1 = [&](unsigned long, size_t) {
                 BOOST_TEST(isMovingUp());
+                BOOST_TEST(position == maxPosition);
                 BOOST_TEST(interface.storedValue.size() == 1);
                 BOOST_TEST(getValue(0) == "OPENING");
-            } else {
-                BOOST_TEST(isMovingUp());
-                BOOST_TEST(getValue(0) == "OPENING");
-                BOOST_TEST(getValue(1) == "1");
-            }
-        };
-    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func1));
+            };
+        BOOST_REQUIRE_NO_THROW(loopFor(1000, delay, func1));
+    } else {
+        auto func1 = [&](unsigned long time, size_t round) {
+                if (time <= 20 || round == 1) {
+                    BOOST_TEST(isMovingUp());
+                    BOOST_TEST(interface.storedValue.size() == 1);
+                    BOOST_TEST(getValue(0) == "OPENING");
+                } else {
+                    BOOST_TEST(isMovingUp());
+                    BOOST_TEST(getValue(0) == "OPENING");
+                    BOOST_TEST(getValue(1) == "1");
+                }
+            };
+        BOOST_REQUIRE_NO_THROW(loopFor(10000 - start, delay, func1));
+    }
 
     BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
             BOOST_TEST(isMovingDown());
