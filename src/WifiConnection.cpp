@@ -4,7 +4,7 @@ namespace {
 
 constexpr int checkInterval = 1000;
 constexpr int retryInterval = 5000;
-constexpr unsigned long connectionTimeout = 40000;
+constexpr unsigned long connectionTimeout = 60000;
 
 } // unnamed namespace
 

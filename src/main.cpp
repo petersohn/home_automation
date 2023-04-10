@@ -49,11 +49,11 @@ EspApiImpl esp;
 EspRtc rtc;
 EspWifi wifi;
 
-BackoffImpl wifiBackoff(debug, "wifi: ", esp, rtc, 120000, 1200000);
+BackoffImpl wifiBackoff(debug, "wifi: ", esp, rtc, 150000, 1500000);
 WifiConnection wifiConnection(debug, esp, wifiBackoff, wifi);
 
 Lock mqttLock;
-BackoffImpl mqttBackoff(debug, "mqtt: ", esp, rtc, 180000, 1800000);
+BackoffImpl mqttBackoff(debug, "mqtt: ", esp, rtc, 210000, 2100000);
 MqttConnectionImpl mqttConnection(debug, mqttLock);
 MqttClient mqttClient(debug, esp, wifi, mqttBackoff, mqttConnection,
         []() {
