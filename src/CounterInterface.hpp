@@ -5,8 +5,6 @@
 #include "common/Interface.hpp"
 #include "common/EspApi.hpp"
 
-#include <Bounce2.h>
-
 #include <ostream>
 
 class CounterInterface : public Interface {
@@ -22,12 +20,18 @@ public:
 private:
     class CounterSensor;
 
-    std::unique_ptr<CounterSensor> createCounterSensor(EspApi& esp, float multiplier);
+    std::unique_ptr<CounterSensor> createCounterSensor(float multiplier);
+    void onRise();
+    static void onRiseStatic(void* arg);
+    void resetMinInterval();
 
-    Bounce bounce;
     CounterSensor* counterSensor  = nullptr;
+    int bounceTime;
     int interval;
     SensorInterface sensorInterface;
+    volatile int riseCount = 0;
+    volatile long lastRise = 0;
+    volatile int minInterval;
 };
 
 #endif // COUNTERINTERFACE_HPP

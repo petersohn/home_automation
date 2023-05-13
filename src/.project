@@ -47,11 +47,6 @@
 			<location>/home/petersohn/Arduino/libraries/Adafruit_Unified_Sensor</location>
 		</link>
 		<link>
-			<name>libraries/Bounce2</name>
-			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Bounce2/2.71.0</locationURI>
-		</link>
-		<link>
 			<name>libraries/DHT_sensor_library</name>
 			<type>2</type>
 			<location>/home/petersohn/Arduino/libraries/DHT_sensor_library</location>
