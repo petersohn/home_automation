@@ -211,6 +211,7 @@ void Cover::update(Actions action) {
     if (newPositionUp != position && newPositionDown != position) {
         log("Inconsistent moving state.");
         newPosition = -1;
+        stop();
     } else if (newPositionUp != position) {
         newPosition = newPositionUp;
     } else {
