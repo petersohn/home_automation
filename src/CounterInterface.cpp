@@ -66,7 +66,7 @@ CounterInterface::CounterInterface(std::ostream& debug, EspApi& esp,
     attachInterruptArg(pin, onRiseStatic, this, RISING);
 }
 
-void CounterInterface::onRise() {
+void IRAM_ATTR CounterInterface::onRise() {
     long now = millis();
 
     int difference = now - lastRise;
