@@ -3,8 +3,6 @@
 
 #include "common/Interface.hpp"
 
-#include <Bounce2.h>
-
 #include <ostream>
 
 class GpioInput : public Interface {
@@ -23,7 +21,6 @@ public:
 private:
     std::ostream& debug;
 
-    Bounce bounce;
     const uint8_t pin;
     const CycleType cycleType;
     const unsigned interval;
