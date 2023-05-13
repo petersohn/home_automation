@@ -30,8 +30,7 @@ private:
     volatile int cycles = 0;
 
     static void onChangeStatic(void* arg);
-    void onChange();
-
+    void onChange(/*bool newState*/);
 };
 
 

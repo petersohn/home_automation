@@ -46,10 +46,6 @@ int encodeState(const State& state) {
 
 }
 
-void IRAM_ATTR GpioInput::onChangeStatic(void* arg) {
-    reinterpret_cast<GpioInput*>(arg)->onChange();
-}
-
 GpioInput::GpioInput(std::ostream& debug, uint8_t pin,
         CycleType cycleType, unsigned interval)
     : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
@@ -68,23 +64,27 @@ void GpioInput::start() {
 void GpioInput::execute(const std::string& /*command*/) {
 }
 
-void GpioInput::onChange() {
-    State currentState = decodeState(state);
-    bool newState = digitalRead(pin);
+void IRAM_ATTR GpioInput::onChangeStatic(void* arg) {
+    static_cast<GpioInput*>(arg)->onChange();
+}
+
+void IRAM_ATTR GpioInput::onChange(/* bool newState */) {
+    State currentState = decodeState(this->state);
+    bool newState = digitalRead(this->pin);
     if (newState == currentState.real) {
         return;
     }
     currentState.real = newState;
     auto now = millis();
 
-    if (now - lastChanged > interval) {
+    if (now - this->lastChanged > interval) {
         if (currentState.real == currentState.saved) {
-            ++cycles;
+            ++this->cycles;
         }
     }
 
-    lastChanged = now;
-    state = encodeState(currentState);
+    this->lastChanged = now;
+    this->state = encodeState(currentState);
 }
 
 void GpioInput::update(Actions action) {
