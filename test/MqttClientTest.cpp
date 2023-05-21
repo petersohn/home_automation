@@ -15,13 +15,22 @@ BOOST_AUTO_TEST_SUITE(MqttClientTest)
 struct StatusMessage {
     unsigned long time;
     bool restarted;
+    unsigned long maxCycleTime;
+    float avgCycleTime;
 
-    StatusMessage(unsigned long time, bool restarted)
-        : time(time), restarted(restarted) {}
+    StatusMessage(unsigned long time, bool restarted,
+            unsigned long maxCycleTime, float avgCycleTime)
+        : time(time)
+        , restarted(restarted)
+        , maxCycleTime(maxCycleTime)
+        , avgCycleTime(avgCycleTime)
+    {}
 };
 
 bool operator==(const StatusMessage& lhs, const StatusMessage& rhs) {
-    return std::tie(lhs.time, lhs.restarted) == std::tie(rhs.time, rhs.restarted);
+    return std::tie(lhs.time, lhs.restarted, lhs.maxCycleTime) ==
+        std::tie(rhs.time, rhs.restarted, rhs.maxCycleTime) &&
+        std::abs(lhs.avgCycleTime - rhs.avgCycleTime) < 0.01;
 }
 
 bool operator!=(const StatusMessage& lhs, const StatusMessage& rhs) {
@@ -33,6 +42,7 @@ std::ostream& operator<<(std::ostream& os, const StatusMessage& msg) {
     if (msg.restarted) {
         os << " restarted";
     }
+    os << " [max=" << msg.maxCycleTime << " avg=" << msg.avgCycleTime << "]";
     return os;
 }
 
@@ -108,10 +118,13 @@ public:
                 auto name = json.get<std::string>("name");
                 auto uptime = json.get<unsigned long>("uptime");
                 auto restarted = json.get<bool>("restarted");
+                auto maxCycleTime = json.get<unsigned long>("maxCycleTime");
+                auto avgCycleTime = json.get<float>("avgCycleTime");
 
                 BOOST_TEST(uptime == esp.millis());
                 BOOST_TEST(name == deviceName);
-                statusMessages.emplace_back(uptime, restarted);
+                statusMessages.emplace_back(uptime, restarted, maxCycleTime,
+                        avgCycleTime);
             });
         server.subscribe(connectionId, "ava", [this](
                     size_t id, FakeMessage message) {
@@ -186,7 +199,11 @@ BOOST_FIXTURE_TEST_CASE(NormalFlow, Fixture) {
 
     check(
         {{100, true}, {100100, true}},
-        {{2100, true}, {62100, false}, {100200, false}},
+        {
+            {2100, true, 100, 100.0},
+            {62100, false, 100, 100.0},
+            {100200, false, 100, 100.0},
+        },
         {{2100, true}, {62100, true}, {100000, false}, {100200, true}}
         );
 }
@@ -201,7 +218,7 @@ BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
         {{100, false}, {600, false}, {1600, false}, {3600, false},
          {7600, false}, {15600, false}, {31600, false}, {63600, false},
          {123600, false}, {183600, false}, {243600, true}},
-        {{245600, true}},
+        {{245600, true, 100, 100.0}},
         {{245600, true}});
 }
 
@@ -216,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(connection.isConnected());
     check(
         {{5, true}},
-        {{30, true}},
+        {{30, true, 5, 5.0}},
         {{30, true}});
 }
 
@@ -231,7 +248,7 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(connection.isConnected());
     check(
         {{5, true}},
-        {{30, true}, {50, false}},
+        {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
         {{30, true}, {50, true}});
 }
 
@@ -246,7 +263,7 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(connection.isConnected());
     check(
         {{5, true}},
-        {{50, true}},
+        {{50, true, 5, 5.0}},
         {{50, true}});
 }
 
@@ -261,7 +278,7 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(connection.isConnected());
     check(
         {{5, true}},
-        {{30, true}},
+        {{30, true, 5, 5.0}},
         {{30, true}});
 }
 
@@ -291,7 +308,7 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(connection.isConnected());
     check(
         {{5, true}},
-        {{50, true}},
+        {{50, true, 5, 5.0}},
         {{50, true}});
 }
 
@@ -321,7 +338,7 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(connection.isConnected());
     check(
         {{5, true}},
-        {{30, true}, {50, false}},
+        {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
         {{30, true}, {50, true}});
 }
 
@@ -355,6 +372,22 @@ BOOST_FIXTURE_TEST_CASE(Subscribe, Fixture) {
     esp.delay(100000);
     mqttClient.loop();
     BOOST_TEST(received == "payload4");
+}
+
+BOOST_FIXTURE_TEST_CASE(CycleTime, Fixture) {
+    sendAvailability(false);
+    loopUntil(20, 10);
+    loopUntil(40020, 1000);
+    loopUntil(60020, 500);
+
+    check(
+        {{10, true}},
+        {
+            {20, true, 10, 10.0},
+            {60020, false, 1000, 750.0},
+        },
+        {{20, true}, {60020, true}}
+        );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -82,11 +82,17 @@ private:
     unsigned long availabilityReceiveTimeLimit = 0;
     unsigned currentBackoff;
     unsigned long nextStatusSend = 0;
+
     bool initialized = false;
     bool restarted = true;
 
-    static constexpr size_t statusMsgBufSize = 250;
-    static constexpr size_t statusMsgSize = 150;
+    unsigned long previousStatusSend = 0;
+    unsigned long previousCycle = 0;
+    unsigned long maxCycleTime = 0;
+    unsigned long cycles = 0;
+
+    static constexpr size_t statusMsgBufSize = 350;
+    static constexpr size_t statusMsgSize = 250;
 
     ArduinoJson::StaticJsonBuffer<statusMsgBufSize> statusMsgBuf;
     char statusMsg[statusMsgSize];
@@ -106,6 +112,7 @@ private:
     bool tryToConnect(const ServerConfig& server);
     ConnectStatus connectIfNeeded();
     void sendStatusMessage(bool restarted);
+    void connectedLoop();
 };
 
 #endif // COMMON_MQTTCLIENT_HPP

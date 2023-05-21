@@ -41,6 +41,12 @@ const char* MqttClient::getStatusMessage(bool restarted) {
     message["ip"] = wifi.getIp();
     message["uptime"] = esp.millis();
     message["freeMemory"] = esp.getFreeHeap();
+
+    auto time = esp.millis() - previousStatusSend;
+    float avgCycleTime = static_cast<float>(time) / cycles;
+    message["avgCycleTime"] = avgCycleTime;
+    message["maxCycleTime"] = maxCycleTime;
+
     message.printTo(statusMsg);
     return statusMsg;
 }
@@ -309,11 +315,19 @@ void MqttClient::sendStatusMessage(bool restarted) {
 
     nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
             * statusSendInterval;
+    previousStatusSend = now;
+    cycles = 0;
+    maxCycleTime = 0;
 }
 
 
 void MqttClient::loop() {
-    if (esp.millis() >= nextConnectionAttempt) {
+    auto now = esp.millis();
+    ++cycles;
+    auto cycleTime = now - previousCycle;
+    maxCycleTime = std::max(maxCycleTime, cycleTime);
+
+    if (now >= nextConnectionAttempt) {
         switch (connectIfNeeded()) {
         case ConnectStatus::connectionSuccessful:
             backoff.good();
@@ -324,7 +338,7 @@ void MqttClient::loop() {
                 if (onConnected) {
                     onConnected();
                 }
-                nextStatusSend = esp.millis();
+                nextStatusSend = now;
                 sendStatusMessage(restarted);
                 restarted = false;
                 resetConnectionBackoff();
@@ -341,6 +355,11 @@ void MqttClient::loop() {
     }
 
     connection.loop();
+    previousCycle = now;
+}
+
+void MqttClient::connectedLoop() {
+
 }
 
 void MqttClient::subscribe(const char* topic,
