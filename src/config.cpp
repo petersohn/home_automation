@@ -15,7 +15,7 @@
 #include "MqttInterface.hpp"
 #include "PublishAction.hpp"
 #include "PowerSupplyInterface.hpp"
-#include "SDS011Sensor.hpp"
+//#include "SDS011Sensor.hpp"
 #include "SensorInterface.hpp"
 #include "StatusInterface.hpp"
 #include "DebugStream.hpp"
@@ -227,15 +227,15 @@ private:
                     ?  createSensorInterface(data,
                         std::make_unique<HM3301Sensor>(debug, sda, scl))
                     : nullptr;
-        } else if (type == "sds011") {
-            int rx = 0;
-            int tx = 0;
-            return (getRequiredValue(data, "rx", rx)
-                    && getRequiredValue(data, "tx", tx))
-                    ?  createSensorInterface(data,
-                        std::make_unique<SDS011Sensor>(debug, rx, tx,
-                        		getJsonWithDefault(data["measureTime"], 3)))
-                    : nullptr;
+        //} else if (type == "sds011") {
+        //    int rx = 0;
+        //    int tx = 0;
+        //    return (getRequiredValue(data, "rx", rx)
+        //            && getRequiredValue(data, "tx", tx))
+        //            ?  createSensorInterface(data,
+        //                std::make_unique<SDS011Sensor>(debug, rx, tx,
+        //                		getJsonWithDefault(data["measureTime"], 3)))
+        //            : nullptr;
         } else if (type == "counter") {
             uint8_t pin = 0;
             return getPin(data, pin)
