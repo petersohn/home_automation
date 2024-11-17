@@ -44,12 +44,12 @@
 		<link>
 			<name>libraries/Adafruit_Unified_Sensor</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Adafruit_Unified_Sensor/1.1.7</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Adafruit_Unified_Sensor/1.1.14</locationURI>
 		</link>
 		<link>
 			<name>libraries/DHT_sensor_library</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/DHT_sensor_library/1.4.4</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/DHT_sensor_library/1.4.6</locationURI>
 		</link>
 		<link>
 			<name>libraries/DallasTemperature</name>
@@ -69,7 +69,7 @@
 		<link>
 			<name>libraries/OneWire</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/OneWire/2.3.7</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/OneWire/2.3.8</locationURI>
 		</link>
 		<link>
 			<name>libraries/PubSubClient</name>
