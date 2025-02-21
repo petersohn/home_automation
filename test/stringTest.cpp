@@ -265,6 +265,22 @@ BOOST_AUTO_TEST_CASE(Negative) {
     BOOST_TEST(tools::floatToString(-42.6101, 2) == "-42.61");
 }
 
+BOOST_AUTO_TEST_CASE(SmallPositive) {
+    BOOST_TEST(tools::floatToString(0.123, 2) == "0.12");
+}
+
+BOOST_AUTO_TEST_CASE(SmallNegative) {
+    BOOST_TEST(tools::floatToString(-0.321, 2) == "-0.32");
+}
+
+BOOST_AUTO_TEST_CASE(VerySmallPositive) {
+    BOOST_TEST(tools::floatToString(0.0001, 2) == "0.00");
+}
+
+BOOST_AUTO_TEST_CASE(VerySmallNegative) {
+    BOOST_TEST(tools::floatToString(-0.0001, 2) == "-0.00");
+}
+
 BOOST_AUTO_TEST_CASE(MoreComplicated) {
     BOOST_TEST(tools::floatToString(1.0 / 3.0, 6) == "0.333333");
 }
