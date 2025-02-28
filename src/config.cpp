@@ -10,6 +10,7 @@
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
 #include "Hlw8012Interface.hpp"
+#include "HC-SR04Sensor.hpp"
 #include "HM3301Sensor.hpp"
 #include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
@@ -234,7 +235,7 @@ private:
         //            && getRequiredValue(data, "tx", tx))
         //            ?  createSensorInterface(data,
         //                std::make_unique<SDS011Sensor>(debug, rx, tx,
-        //                		getJsonWithDefault(data["measureTime"], 3)))
+        //                      getJsonWithDefault(data["measureTime"], 3)))
         //            : nullptr;
         } else if (type == "counter") {
             uint8_t pin = 0;
@@ -245,6 +246,15 @@ private:
                             getJsonWithDefault(data["multiplier"], 1.0f),
                             getInterval(data), getOffset(data), getPulse(data))
                     : nullptr;
+        } else if (type == "hc-sr04") {
+            uint8_t triggerPin = 0;
+            uint8_t echoPin = 0;
+            return (getRequiredValue(data, "triggerPin", triggerPin)
+                && getRequiredValue(data, "echoPin", echoPin))
+                ? createSensorInterface(data,
+                    std::make_unique<HC_SR04Sensor>(
+                        debug, esp, triggerPin, echoPin))
+                : nullptr;
         } else if (type == "mqtt") {
             std::string topic = data["topic"];
             return topic.length() != 0

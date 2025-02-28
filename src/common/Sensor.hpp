@@ -3,10 +3,11 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 class Sensor {
 public:
-    virtual std::vector<std::string> measure() = 0;
+    virtual std::optional<std::vector<std::string>> measure() = 0;
     virtual ~Sensor() {}
 };
 

@@ -13,7 +13,7 @@ public:
 
     HM3301Sensor(std::ostream& debug, int sda, int sdl);
 
-    std::vector<std::string> measure() override;
+    std::optional<std::vector<std::string>> measure() override;
 private:
     std::ostream& debug;
     HM330X sensor;

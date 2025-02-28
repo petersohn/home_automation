@@ -11,7 +11,7 @@ class DhtSensor : public Sensor {
 public:
     DhtSensor(std::ostream& debug, uint8_t pin, int type);
 
-    std::vector<std::string> measure() override;
+    std::optional<std::vector<std::string>> measure() override;
 private:
     std::ostream& debug;
     DHT dht;

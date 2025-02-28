@@ -7,7 +7,7 @@ class AnalogSensor : public Sensor {
 public:
     AnalogSensor() {}
 
-    std::vector<std::string> measure() override;
+    std::optional<std::vector<std::string>> measure() override;
 };
 
 

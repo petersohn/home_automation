@@ -9,7 +9,7 @@ DallasTemperatureSensor::DallasTemperatureSensor(std::ostream& debug,
     initialize();
 }
 
-std::vector<std::string> DallasTemperatureSensor::measure() {
+std::optional<std::vector<std::string>> DallasTemperatureSensor::measure() {
     if (!initialized) {
         if (!initialize()) {
             return {};
@@ -22,7 +22,7 @@ std::vector<std::string> DallasTemperatureSensor::measure() {
         if (temperature == DEVICE_DISCONNECTED_C) {
             debug << "Failed to read temperature." << std::endl;
             initialized = false;
-            return {};
+            return std::vector<std::string>{};
         }
         auto value = tools::floatToString(temperature, 1);
         result.emplace_back(value);

@@ -17,12 +17,12 @@ public:
     CounterSensor(float multiplier)
         : multiplier(multiplier) {}
 
-    std::vector<std::string> measure() override {
+    std::optional<std::vector<std::string>> measure() override {
         auto now = millis();
         if (lastMeasurement == 0) {
             lastMeasurement = now;
             number = 0;
-            return {};
+            return std::vector<std::string>{};
         }
 
         auto timeDifference = now - lastMeasurement;
@@ -31,7 +31,7 @@ public:
         number = 0;
         max = 0;
         lastMeasurement = now;
-        return {tools::floatToString(averageResult, 4), tools::floatToString(maxResult, 4)};
+        return std::vector<std::string>{tools::floatToString(averageResult, 4), tools::floatToString(maxResult, 4)};
     }
 
     void update(int counter, float maxRate) {

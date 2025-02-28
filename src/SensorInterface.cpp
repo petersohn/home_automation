@@ -21,22 +21,25 @@ void SensorInterface::update(Actions action) {
     auto now = esp.millis();
     if ((nextExecution != 0 && now >= nextExecution)
             || (nextRetry != 0 && now >= nextRetry)) {
+        auto values = sensor->measure();
+        if (!values) {
+            return;
+        }
         if (now >= nextExecution) {
             nextExecution += ((now - nextExecution) / interval + 1) * interval;
         }
-        auto values = sensor->measure();
         debug << name;
-        if (values.empty()) {
+        if (values->empty()) {
             debug << ": Measurement failed. Trying again." << std::endl;
             nextRetry = now + 1000;
         } else {
             debug << ": Measurement successful:";
-            for (const std::string& value : values) {
+            for (const std::string& value : *values) {
                 debug << " " << value;
             }
             debug << std::endl;
             nextRetry = 0;
-            action.fire(values);
+            action.fire(*values);
             pulseSent = false;
         }
     } else if (!pulse.empty()) {

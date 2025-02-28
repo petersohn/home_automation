@@ -10,16 +10,16 @@ HM3301Sensor::HM3301Sensor(std::ostream& debug, int sda, int scl)
     initialize();
 }
 
-std::vector<std::string> HM3301Sensor::measure() {
+std::optional<std::vector<std::string>> HM3301Sensor::measure() {
     if (!initialize()) {
-        return {};
+        return std::vector<std::string>{};
     }
 
     uint8_t buf[30];
     if (sensor.read_sensor_value(buf, 29)) {
         debug << "HM330X read failed." << std::endl;
         initialized = false;
-        return {};
+        return std::vector<std::string>{};
     }
 
     std::vector<std::string> result;

@@ -15,7 +15,7 @@ public:
     DallasTemperatureSensor(std::ostream& debug,
             uint8_t pin, std::size_t expectedNumberOfDevices);
 
-    std::vector<std::string> measure() override;
+    std::optional<std::vector<std::string>> measure() override;
 private:
     std::ostream& debug;
 

@@ -3,6 +3,6 @@
 
 #include <Arduino.h>
 
-std::vector<std::string> AnalogSensor::measure() {
-    return {tools::intToString(analogRead(A0))};
+std::optional<std::vector<std::string>> AnalogSensor::measure() {
+    return std::vector<std::string>{tools::intToString(analogRead(A0))};
 }
