@@ -1,7 +1,8 @@
-#include "HC-SR04Sensor.hpp"
-#include "tools/string.hpp"
+#include "EchoDistanceSensor.hpp"
 
 #include <Arduino.h>
+
+#include "tools/string.hpp"
 
 extern "C" {
 #include "c_types.h"
@@ -10,7 +11,7 @@ extern "C" {
 constexpr double speedOfSound = 0.00034; // m/us
 constexpr unsigned long timeout = 150; // ms
 
-HC_SR04Sensor::HC_SR04Sensor(std::ostream& debug, EspApi& esp, uint8_t triggerPin, uint8_t echoPin)
+EchoDistanceSensor::EchoDistanceSensor(std::ostream& debug, EspApi& esp, uint8_t triggerPin, uint8_t echoPin)
     : debug(debug)
     , esp(esp)
     , triggerPin(triggerPin)
@@ -21,7 +22,7 @@ HC_SR04Sensor::HC_SR04Sensor(std::ostream& debug, EspApi& esp, uint8_t triggerPi
     attachInterruptArg(echoPin, onChangeStatic, this, CHANGE);
 }
 
-std::optional<std::vector<std::string>> HC_SR04Sensor::measure() {
+std::optional<std::vector<std::string>> EchoDistanceSensor::measure() {
     if (measurementStartTime == 0) {
         measurementStartTime = esp.millis();
         esp.digitalWrite(triggerPin, 1);
@@ -58,13 +59,13 @@ std::optional<std::vector<std::string>> HC_SR04Sensor::measure() {
     return std::vector<std::string>{tools::floatToString(distance, 3)};
 }
 
-void HC_SR04Sensor::reset() {
+void EchoDistanceSensor::reset() {
     measurementStartTime = 0;
     riseTime = 0;
     echoTime = 0;
 }
 
-void IRAM_ATTR HC_SR04Sensor::onChange() {
+void IRAM_ATTR EchoDistanceSensor::onChange() {
     auto value = esp.digitalRead(echoPin);
 
     if (value) {
@@ -83,6 +84,6 @@ void IRAM_ATTR HC_SR04Sensor::onChange() {
     }
 }
 
-void IRAM_ATTR HC_SR04Sensor::onChangeStatic(void* arg) {
-    static_cast<HC_SR04Sensor*>(arg)->onChange();
+void IRAM_ATTR EchoDistanceSensor::onChangeStatic(void* arg) {
+    static_cast<EchoDistanceSensor*>(arg)->onChange();
 }

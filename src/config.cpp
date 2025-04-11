@@ -10,7 +10,7 @@
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
 #include "Hlw8012Interface.hpp"
-#include "HC-SR04Sensor.hpp"
+#include "EchoDistanceSensor.hpp"
 #include "HM3301Sensor.hpp"
 #include "KeepaliveInterface.hpp"
 #include "MqttInterface.hpp"
@@ -246,13 +246,13 @@ private:
                             getJsonWithDefault(data["multiplier"], 1.0f),
                             getInterval(data), getOffset(data), getPulse(data))
                     : nullptr;
-        } else if (type == "hc-sr04") {
+        } else if (type == "hc-sr04" || type == "echo-distance") {
             uint8_t triggerPin = 0;
             uint8_t echoPin = 0;
             return (getRequiredValue(data, "triggerPin", triggerPin)
                 && getRequiredValue(data, "echoPin", echoPin))
                 ? createSensorInterface(data,
-                    std::make_unique<HC_SR04Sensor>(
+                    std::make_unique<EchoDistanceSensor>(
                         debug, esp, triggerPin, echoPin))
                 : nullptr;
         } else if (type == "mqtt") {
