@@ -28,7 +28,7 @@ class InterfaceHasName {
 public:
     InterfaceHasName(const std::string& name) : name(name) {}
 
-    template<typename InterfaceConfigPtr>
+    template <typename InterfaceConfigPtr>
     bool operator()(const InterfaceConfigPtr& interface) {
         return interface->name == name;
     }
@@ -37,17 +37,17 @@ private:
     std::string name;
 };
 
-} // namespace detail
+}  // namespace detail
 
-template<typename Interfaces>
-InterfaceConfig* findInterface(const Interfaces& interfaces,
-        const std::string& name) {
-    auto iterator = std::find_if(interfaces.begin(), interfaces.end(),
-            detail::InterfaceHasName{name});
+template <typename Interfaces>
+InterfaceConfig* findInterface(
+    const Interfaces& interfaces, const std::string& name) {
+    auto iterator = std::find_if(
+        interfaces.begin(), interfaces.end(), detail::InterfaceHasName{name});
     if (iterator == interfaces.end()) {
         return nullptr;
     }
     return &**iterator;
 }
 
-#endif // INTERFACECONFIG_HPP
+#endif  // INTERFACECONFIG_HPP

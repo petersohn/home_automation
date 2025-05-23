@@ -1,15 +1,14 @@
-#include "GpioOutput.hpp"
-
-#include "tools/string.hpp"
-
 #include <cstdlib>
+
+#include "GpioOutput.hpp"
+#include "tools/string.hpp"
 
 namespace {
 
 constexpr int rtcSetMask = 2;
 constexpr int rtcValueMask = 1;
 
-} // unnamed namespace
+}  // unnamed namespace
 
 void GpioOutput::start() {
     changed = true;
@@ -22,7 +21,12 @@ bool GpioOutput::getOutput() {
 GpioOutput::GpioOutput(
     std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin, bool defaultValue,
     bool invert)
-        : debug(debug), esp(esp), rtc(rtc), pin(pin), rtcId(rtc.next()), invert(invert) {
+    : debug(debug)
+    , esp(esp)
+    , rtc(rtc)
+    , pin(pin)
+    , rtcId(rtc.next())
+    , invert(invert) {
     esp.pinMode(pin, GpioMode::output);
     Rtc::Data rtcData = rtc.get(rtcId);
     debug << "Pin " << static_cast<int>(pin) << ": ";
@@ -39,7 +43,8 @@ GpioOutput::GpioOutput(
 
 void GpioOutput::execute(const std::string& command) {
     bool newValue = value;
-    debug << "Pin " << static_cast<int>(pin) << " executing command: " << command << std::endl;
+    debug << "Pin " << static_cast<int>(pin)
+          << " executing command: " << command << std::endl;
 
     std::size_t position = 0;
     std::string commandName = tools::nextToken(command, ' ', position);
@@ -54,8 +59,8 @@ void GpioOutput::execute(const std::string& command) {
     }
 
     if (commandName == "blink") {
-       blinkOn = std::atoi(tools::nextToken(command, ' ', position).c_str());
-       blinkOff = std::atoi(tools::nextToken(command, ' ', position).c_str());
+        blinkOn = std::atoi(tools::nextToken(command, ' ', position).c_str());
+        blinkOff = std::atoi(tools::nextToken(command, ' ', position).c_str());
         if (blinkOn == 0 || blinkOff == 0) {
             clearBlink();
         } else {
@@ -64,7 +69,8 @@ void GpioOutput::execute(const std::string& command) {
         return;
     }
 
-    if (!tools::getBoolValue(commandName.c_str(), newValue, commandName.size())) {
+    if (!tools::getBoolValue(
+            commandName.c_str(), newValue, commandName.size())) {
         debug << "Invalid command." << std::endl;
         return;
     }
@@ -84,8 +90,9 @@ void GpioOutput::update(Actions action) {
 
     if (changed) {
         bool localValue = esp.digitalRead(pin);
-        action.fire({tools::intToString(invert ? !localValue : localValue),
-            tools::intToString(blinkOn), tools::intToString(blinkOff)});
+        action.fire(
+            {tools::intToString(invert ? !localValue : localValue),
+             tools::intToString(blinkOn), tools::intToString(blinkOff)});
         changed = false;
     }
 }
@@ -105,7 +112,8 @@ void GpioOutput::clearBlink() {
 
 void GpioOutput::setValue() {
     bool output = getOutput();
-    debug << "Pin " << static_cast<int>(pin) << ": value=" << output << std::endl;
+    debug << "Pin " << static_cast<int>(pin) << ": value=" << output
+          << std::endl;
     esp.digitalWrite(pin, output);
     Rtc::Data rtcData = rtcSetMask;
     if (value) {

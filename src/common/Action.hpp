@@ -1,11 +1,11 @@
 #ifndef COMMON_ACTION_HPP
 #define COMMON_ACTION_HPP
 
-#include "InterfaceConfig.hpp"
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "InterfaceConfig.hpp"
 
 class Action {
 public:
@@ -13,4 +13,4 @@ public:
     virtual ~Action() {}
 };
 
-#endif // COMMON_ACTION_HPP
+#endif  // COMMON_ACTION_HPP

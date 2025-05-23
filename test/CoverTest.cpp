@@ -9,7 +9,7 @@
 BOOST_AUTO_TEST_SUITE(CoverTest)
 
 enum Pin : uint8_t {
-    UpOutput, DownOutput, UpInput, DownInput
+    UpOutput = 1, DownOutput, UpInput, DownInput
 };
 
 class Fixture : public InterfaceTestBase {
@@ -97,9 +97,9 @@ public:
         setPosition(position);
         loopFor(41000, delay, [](unsigned long, size_t) {});
         if (position <= 100) {
-            BOOST_TEST_REQUIRE(getValue(0) ==  "CLOSED");
+            BOOST_TEST_REQUIRE(getValue(0) == "CLOSED");
         } else {
-            BOOST_TEST_REQUIRE(getValue(0) ==  "OPEN");
+            BOOST_TEST_REQUIRE(getValue(0) == "OPEN");
         }
         BOOST_TEST_REQUIRE(getValue(1) == std::to_string(position));
     }

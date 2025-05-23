@@ -8,8 +8,8 @@
 
 namespace tools {
 
-std::string nextToken(const std::string& string, char separator,
-        size_t& position);
+std::string nextToken(
+    const std::string& string, char separator, size_t& position);
 
 std::string intToString(int i, unsigned radix = 10);
 std::string floatToString(double i, int decimals);
@@ -27,9 +27,7 @@ public:
         result += value;
     }
 
-    const std::string& get() const {
-        return result;
-    }
+    const std::string& get() const { return result; }
 
 private:
     const char* separator;
@@ -39,20 +37,20 @@ private:
 
 namespace detail {
 
-template<typename Range>
-void addValue(std::string& result, const std::string& reference,
-        const Range& elements) {
+template <typename Range>
+void addValue(
+    std::string& result, const std::string& reference, const Range& elements) {
     std::size_t value = std::atol(reference.c_str());
     if (value > 0 && value <= elements.size()) {
         result += elements[value - 1];
     }
 }
 
-} // namespace detail
+}  // namespace detail
 
-template<typename Range>
-std::string substitute(const std::string& valueTemplate,
-        const Range& elements) {
+template <typename Range>
+std::string substitute(
+    const std::string& valueTemplate, const Range& elements) {
     std::string result;
     std::string reference;
     bool inReference = false;
@@ -85,6 +83,6 @@ std::string substitute(const std::string& valueTemplate,
 
 bool getBoolValue(const char* input, bool& output, int length = -1);
 
-} // namespace tools
+}  // namespace tools
 
-#endif // TOOLS_STRING_HPP
+#endif  // TOOLS_STRING_HPP

@@ -1,14 +1,15 @@
 #ifndef ECHO_DISTANCE_READER_INTERFACE_HPP
 #define ECHO_DISTANCE_READER_INTERFACE_HPP
 
+#include <ostream>
+
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
 
-#include <ostream>
-
 class EchoDistanceReaderInterface : public Interface {
 public:
-    EchoDistanceReaderInterface(std::ostream& debug, EspApi& esp, uint8_t echoPin);
+    EchoDistanceReaderInterface(
+        std::ostream& debug, EspApi& esp, uint8_t echoPin);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -27,6 +28,4 @@ private:
     void reset();
 };
 
-
-#endif // ECHO_DISTANCE_READER_INTERFACE_HPP
-
+#endif  // ECHO_DISTANCE_READER_INTERFACE_HPP

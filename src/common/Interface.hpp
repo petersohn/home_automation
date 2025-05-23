@@ -1,9 +1,9 @@
 #ifndef COMMON_INTERFACE_HPP
 #define COMMON_INTERFACE_HPP
 
-#include "Actions.hpp"
-
 #include <string>
+
+#include "Actions.hpp"
 
 class Interface {
 public:
@@ -13,4 +13,4 @@ public:
     virtual ~Interface() {}
 };
 
-#endif // COMMON_INTERFACE_HPP
+#endif  // COMMON_INTERFACE_HPP

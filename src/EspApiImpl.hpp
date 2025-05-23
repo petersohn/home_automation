@@ -5,7 +5,7 @@
 
 class EspApiImpl : public EspApi {
 public:
-	EspApiImpl() = default;
+    EspApiImpl() = default;
 
     virtual void pinMode(uint8_t pin, GpioMode mode) override;
     virtual void digitalWrite(uint8_t pin, uint8_t val) override;
@@ -18,10 +18,11 @@ public:
 
     virtual uint32_t getFreeHeap() override;
 
-    virtual void attachInterrupt(uint8_t pin,
-        std::function<void(void)> intRoutine, InterruptMode mode) override;
+    virtual void attachInterrupt(
+        uint8_t pin, std::function<void(void)> intRoutine,
+        InterruptMode mode) override;
     virtual void doDisableInterrupt() override;
     virtual void doEnableInterrupt() override;
 };
 
-#endif // ESPAPIIMPL_HPP
+#endif  // ESPAPIIMPL_HPP

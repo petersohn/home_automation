@@ -3,15 +3,15 @@
 #ifndef HLW8012INTERFACE_HPP
 #define HLW8012INTERFACE_HPP
 
-#include "common/Interface.hpp"
-#include "SensorInterface.hpp"
-#include "common/EspApi.hpp"
-#include "JsonParser.hpp"
-
 #include <HLW8012.h>
 
-#include <ostream>
 #include <optional>
+#include <ostream>
+
+#include "JsonParser.hpp"
+#include "SensorInterface.hpp"
+#include "common/EspApi.hpp"
+#include "common/Interface.hpp"
 
 class Hlw8012Interface : public Interface {
 public:
@@ -33,6 +33,6 @@ private:
     void saveConfig();
 };
 
-#endif // HLW8012INTERFACE_HPP
+#endif  // HLW8012INTERFACE_HPP
 
 #endif

@@ -1,17 +1,18 @@
 #ifndef COMMON_BACKOFFIMPL_HPP
 #define COMMON_BACKOFFIMPL_HPP
 
-#include "rtc.hpp"
-#include "EspApi.hpp"
-#include "Backoff.hpp"
-
 #include <functional>
 #include <ostream>
 
+#include "Backoff.hpp"
+#include "EspApi.hpp"
+#include "rtc.hpp"
+
 class BackoffImpl : public Backoff {
 public:
-    BackoffImpl(std::ostream& debug, const char* prefix, EspApi& esp, Rtc& rtc,
-            unsigned long initialBackoff, unsigned long maximumBackoff);
+    BackoffImpl(
+        std::ostream& debug, const char* prefix, EspApi& esp, Rtc& rtc,
+        unsigned long initialBackoff, unsigned long maximumBackoff);
 
     void good();
     void bad();
@@ -31,4 +32,4 @@ private:
     void setBackoff(unsigned long value);
 };
 
-#endif // COMMON_BACKOFFIMPL_HPP
+#endif  // COMMON_BACKOFFIMPL_HPP

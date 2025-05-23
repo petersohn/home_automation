@@ -1,12 +1,12 @@
-#include "string.hpp"
-
 #include <algorithm>
 #include <cctype>
 
+#include "string.hpp"
+
 namespace tools {
 
-std::string nextToken(const std::string& string, char separator,
-        size_t& position) {
+std::string nextToken(
+    const std::string& string, char separator, size_t& position) {
     while (position < string.length() && string[position] == separator) {
         ++position;
     }
@@ -48,7 +48,8 @@ std::string intToString(int value, unsigned radix) {
 
 std::string floatToString(double value, int decimals) {
     int intpart = static_cast<int>(value);
-    std::string result = intpart == 0 && value < 0 ? "-0" : intToString(intpart);
+    std::string result =
+        intpart == 0 && value < 0 ? "-0" : intToString(intpart);
     value -= intpart;
     if (value == 0) {
         return result;
@@ -77,22 +78,21 @@ bool getBoolValue(const char* input, bool& output, int length) {
     } else {
         length = std::min(length, maxLength);
     }
-    std::transform(input, input + length, buf, [](char c) {
-            return std::tolower(c);
-        });
+    std::transform(
+        input, input + length, buf, [](char c) { return std::tolower(c); });
     buf[length] = 0;
 
     if (strcmp(buf, "1") == 0 || strcmp(buf, "on") == 0 ||
-            strcmp(buf, "true") == 0) {
+        strcmp(buf, "true") == 0) {
         output = true;
         return true;
     }
     if (strcmp(buf, "0") == 0 || strcmp(buf, "off") == 0 ||
-            strcmp(buf, "false") == 0) {
+        strcmp(buf, "false") == 0) {
         output = false;
         return true;
     }
     return false;
 }
 
-} // namespace tools
+}  // namespace tools

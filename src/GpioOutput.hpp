@@ -1,15 +1,16 @@
 #ifndef GPIOOUTPUT_HPP
 #define GPIOOUTPUT_HPP
 
-#include "common/Interface.hpp"
-#include "common/EspApi.hpp"
-#include "common/rtc.hpp"
-
 #include <ostream>
+
+#include "common/EspApi.hpp"
+#include "common/Interface.hpp"
+#include "common/rtc.hpp"
 
 class GpioOutput : public Interface {
 public:
-    GpioOutput(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin,
+    GpioOutput(
+        std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin,
         bool defaultValue, bool invert);
 
     void start() override;
@@ -36,4 +37,4 @@ private:
     int blinkOff = 0;
 };
 
-#endif // GPIOOUTPUT_HPP
+#endif  // GPIOOUTPUT_HPP

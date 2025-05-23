@@ -1,17 +1,16 @@
 #ifndef GPIOINPUT_HPP
 #define GPIOINPUT_HPP
 
-#include "common/Interface.hpp"
-
 #include <ostream>
+
+#include "common/Interface.hpp"
 
 class GpioInput : public Interface {
 public:
-    enum class CycleType {
-        none, single, multi
-    };
+    enum class CycleType { none, single, multi };
 
-    GpioInput(std::ostream& debug, uint8_t pin, CycleType cycleType,
+    GpioInput(
+        std::ostream& debug, uint8_t pin, CycleType cycleType,
         unsigned interval = 10);
 
     void start() override;
@@ -33,5 +32,4 @@ private:
     void onChange(/*bool newState*/);
 };
 
-
-#endif // GPIOINPUT_HPP
+#endif  // GPIOINPUT_HPP

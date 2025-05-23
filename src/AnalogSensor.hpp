@@ -10,5 +10,4 @@ public:
     std::optional<std::vector<std::string>> measure() override;
 };
 
-
-#endif // ANALOGSENSOR_HPP
+#endif  // ANALOGSENSOR_HPP

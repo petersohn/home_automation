@@ -14,7 +14,8 @@ enum class WifiStatus {
 
 class Wifi {
 public:
-    virtual void begin(const std::string& ssid, const std::string& password) = 0;
+    virtual void begin(
+        const std::string& ssid, const std::string& password) = 0;
     virtual WifiStatus getStatus() = 0;
     virtual std::string getIp() = 0;
     virtual std::string getMac() = 0;
@@ -24,4 +25,4 @@ public:
     Wifi& operator=(const Wifi&) = delete;
 };
 
-#endif // COMMON_WIFI_HPP
+#endif  // COMMON_WIFI_HPP

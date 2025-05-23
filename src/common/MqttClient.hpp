@@ -1,17 +1,17 @@
 #ifndef COMMON_MQTTCLIENT_HPP
 #define COMMON_MQTTCLIENT_HPP
 
-#include "EspApi.hpp"
-#include "Backoff.hpp"
-#include "Wifi.hpp"
-#include "MqttConnection.hpp"
-#include "ArduinoJson.hpp"
-
 #include <functional>
-#include <string>
-#include <ostream>
 #include <memory>
+#include <ostream>
+#include <string>
 #include <vector>
+
+#include "ArduinoJson.hpp"
+#include "Backoff.hpp"
+#include "EspApi.hpp"
+#include "MqttConnection.hpp"
+#include "Wifi.hpp"
 
 class Client;
 struct ServerConfig;
@@ -36,16 +36,18 @@ struct MqttConfig {
 
 class MqttClient {
 public:
-    MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff,
-            MqttConnection& connection, std::function<void()> onConnected);
+    MqttClient(
+        std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff,
+        MqttConnection& connection, std::function<void()> onConnected);
 
     void setConfig(MqttConfig config_);
     void loop();
     void disconnect();
     bool isConnected() const;
 
-    void subscribe(const char* topic,
-            std::function<void(const MqttConnection::Message&)> callback);
+    void subscribe(
+        const char* topic,
+        std::function<void(const MqttConnection::Message&)> callback);
     void unsubscribe(const char* topic);
     void publish(const char* topic, const char* payload, bool retain);
 
@@ -59,8 +61,8 @@ private:
         connectionFailed
     };
 
-    using Subscription = std::pair<std::string,
-          std::function<void(const MqttConnection::Message&)>>;
+    using Subscription = std::pair<
+        std::string, std::function<void(const MqttConnection::Message&)>>;
 
     std::ostream& debug;
     EspApi& esp;
@@ -115,4 +117,4 @@ private:
     void connectedLoop();
 };
 
-#endif // COMMON_MQTTCLIENT_HPP
+#endif  // COMMON_MQTTCLIENT_HPP

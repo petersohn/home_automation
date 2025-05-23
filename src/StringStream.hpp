@@ -17,4 +17,4 @@ private:
     std::string value;
 };
 
-#endif // STRINGSTREAM_HPP
+#endif  // STRINGSTREAM_HPP

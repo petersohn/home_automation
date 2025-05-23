@@ -1,17 +1,16 @@
-#include "EspRtc.hpp"
-
 #include <Arduino.h>
 
 #include <cstring>
+
+#include "EspRtc.hpp"
 
 namespace {
 
 Rtc::Data magic = 1938067743;
 
-
 constexpr unsigned memorySize = 512;
 
-} // unnamed namespace
+}  // unnamed namespace
 
 EspRtc::EspRtc() {
     Data value = get(0);
@@ -36,4 +35,3 @@ void EspRtc::set(unsigned id, Data value) {
 unsigned EspRtc::next() {
     return ++currentId;
 }
-

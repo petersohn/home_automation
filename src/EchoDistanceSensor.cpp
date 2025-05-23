@@ -1,18 +1,18 @@
-#include "EchoDistanceSensor.hpp"
-
 #include <Arduino.h>
 
+#include "EchoDistanceSensor.hpp"
 #include "tools/string.hpp"
 
 extern "C" {
 #include "c_types.h"
 }
 
-constexpr double speedOfSound = 0.00034; // m/us
-constexpr unsigned long timeout = 150; // ms
+constexpr double speedOfSound = 0.00034;  // m/us
+constexpr unsigned long timeout = 150;    // ms
 
-EchoDistanceSensor::EchoDistanceSensor(std::ostream& debug, EspApi& esp,
-        uint8_t triggerPin, uint8_t echoPin, unsigned triggerTime)
+EchoDistanceSensor::EchoDistanceSensor(
+    std::ostream& debug, EspApi& esp, uint8_t triggerPin, uint8_t echoPin,
+    unsigned triggerTime)
     : debug(debug)
     , esp(esp)
     , triggerPin(triggerPin)
@@ -49,7 +49,6 @@ std::optional<std::vector<std::string>> EchoDistanceSensor::measure() {
                 reset();
                 return std::vector<std::string>{};
             }
-
         }
         return std::nullopt;
     }

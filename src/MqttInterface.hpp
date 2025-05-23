@@ -7,7 +7,7 @@
 class MqttInterface : public Interface {
 public:
     MqttInterface(MqttClient& mqttClient, const std::string& topic)
-            : mqttClient(mqttClient), topic(topic) {}
+        : mqttClient(mqttClient), topic(topic) {}
     ~MqttInterface();
 
     void start() override;
@@ -23,4 +23,4 @@ private:
     void onMessage(const std::string& message);
 };
 
-#endif // MQTTINTERFACE_HPP
+#endif  // MQTTINTERFACE_HPP

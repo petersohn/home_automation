@@ -1,7 +1,6 @@
-#include "Cover.hpp"
-
-#include "ArduinoJson.hpp"
 #include "../tools/string.hpp"
+#include "ArduinoJson.hpp"
+#include "Cover.hpp"
 
 using namespace ArduinoJson;
 
@@ -12,17 +11,18 @@ bool getActualValue(bool value, bool invert) {
 
 constexpr int debounceTime = 20;
 constexpr int startTimeout = 1000;
-}
+}  // namespace
 
-Cover::Movement::Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin,
-        int endPosition, int direction, const std::string& directionName) :
-        parent(parent),
-        inputPin(inputPin),
-        outputPin(outputPin),
-        endPosition(endPosition),
-        direction(direction),
-        timeId(parent.rtc.next()),
-        debugPrefix(parent.debugPrefix + directionName + ": ") {
+Cover::Movement::Movement(
+    Cover& parent, uint8_t inputPin, uint8_t outputPin, int endPosition,
+    int direction, const std::string& directionName)
+    : parent(parent)
+    , inputPin(inputPin)
+    , outputPin(outputPin)
+    , endPosition(endPosition)
+    , direction(direction)
+    , timeId(parent.rtc.next())
+    , debugPrefix(parent.debugPrefix + directionName + ": ") {
     parent.esp.pinMode(inputPin, GpioMode::input);
     parent.esp.pinMode(outputPin, GpioMode::output);
     moveTime = parent.rtc.get(timeId);
@@ -30,7 +30,8 @@ Cover::Movement::Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin,
 
 void Cover::Movement::start() {
     auto value = getActualValue(true, parent.invertOutput);
-    log("Start " + tools::intToString(parent.invertOutput) + " " + tools::intToString(value));
+    log("Start " + tools::intToString(parent.invertOutput) + " " +
+        tools::intToString(value));
     parent.esp.digitalWrite(outputPin, value);
     if (!isStarted()) {
         startedTime = parent.esp.millis();
@@ -39,7 +40,8 @@ void Cover::Movement::start() {
 
 void Cover::Movement::stop() {
     auto value = getActualValue(false, parent.invertOutput);
-    log("stop " + tools::intToString(parent.invertOutput) + " " + tools::intToString(value));
+    log("stop " + tools::intToString(parent.invertOutput) + " " +
+        tools::intToString(value));
     parent.esp.digitalWrite(outputPin, value);
     if (startedTime != 0) {
         startedTime = 0;
@@ -84,9 +86,10 @@ int Cover::Movement::update() {
     if (isReallyMoving()) {
         if (moving) {
             if (parent.position != -1 && moveTime != 0) {
-                newPosition = moveStartPosition + static_cast<int>(
-                        direction * 100.0 *
-                        (now - moveStartTime) / moveTime);
+                newPosition =
+                    moveStartPosition +
+                    static_cast<int>(
+                        direction * 100.0 * (now - moveStartTime) / moveTime);
                 if (direction * newPosition >= endPosition) {
                     newPosition = endPosition - direction;
                 }
@@ -121,21 +124,22 @@ int Cover::Movement::update() {
     return newPosition;
 }
 
-Cover::Cover(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
-        uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        bool invertInput, bool invertOutput, int closedPosition)
-        : debug(debug)
-        , esp(esp)
-        , rtc(rtc)
-        , debugPrefix("Cover " + tools::intToString(upPin) + "." +
-            tools::intToString(downPin) + ": ")
-        , up(*this, upMovementPin, upPin, 100, 1, "up")
-        , down(*this, downMovementPin, downPin, 0, -1, "down")
-        , invertInput(invertInput)
-        , invertOutput(invertOutput)
-        , closedPosition(closedPosition)
-        , positionId(rtc.next())
-         {
+Cover::Cover(
+    std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
+    uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, bool invertInput,
+    bool invertOutput, int closedPosition)
+    : debug(debug)
+    , esp(esp)
+    , rtc(rtc)
+    , debugPrefix(
+          "Cover " + tools::intToString(upPin) + "." +
+          tools::intToString(downPin) + ": ")
+    , up(*this, upMovementPin, upPin, 100, 1, "up")
+    , down(*this, downMovementPin, downPin, 0, -1, "down")
+    , invertInput(invertInput)
+    , invertOutput(invertOutput)
+    , closedPosition(closedPosition)
+    , positionId(rtc.next()) {
     position = rtc.get(positionId) - 1;
     log("Initial position: " + tools::intToString(position));
     stop();
@@ -166,8 +170,7 @@ void Cover::execute(const std::string& command) {
     }
 }
 
-void Cover::setPosition(int value)
-{
+void Cover::setPosition(int value) {
     if (value < 0 || value > 100) {
         log("Position out of range: " + tools::intToString(value));
         return;
@@ -233,8 +236,7 @@ void Cover::update(Actions action) {
             stateName = "OPEN";
         }
 
-        log("state=" + stateName +
-                " position=" + tools::intToString(position));
+        log("state=" + stateName + " position=" + tools::intToString(position));
 
         std::vector<std::string> values{std::move(stateName)};
         if (position != -1) {
@@ -249,10 +251,9 @@ void Cover::update(Actions action) {
         if (position == targetPosition) {
             targetPosition = -1;
             stop();
-        } else if (!up.isStarted()
-                && !down.isStarted()) {
-            if (up.getDidNotStartCount() < 2
-                && down.getDidNotStartCount() < 2) {
+        } else if (!up.isStarted() && !down.isStarted()) {
+            if (up.getDidNotStartCount() < 2 &&
+                down.getDidNotStartCount() < 2) {
                 setPosition(targetPosition);
             } else {
                 targetPosition = -1;

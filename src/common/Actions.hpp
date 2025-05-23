@@ -16,8 +16,9 @@ public:
             action->fire(interface);
         }
     }
+
 private:
     InterfaceConfig& interface;
 };
 
-#endif // COMMON_ACTIONS_HPP
+#endif  // COMMON_ACTIONS_HPP

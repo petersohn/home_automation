@@ -1,11 +1,10 @@
 #include "PublishAction.hpp"
-
 #include "common/MqttClient.hpp"
 #include "tools/string.hpp"
 
-PublishAction::PublishAction(std::ostream& debug, EspApi& esp,
-    MqttClient& mqttClient, const std::string& topic,
-    std::unique_ptr<operation::Operation>&& operation,
+PublishAction::PublishAction(
+    std::ostream& debug, EspApi& esp, MqttClient& mqttClient,
+    const std::string& topic, std::unique_ptr<operation::Operation>&& operation,
     bool retain, unsigned minimumSendInterval)
     : debug(debug)
     , esp(esp)
@@ -14,9 +13,7 @@ PublishAction::PublishAction(std::ostream& debug, EspApi& esp,
     , operation(std::move(operation))
     , retain(retain)
     , minimumSendInterval(minimumSendInterval)
-    , lastSend(0)
-{
-}
+    , lastSend(0) {}
 
 void PublishAction::fire(const InterfaceConfig& /*interface*/) {
     auto now = esp.millis();

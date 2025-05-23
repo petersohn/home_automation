@@ -1,15 +1,16 @@
 #ifndef ECHO_DISTANCE_SENSOR_HPP
 #define ECHO_DISTANCE_SENSOR_HPP
 
+#include <ostream>
+
 #include "common/EspApi.hpp"
 #include "common/Sensor.hpp"
 
-#include <ostream>
-
 class EchoDistanceSensor : public Sensor {
 public:
-    EchoDistanceSensor(std::ostream& debug, EspApi& esp, uint8_t triggerPin,
-            uint8_t echoPin, unsigned triggerTime);
+    EchoDistanceSensor(
+        std::ostream& debug, EspApi& esp, uint8_t triggerPin, uint8_t echoPin,
+        unsigned triggerTime);
 
     std::optional<std::vector<std::string>> measure() override;
 
@@ -29,5 +30,4 @@ private:
     void reset();
 };
 
-
-#endif // ECHO_DISTANCE_SENSOR_HPP
+#endif  // ECHO_DISTANCE_SENSOR_HPP

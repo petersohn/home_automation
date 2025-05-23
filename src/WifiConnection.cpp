@@ -6,7 +6,7 @@ constexpr int checkInterval = 1000;
 constexpr int retryInterval = 5000;
 constexpr unsigned long connectionTimeout = 60000;
 
-} // unnamed namespace
+}  // unnamed namespace
 
 void WifiConnection::connectionFailed() {
     backoff.bad();
@@ -14,12 +14,13 @@ void WifiConnection::connectionFailed() {
     nextAttempt += retryInterval;
 }
 
-bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string& password) {
+bool WifiConnection::connectIfNeeded(
+    const std::string& ssid, const std::string& password) {
     auto status = wifi.getStatus();
     if (status == WifiStatus::Connected) {
         if (!connected) {
             debug << "\nConnection to wifi successful. IP address = "
-                << wifi.getIp() << std::endl;
+                  << wifi.getIp() << std::endl;
             connected = true;
             backoff.good();
         }
@@ -48,8 +49,8 @@ bool WifiConnection::connectIfNeeded(const std::string& ssid, const std::string&
         break;
     case WifiStatus::Connecting:
         debug << "Waiting for wifi connection ("
-            << connectionStarted + connectionTimeout - now
-            << " remaining)..." << std::endl;
+              << connectionStarted + connectionTimeout - now << " remaining)..."
+              << std::endl;
         if (now > connectionStarted + connectionTimeout) {
             connectionFailed();
         } else {

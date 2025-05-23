@@ -6,7 +6,7 @@
 
 class StatusInterface : public Interface {
 public:
-    StatusInterface(MqttClient& mqttClient): mqttClient(mqttClient) {}
+    StatusInterface(MqttClient& mqttClient) : mqttClient(mqttClient) {}
 
     void start() override;
     void execute(const std::string& command) override;
@@ -18,5 +18,4 @@ private:
     int value = -1;
 };
 
-#endif // STATUSINTERFACE_HPP
-
+#endif  // STATUSINTERFACE_HPP

@@ -6,8 +6,7 @@ void StatusInterface::start() {
     value = -1;
 }
 
-void StatusInterface::execute(const std::string& /*command*/) {
-}
+void StatusInterface::execute(const std::string& /*command*/) {}
 
 void StatusInterface::update(Actions action) {
     int newValue = mqttClient.isConnected() ? 1 : 0;

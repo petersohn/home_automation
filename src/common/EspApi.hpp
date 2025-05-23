@@ -5,24 +5,16 @@
 #include <functional>
 #include <memory>
 
-enum class InterruptMode {
-    rise, fall, change
-};
+enum class InterruptMode { rise, fall, change };
 
-enum class GpioMode {
-    input, inputPullup, output
-};
+enum class GpioMode { input, inputPullup, output };
 
 class EspApi {
 public:
     class InterruptGuard {
     public:
-        InterruptGuard(EspApi& esp) : esp(esp) {
-            esp.doDisableInterrupt();
-        }
-        ~InterruptGuard() {
-            esp.doEnableInterrupt();
-        }
+        InterruptGuard(EspApi& esp) : esp(esp) { esp.doDisableInterrupt(); }
+        ~InterruptGuard() { esp.doEnableInterrupt(); }
 
         InterruptGuard(const InterruptGuard&) = delete;
         InterruptGuard& operator=(const InterruptGuard&) = delete;
@@ -46,8 +38,9 @@ public:
 
     virtual uint32_t getFreeHeap() = 0;
 
-    virtual void attachInterrupt(uint8_t pin,
-        std::function<void(void)> intRoutine, InterruptMode mode) = 0;
+    virtual void attachInterrupt(
+        uint8_t pin, std::function<void(void)> intRoutine,
+        InterruptMode mode) = 0;
     virtual void doDisableInterrupt() = 0;
     virtual void doEnableInterrupt() = 0;
 
@@ -56,4 +49,4 @@ public:
     }
 };
 
-#endif // COMMON_ESPAPI_HPP
+#endif  // COMMON_ESPAPI_HPP

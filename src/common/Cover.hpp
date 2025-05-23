@@ -1,15 +1,16 @@
 #ifndef COVER_HPP
 #define COVER_HPP
 
+#include <ostream>
+
+#include "EspApi.hpp"
 #include "Interface.hpp"
 #include "rtc.hpp"
-#include "EspApi.hpp"
-
-#include <ostream>
 
 class Cover : public Interface {
 public:
-    Cover(std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
+    Cover(
+        std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
         bool invertInput, bool invertOutput, int closedPosition);
 
@@ -20,8 +21,9 @@ public:
 private:
     class Movement {
     public:
-        Movement(Cover& parent, uint8_t inputPin, uint8_t outputPin, int endPosition,
-                int direction, const std::string& directionName);
+        Movement(
+            Cover& parent, uint8_t inputPin, uint8_t outputPin, int endPosition,
+            int direction, const std::string& directionName);
         int update();
         void start();
         void stop();
@@ -74,5 +76,4 @@ private:
     void setPosition(int value);
 };
 
-
-#endif // COVER_HPP
+#endif  // COVER_HPP

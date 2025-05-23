@@ -1,6 +1,5 @@
-#include "CommandAction.hpp"
-
 #include "../tools/string.hpp"
+#include "CommandAction.hpp"
 
 void CommandAction::fire(const InterfaceConfig& /*interface*/) {
     std::string value = command->evaluate();

@@ -1,6 +1,5 @@
-#include "Operations.hpp"
-
 #include "../tools/string.hpp"
+#include "Operations.hpp"
 
 namespace operation {
 
@@ -32,4 +31,4 @@ std::string Conditional::evaluate() {
     return value ? then->evaluate() : else_->evaluate();
 }
 
-} // namespace operation
+}  // namespace operation

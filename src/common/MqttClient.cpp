@@ -1,11 +1,9 @@
-#include "MqttClient.hpp"
-
-#include "Interface.hpp"
-
-#include "../tools/string.hpp"
-
 #include <algorithm>
 #include <vector>
+
+#include "../tools/string.hpp"
+#include "Interface.hpp"
+#include "MqttClient.hpp"
 
 using namespace ArduinoJson;
 
@@ -16,11 +14,11 @@ constexpr unsigned maxBackoff = 60000;
 constexpr unsigned statusSendInterval = 60000;
 constexpr unsigned availabilityReceiveTimeout = 2000;
 
-} // unnamed namespace
+}  // unnamed namespace
 
-MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi,
-        Backoff& backoff, MqttConnection& connection,
-        std::function<void()> onConnected)
+MqttClient::MqttClient(
+    std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff,
+    MqttConnection& connection, std::function<void()> onConnected)
     : debug(debug)
     , esp(esp)
     , wifi(wifi)
@@ -28,9 +26,7 @@ MqttClient::MqttClient(std::ostream& debug, EspApi& esp, Wifi& wifi,
     , connection(connection)
     , onConnected(std::move(onConnected))
     , initState(InitState::Begin)
-    , currentBackoff(initialBackoff)
-{
-}
+    , currentBackoff(initialBackoff) {}
 
 const char* MqttClient::getStatusMessage(bool restarted) {
     statusMsgBuf.clear();
@@ -87,7 +83,7 @@ void MqttClient::handleStatusMessage(const JsonObject& message) {
     auto mac = message.get<std::string>("mac");
 
     debug << "Got status: state=" << currentStateDebug() << " name=" << name
-            << " mac=" << mac << std::endl;
+          << " mac=" << mac << std::endl;
 
     if (name != config.name) {
         debug << "Another device, not interested." << std::endl;
@@ -113,10 +109,9 @@ void MqttClient::handleStatusMessage(const JsonObject& message) {
     }
 }
 
-void MqttClient::handleAvailabilityMessage(bool available)
-{
-    debug << "Got availability state=" << currentStateDebug() <<
-            " available=" << available << std::endl;
+void MqttClient::handleAvailabilityMessage(bool available) {
+    debug << "Got availability state=" << currentStateDebug()
+          << " available=" << available << std::endl;
     if (available) {
         switch (initState) {
         case InitState::Begin:
@@ -142,8 +137,7 @@ void MqttClient::handleAvailabilityMessage(bool available)
     }
 }
 
-const char* MqttClient::currentStateDebug() const
-{
+const char* MqttClient::currentStateDebug() const {
     switch (initState) {
     case InitState::Begin:
         return "Begin";
@@ -185,10 +179,10 @@ void MqttClient::handleMessage(const MqttConnection::Message& message) {
     }
 
     auto iterator = std::find_if(
-            subscriptions.begin(), subscriptions.end(),
-            [&message, this](const Subscription& element) {
-                return strcmp(message.topic, element.first.c_str()) == 0;
-            });
+        subscriptions.begin(), subscriptions.end(),
+        [&message, this](const Subscription& element) {
+            return strcmp(message.topic, element.first.c_str()) == 0;
+        });
     if (iterator == subscriptions.end()) {
         debug << "No subscription for topic." << std::endl;
         return;
@@ -197,8 +191,8 @@ void MqttClient::handleMessage(const MqttConnection::Message& message) {
 }
 
 bool MqttClient::tryToConnect(const ServerConfig& server) {
-    debug << "Connecting to " << server.address << ":" << server.port
-        << " as " << server.username << std::endl;
+    debug << "Connecting to " << server.address << ":" << server.port << " as "
+          << server.username << std::endl;
     std::string clientId = config.name + "-" + wifi.getMac();
     debug << "clientId=" + clientId << std::endl;
 
@@ -210,12 +204,11 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
     }
 
     bool result = connection.connect(
-            server.address.c_str(), server.port,
-            server.username.c_str(), server.password.c_str(), clientId.c_str(),
-            will,
-            [this](const MqttConnection::Message& message) {
-                handleMessage(message);
-            });
+        server.address.c_str(), server.port, server.username.c_str(),
+        server.password.c_str(), clientId.c_str(), will,
+        [this](const MqttConnection::Message& message) {
+            handleMessage(message);
+        });
 
     if (!result) {
         return false;
@@ -223,7 +216,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
 
     if (hasAvailability) {
         debug << "Connected to server. Listening to availability topic."
-            << std::endl;
+              << std::endl;
         result = connection.subscribe(config.topics.availabilityTopic.c_str());
         if (!result) {
             debug << "Failed to listen to availability topic." << std::endl;
@@ -242,7 +235,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
 
         initState = InitState::Begin;
         availabilityReceiveTimeLimit =
-                esp.millis() + availabilityReceiveTimeout;
+            esp.millis() + availabilityReceiveTimeout;
     } else {
         initState = InitState::Done;
     }
@@ -276,7 +269,8 @@ MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
         }
 
         debug << "Did not get availability topic in time. "
-                "Assuming we are first." << std::endl;
+                 "Assuming we are first."
+              << std::endl;
         availabiltyReceiveSuccess();
     }
     return ConnectStatus::connectionSuccessful;
@@ -290,7 +284,7 @@ void MqttClient::sendStatusMessage(bool restarted) {
 
     if (config.topics.availabilityTopic.length() != 0) {
         debug << "Sending availability message to topic "
-                << config.topics.availabilityTopic << std::endl;
+              << config.topics.availabilityTopic << std::endl;
         if (connection.publish(MqttConnection::Message{
                 config.topics.availabilityTopic.c_str(), "1", 1, true})) {
             debug << "Success." << std::endl;
@@ -300,26 +294,25 @@ void MqttClient::sendStatusMessage(bool restarted) {
     }
 
     if (config.topics.statusTopic.length() != 0) {
-        debug << "Sending status message to topic "
-                << config.topics.statusTopic << std::endl;
+        debug << "Sending status message to topic " << config.topics.statusTopic
+              << std::endl;
         const char* message = getStatusMessage(restarted);
         debug << message << std::endl;
         if (connection.publish(MqttConnection::Message{
-                config.topics.statusTopic.c_str(), message,
-                0 /*not used*/, true})) {
+                config.topics.statusTopic.c_str(), message, 0 /*not used*/,
+                true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;
         }
     }
 
-    nextStatusSend += ((now - nextStatusSend) / statusSendInterval + 1)
-            * statusSendInterval;
+    nextStatusSend +=
+        ((now - nextStatusSend) / statusSendInterval + 1) * statusSendInterval;
     previousStatusSend = now;
     cycles = 0;
     maxCycleTime = 0;
 }
-
 
 void MqttClient::loop() {
     auto now = esp.millis();
@@ -358,12 +351,11 @@ void MqttClient::loop() {
     previousCycle = now;
 }
 
-void MqttClient::connectedLoop() {
+void MqttClient::connectedLoop() {}
 
-}
-
-void MqttClient::subscribe(const char* topic,
-        std::function<void(const MqttConnection::Message&)> callback) {
+void MqttClient::subscribe(
+    const char* topic,
+    std::function<void(const MqttConnection::Message&)> callback) {
     subscriptions.emplace_back(topic, callback);
     if (connection.isConnected()) {
         connection.subscribe(topic);
@@ -371,23 +363,24 @@ void MqttClient::subscribe(const char* topic,
 }
 
 void MqttClient::unsubscribe(const char* topic) {
-    subscriptions.erase(std::remove_if(
+    subscriptions.erase(
+        std::remove_if(
             subscriptions.begin(), subscriptions.end(),
             [&topic](const Subscription& element) {
                 return element.first == topic;
-            }), subscriptions.end());
+            }),
+        subscriptions.end());
     if (connection.isConnected()) {
         connection.unsubscribe(topic);
     }
 }
 
-void MqttClient::publish(
-        const char* topic, const char* payload, bool retain) {
+void MqttClient::publish(const char* topic, const char* payload, bool retain) {
     if (!initialized) {
         return;
     }
-    if (!connection.publish(MqttConnection::Message{topic, payload,
-            strlen(payload), retain})) {
+    if (!connection.publish(
+            MqttConnection::Message{topic, payload, strlen(payload), retain})) {
         debug << "Publishing to " << topic << " failed." << std::endl;
     }
 }

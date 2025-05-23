@@ -1,9 +1,8 @@
-#include "CounterInterface.hpp"
+#include <Arduino.h>
 
+#include "CounterInterface.hpp"
 #include "common/Sensor.hpp"
 #include "tools/string.hpp"
-
-#include <Arduino.h>
 
 extern "C" {
 #include "c_types.h"
@@ -14,8 +13,7 @@ extern "C" {
 
 class CounterInterface::CounterSensor : public Sensor {
 public:
-    CounterSensor(float multiplier)
-        : multiplier(multiplier) {}
+    CounterSensor(float multiplier) : multiplier(multiplier) {}
 
     std::optional<std::vector<std::string>> measure() override {
         auto now = millis();
@@ -31,13 +29,16 @@ public:
         number = 0;
         max = 0;
         lastMeasurement = now;
-        return std::vector<std::string>{tools::floatToString(averageResult, 4), tools::floatToString(maxResult, 4)};
+        return std::vector<std::string>{
+            tools::floatToString(averageResult, 4),
+            tools::floatToString(maxResult, 4)};
     }
 
     void update(int counter, float maxRate) {
         number += counter;
         max = std::max(max, maxRate);
     }
+
 private:
     float multiplier;
     unsigned number = 0;
@@ -54,12 +55,14 @@ void IRAM_ATTR CounterInterface::onRiseStatic(void* arg) {
     reinterpret_cast<CounterInterface*>(arg)->onRise();
 }
 
-CounterInterface::CounterInterface(std::ostream& debug, EspApi& esp,
-        std::string name, uint8_t pin, int bounceTime, float multiplier,
-        int interval, int offset, std::vector<std::string> pulse)
-        : bounceTime(bounceTime),
-          interval(interval),
-          sensorInterface(debug, esp, createCounterSensor(multiplier), std::move(name),
+CounterInterface::CounterInterface(
+    std::ostream& debug, EspApi& esp, std::string name, uint8_t pin,
+    int bounceTime, float multiplier, int interval, int offset,
+    std::vector<std::string> pulse)
+    : bounceTime(bounceTime)
+    , interval(interval)
+    , sensorInterface(
+          debug, esp, createCounterSensor(multiplier), std::move(name),
           interval, offset, std::move(pulse)) {
     pinMode(pin, INPUT);
     resetMinInterval();
@@ -72,14 +75,14 @@ void IRAM_ATTR CounterInterface::onRise() {
     int difference = now - lastRise;
     if (difference > bounceTime) {
         ++riseCount;
-        minInterval = std::max(1,
-                std::min(static_cast<int>(minInterval), difference));
+        minInterval =
+            std::max(1, std::min(static_cast<int>(minInterval), difference));
         lastRise = now;
     }
 }
 
 auto CounterInterface::createCounterSensor(float multiplier)
-        -> std::unique_ptr<CounterSensor> {
+    -> std::unique_ptr<CounterSensor> {
     auto result = std::make_unique<CounterSensor>(multiplier);
     counterSensor = result.get();
     return result;
@@ -97,7 +100,8 @@ void CounterInterface::update(Actions action) {
     while (riseCount > 0) {
         int count = riseCount;
         float rate = (minInterval == interval)
-                ? 0 : static_cast<float>(interval) / minInterval;
+                         ? 0
+                         : static_cast<float>(interval) / minInterval;
         resetMinInterval();
         counterSensor->update(count, rate);
         riseCount -= count;

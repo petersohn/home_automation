@@ -1,25 +1,24 @@
 #ifndef MQTTCONNECTIONIMPL_HPP
 #define MQTTCONNECTIONIMPL_HPP
 
-#include "common/MqttConnection.hpp"
-#include "common/Lock.hpp"
-
-#include <PubSubClient.h>
 #include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 
 #include <ostream>
 
+#include "common/Lock.hpp"
+#include "common/MqttConnection.hpp"
 
 class MqttConnectionImpl : public MqttConnection {
 public:
     MqttConnectionImpl(std::ostream& debug, Lock& lock)
         : debug(debug), lock(lock) {}
 
-    virtual bool connect(const char* host, uint16_t port,
-            const char* username, const char* password,
-            const char* clientId,
-            const std::optional<Message>& will,
-            ReceiveHandler receiveFunc) override;
+    virtual bool connect(
+        const char* host, uint16_t port, const char* username,
+        const char* password, const char* clientId,
+        const std::optional<Message>& will,
+        ReceiveHandler receiveFunc) override;
     virtual void disconnect() override;
     virtual bool isConnected() override;
 
@@ -40,5 +39,4 @@ private:
         const char* topic, const unsigned char* payload, unsigned length);
 };
 
-
-#endif // MQTTCONNECTIONIMPL_HPP
+#endif  // MQTTCONNECTIONIMPL_HPP

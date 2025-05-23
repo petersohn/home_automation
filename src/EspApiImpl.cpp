@@ -1,20 +1,20 @@
-#include "EspApiImpl.hpp"
-#include "config.hpp"
-
 #include <Arduino.h>
 #include <FunctionalInterrupt.h>
 #include <ets_sys.h>
 
+#include "EspApiImpl.hpp"
+#include "config.hpp"
+
 void EspApiImpl::pinMode(uint8_t pin, GpioMode mode) {
     int realMode = INPUT;
-    switch(mode) {
-        case GpioMode::input:
+    switch (mode) {
+    case GpioMode::input:
         realMode = INPUT;
         break;
-        case GpioMode::inputPullup:
+    case GpioMode::inputPullup:
         realMode = INPUT_PULLUP;
         break;
-        case GpioMode::output:
+    case GpioMode::output:
         realMode = OUTPUT;
         break;
     }
@@ -58,10 +58,10 @@ uint32_t EspApiImpl::getFreeHeap() {
     return ESP.getFreeHeap();
 }
 
-void EspApiImpl::attachInterrupt(uint8_t pin,
-    std::function<void(void)> intRoutine, InterruptMode mode) {
+void EspApiImpl::attachInterrupt(
+    uint8_t pin, std::function<void(void)> intRoutine, InterruptMode mode) {
     int realMode = CHANGE;
-    switch(mode) {
+    switch (mode) {
     case InterruptMode::rise:
         realMode = RISING;
         break;
@@ -82,4 +82,3 @@ void EspApiImpl::doDisableInterrupt() {
 void EspApiImpl::doEnableInterrupt() {
     ETS_GPIO_INTR_ENABLE();
 }
-

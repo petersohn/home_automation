@@ -9,4 +9,4 @@ public:
     virtual ~Backoff() {}
 };
 
-#endif // COMMON_BACKOFF_HPP
+#endif  // COMMON_BACKOFF_HPP

@@ -6,19 +6,22 @@
 #include <streambuf>
 #include <vector>
 
-class PrintStreambuf: public std::streambuf {
+class PrintStreambuf : public std::streambuf {
 public:
-    PrintStreambuf(Print& stream): stream(stream) {}
+    PrintStreambuf(Print& stream) : stream(stream) {}
+
 protected:
     virtual int overflow(int ch) override;
+
 private:
     Print& stream;
 };
 
-class DebugStreambuf: public std::streambuf {
+class DebugStreambuf : public std::streambuf {
 public:
     void add(std::streambuf* buf);
     void remove(std::streambuf* buf);
+
 private:
     std::vector<std::streambuf*> bufs;
 
@@ -26,4 +29,4 @@ private:
     virtual int sync() override;
 };
 
-#endif // DEBUGSTREAM_HPP
+#endif  // DEBUGSTREAM_HPP

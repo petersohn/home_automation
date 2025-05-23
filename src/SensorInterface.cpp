@@ -1,12 +1,15 @@
 #include "SensorInterface.hpp"
 
-SensorInterface::SensorInterface(std::ostream& debug, EspApi& esp,
-        std::unique_ptr<Sensor>&& sensor,
-        std::string name, int interval, int offset,
-        std::vector<std::string> pulse)
-        : debug(debug), esp(esp), sensor(std::move(sensor)),
-            name(std::move(name)),
-          interval(interval), offset(offset), pulse(std::move(pulse)) {}
+SensorInterface::SensorInterface(
+    std::ostream& debug, EspApi& esp, std::unique_ptr<Sensor>&& sensor,
+    std::string name, int interval, int offset, std::vector<std::string> pulse)
+    : debug(debug)
+    , esp(esp)
+    , sensor(std::move(sensor))
+    , name(std::move(name))
+    , interval(interval)
+    , offset(offset)
+    , pulse(std::move(pulse)) {}
 
 void SensorInterface::start() {
     // When connected to the network, all sensors make a measurement.
@@ -14,13 +17,12 @@ void SensorInterface::start() {
     nextExecution = esp.millis() - offset;
 }
 
-void SensorInterface::execute(const std::string& /*command*/) {
-}
+void SensorInterface::execute(const std::string& /*command*/) {}
 
 void SensorInterface::update(Actions action) {
     auto now = esp.millis();
-    if ((nextExecution != 0 && now >= nextExecution)
-            || (nextRetry != 0 && now >= nextRetry)) {
+    if ((nextExecution != 0 && now >= nextExecution) ||
+        (nextRetry != 0 && now >= nextRetry)) {
         auto values = sensor->measure();
         if (!values) {
             return;

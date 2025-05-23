@@ -1,6 +1,6 @@
-#include "JsonParser.hpp"
-
 #include <FS.h>
+
+#include "JsonParser.hpp"
 
 using namespace ArduinoJson;
 
@@ -8,7 +8,7 @@ ParsedData JsonParser::parseFile(const char* filename) {
     ParsedData result;
     File f = SPIFFS.open(filename, "r");
     if (!f) {
-        debug << "Could not open file: " <<  filename << std::endl;
+        debug << "Could not open file: " << filename << std::endl;
         return result;
     }
 
@@ -22,10 +22,10 @@ ParsedData JsonParser::parseFile(const char* filename) {
 }
 
 void JsonParser::saveToFile(
-        const char* filename, const ArduinoJson::JsonObject& obj) {
+    const char* filename, const ArduinoJson::JsonObject& obj) {
     File f = SPIFFS.open(filename, "w");
     if (!f) {
-        debug << "Failed to create file: " <<  filename << std::endl;
+        debug << "Failed to create file: " << filename << std::endl;
         return;
     }
 

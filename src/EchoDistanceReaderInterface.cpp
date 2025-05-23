@@ -1,30 +1,25 @@
-#include "EchoDistanceReaderInterface.hpp"
-
 #include <Arduino.h>
 
+#include "EchoDistanceReaderInterface.hpp"
 #include "tools/string.hpp"
 
 extern "C" {
 #include "c_types.h"
 }
 
-constexpr double speedOfSound = 0.00034; // m/us
-constexpr unsigned long timeout = 150000; // us
+constexpr double speedOfSound = 0.00034;   // m/us
+constexpr unsigned long timeout = 150000;  // us
 
-EchoDistanceReaderInterface::EchoDistanceReaderInterface(std::ostream& debug,
-         EspApi& esp, uint8_t echoPin)
-    : debug(debug)
-    , esp(esp)
-    , echoPin(echoPin) {
+EchoDistanceReaderInterface::EchoDistanceReaderInterface(
+    std::ostream& debug, EspApi& esp, uint8_t echoPin)
+    : debug(debug), esp(esp), echoPin(echoPin) {
     esp.pinMode(echoPin, GpioMode::input);
     attachInterruptArg(echoPin, onChangeStatic, this, CHANGE);
 }
 
-void EchoDistanceReaderInterface::start() {
-}
+void EchoDistanceReaderInterface::start() {}
 
-void EchoDistanceReaderInterface::execute(const std::string& /*command*/) {
-}
+void EchoDistanceReaderInterface::execute(const std::string& /*command*/) {}
 
 void EchoDistanceReaderInterface::update(Actions action) {
     auto now = micros();
@@ -68,7 +63,6 @@ void IRAM_ATTR EchoDistanceReaderInterface::onChange() {
         if (riseTime != 0 && fallTime == 0) {
             fallTime = now;
         }
-
     }
 }
 

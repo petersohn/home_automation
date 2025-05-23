@@ -1,8 +1,7 @@
-#include "HM3301Sensor.hpp"
-
-#include "tools/string.hpp"
-
 #include <Wire.h>
+
+#include "HM3301Sensor.hpp"
+#include "tools/string.hpp"
 
 HM3301Sensor::HM3301Sensor(std::ostream& debug, int sda, int scl)
     : debug(debug) {
@@ -24,7 +23,8 @@ std::optional<std::vector<std::string>> HM3301Sensor::measure() {
 
     std::vector<std::string> result;
     for (int i = 2; i < 5; i++) {
-        uint16_t value = static_cast<uint16_t>(buf[i * 2]) << 8 | buf[i * 2 + 1];
+        uint16_t value =
+            static_cast<uint16_t>(buf[i * 2]) << 8 | buf[i * 2 + 1];
         result.push_back(tools::intToString(value));
     }
 

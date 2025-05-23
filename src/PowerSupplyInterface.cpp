@@ -1,9 +1,9 @@
 #include "PowerSupplyInterface.hpp"
 
-PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug, EspApi& esp,
-        uint8_t powerSwitchPin, uint8_t resetSwitchPin, uint8_t powerCheckPin,
-        unsigned pushTime, unsigned forceOffTime, unsigned checkTime,
-        const std::string& initialState)
+PowerSupplyInterface::PowerSupplyInterface(
+    std::ostream& debug, EspApi& esp, uint8_t powerSwitchPin,
+    uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
+    unsigned forceOffTime, unsigned checkTime, const std::string& initialState)
     : debug(debug)
     , esp(esp)
     , powerSwitchPin(powerSwitchPin)
@@ -12,8 +12,7 @@ PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug, EspApi& esp,
     , pushTime(pushTime)
     , forceOffTime(forceOffTime)
     , checkTime(checkTime)
-    , targetState(TargetState::Dontcare)
-{
+    , targetState(TargetState::Dontcare) {
     if (initialState == "on") {
         targetState = TargetState::On;
     } else if (initialState == "off") {
@@ -25,20 +24,16 @@ PowerSupplyInterface::PowerSupplyInterface(std::ostream& debug, EspApi& esp,
     esp.pinMode(powerCheckPin, GpioMode::input);
 }
 
-void PowerSupplyInterface::start() {
-}
+void PowerSupplyInterface::start() {}
 
-void PowerSupplyInterface::pullDown(uint8_t pin)
-{
+void PowerSupplyInterface::pullDown(uint8_t pin) {
     esp.pinMode(pin, GpioMode::output);
     esp.digitalWrite(pin, 0);
 }
 
-void PowerSupplyInterface::release(uint8_t pin)
-{
+void PowerSupplyInterface::release(uint8_t pin) {
     esp.pinMode(pin, GpioMode::input);
 }
-
 
 void PowerSupplyInterface::execute(const std::string& command) {
     if (command == "on") {
@@ -100,7 +95,7 @@ void PowerSupplyInterface::update(Actions /*action*/) {
     debug << "check" << std::endl;
     if (esp.digitalRead(powerCheckPin) !=
             (targetState == TargetState::On ? 1 : 0) &&
-            powerButtonRelease == 0) {
+        powerButtonRelease == 0) {
         debug << "power button press" << std::endl;
         pullDown(powerSwitchPin);
         powerButtonRelease = esp.millis() + pushTime;

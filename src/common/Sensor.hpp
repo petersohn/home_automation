@@ -1,9 +1,9 @@
 #ifndef COMMON_SENSOR_HPP
 #define COMMON_SENSOR_HPP
 
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 class Sensor {
 public:
@@ -11,4 +11,4 @@ public:
     virtual ~Sensor() {}
 };
 
-#endif // COMMON_SENSOR_HPP
+#endif  // COMMON_SENSOR_HPP

@@ -1,13 +1,13 @@
 #ifndef KEEPALIVEINTERFACE_HPP
 #define KEEPALIVEINTERFACE_HPP
 
-#include "common/Interface.hpp"
 #include "common/EspApi.hpp"
+#include "common/Interface.hpp"
 
 class KeepaliveInterface : public Interface {
 public:
-    KeepaliveInterface(EspApi& esp, uint8_t pin, unsigned interval,
-        unsigned resetInterval);
+    KeepaliveInterface(
+        EspApi& esp, uint8_t pin, unsigned interval, unsigned resetInterval);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -24,5 +24,4 @@ private:
     unsigned nextReset = 0;
 };
 
-#endif // KEEPALIVEINTERFACE_HPP
-
+#endif  // KEEPALIVEINTERFACE_HPP

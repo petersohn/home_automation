@@ -1,6 +1,6 @@
-#include "WifiStream.hpp"
-
 #include <Arduino.h>
+
+#include "WifiStream.hpp"
 
 void WifiStreambuf::initClientIfNeeded() {
     if (client && client.connected()) {
@@ -21,4 +21,3 @@ int WifiStreambuf::overflow(int ch) {
     }
     return ch;
 }
-

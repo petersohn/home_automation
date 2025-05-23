@@ -14,4 +14,4 @@ private:
     unsigned currentId = 0;
 };
 
-#endif // ESPRTC_HPP
+#endif  // ESPRTC_HPP

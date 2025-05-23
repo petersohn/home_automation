@@ -19,4 +19,4 @@ private:
     uint32_t lockCount = 0;
 };
 
-#endif // COMMON_LOCK_HPP
+#endif  // COMMON_LOCK_HPP

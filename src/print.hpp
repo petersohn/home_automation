@@ -9,7 +9,7 @@ inline void print(Print& stream, const std::string& s) {
     stream.print(s.c_str());
 }
 
-template<typename T>
+template <typename T>
 inline void print(Print& stream, const T& t) {
     stream.print(t);
 }
@@ -18,9 +18,9 @@ inline void println(Print& stream, const std::string& s) {
     stream.println(s.c_str());
 }
 
-template<typename T>
+template <typename T>
 inline void println(Print& stream, const T& t) {
     stream.println(t);
 }
 
-#endif // PRINT_HPP
+#endif  // PRINT_HPP

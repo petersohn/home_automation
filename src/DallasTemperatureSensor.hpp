@@ -1,21 +1,22 @@
 #ifndef DALLASTEMPERATURESENSOR_HPP
 #define DALLASTEMPERATURESENSOR_HPP
 
-#include "common/Sensor.hpp"
-
-#include <OneWire.h>
 #include <DallasTemperature.h>
+#include <OneWire.h>
 
 #include <array>
-#include <vector>
 #include <ostream>
+#include <vector>
+
+#include "common/Sensor.hpp"
 
 class DallasTemperatureSensor : public Sensor {
 public:
-    DallasTemperatureSensor(std::ostream& debug,
-            uint8_t pin, std::size_t expectedNumberOfDevices);
+    DallasTemperatureSensor(
+        std::ostream& debug, uint8_t pin, std::size_t expectedNumberOfDevices);
 
     std::optional<std::vector<std::string>> measure() override;
+
 private:
     std::ostream& debug;
 
@@ -29,4 +30,4 @@ private:
     bool initialize();
 };
 
-#endif // DALLASTEMPERATURESENSOR_HPP
+#endif  // DALLASTEMPERATURESENSOR_HPP

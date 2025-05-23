@@ -12,5 +12,4 @@ public:
     virtual unsigned next() = 0;
 };
 
-#endif // RTC_HPP
-
+#endif  // RTC_HPP

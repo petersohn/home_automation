@@ -1,15 +1,15 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include "common/InterfaceConfig.hpp"
-#include "common/EspApi.hpp"
-#include "common/rtc.hpp"
-#include "common/MqttClient.hpp"
-
-#include <string>
 #include <limits>
-#include <vector>
 #include <ostream>
+#include <string>
+#include <vector>
+
+#include "common/EspApi.hpp"
+#include "common/InterfaceConfig.hpp"
+#include "common/MqttClient.hpp"
+#include "common/rtc.hpp"
 
 class DebugStreambuf;
 
@@ -32,13 +32,14 @@ struct DeviceConfig {
     DeviceConfig(const DeviceConfig&) = delete;
     DeviceConfig& operator=(const DeviceConfig&) = delete;
     DeviceConfig(DeviceConfig&&) = default;
-	DeviceConfig& operator=(DeviceConfig&&) = default;
+    DeviceConfig& operator=(DeviceConfig&&) = default;
 };
 
 extern GlobalConfig globalConfig;
 extern DeviceConfig deviceConfig;
 
-void initConfig(std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp,
-    Rtc& rtc, MqttClient& mqttClient);
+void initConfig(
+    std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp, Rtc& rtc,
+    MqttClient& mqttClient);
 
-#endif // CONFIG_HPP
+#endif  // CONFIG_HPP

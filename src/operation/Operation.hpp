@@ -11,6 +11,6 @@ public:
     virtual ~Operation() {}
 };
 
-} // namespace operation
+}  // namespace operation
 
-#endif // OPERATION_OPERATION_HPP
+#endif  // OPERATION_OPERATION_HPP

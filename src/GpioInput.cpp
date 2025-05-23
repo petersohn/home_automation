@@ -1,8 +1,7 @@
-#include "GpioInput.hpp"
-
-#include "tools/string.hpp"
-
 #include <Arduino.h>
+
+#include "GpioInput.hpp"
+#include "tools/string.hpp"
 
 extern "C" {
 #include "c_types.h"
@@ -11,24 +10,21 @@ extern "C" {
 
 namespace {
 
-enum class StateBits : int {
-    real = 0, saved
-};
+enum class StateBits : int { real = 0, saved };
 
 #define IS_BIT(bits, value) \
     (((bits) & (1 << static_cast<int>(StateBits::value))) != 0)
-#define SET_BIT(state, bits, value) do { \
-    if (state.value) { \
-        bits |= (1 << static_cast<int>(StateBits::value)); \
-    } \
-} while (false)
-
+#define SET_BIT(state, bits, value)                            \
+    do {                                                       \
+        if (state.value) {                                     \
+            bits |= (1 << static_cast<int>(StateBits::value)); \
+        }                                                      \
+    } while (false)
 
 struct State {
     bool real;
     bool saved;
 };
-
 
 State decodeState(int bits) {
     return {IS_BIT(bits, real), IS_BIT(bits, saved)};
@@ -44,16 +40,17 @@ int encodeState(const State& state) {
 #undef IS_BIT
 #undef SET_BIT
 
-}
+}  // namespace
 
-GpioInput::GpioInput(std::ostream& debug, uint8_t pin,
-        CycleType cycleType, unsigned interval)
+GpioInput::GpioInput(
+    std::ostream& debug, uint8_t pin, CycleType cycleType, unsigned interval)
     : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
     pinMode(pin, INPUT);
     lastChanged = millis();
     bool currentState = digitalRead(pin);
     state = encodeState({currentState, currentState});
-    debug << "starting value=" << currentState << " state=" << state << std::endl;
+    debug << "starting value=" << currentState << " state=" << state
+          << std::endl;
     attachInterruptArg(pin, onChangeStatic, this, CHANGE);
 }
 
@@ -61,8 +58,7 @@ void GpioInput::start() {
     startup = true;
 }
 
-void GpioInput::execute(const std::string& /*command*/) {
-}
+void GpioInput::execute(const std::string& /*command*/) {}
 
 void IRAM_ATTR GpioInput::onChangeStatic(void* arg) {
     static_cast<GpioInput*>(arg)->onChange();
@@ -133,4 +129,3 @@ void GpioInput::update(Actions action) {
 
     startup = false;
 }
-
