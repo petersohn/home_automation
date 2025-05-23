@@ -92,7 +92,9 @@ public:
     }
 };
 
+namespace {
 auto delays = boost::unit_test::data::make({1, 10, 100, 500});
+}
 
 BOOST_DATA_TEST_CASE_F(Fixture, Open, delays, delay) {
     esp.delay(10);
@@ -244,6 +246,8 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(loopFor(delay * 3, delay, func5));
     BOOST_TEST(position == 4000 - delay);
+    BOOST_TEST(!isMovingUp());
+    BOOST_TEST(!isMovingDown());
 }
 
 BOOST_AUTO_TEST_SUITE_END();
