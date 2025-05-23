@@ -2,8 +2,8 @@
 #define TEST_INTERFACETESTBASE_HPP
 
 #include "EspTestBase.hpp"
-#include "common/InterfaceConfig.hpp"
 #include "common/Actions.hpp"
+#include "common/InterfaceConfig.hpp"
 
 class InterfaceTestBase : public EspTestBase {
 public:
@@ -17,4 +17,4 @@ private:
     Actions actions{interface};
 };
 
-#endif // TEST_INTERFACETESTBASE_HPP
+#endif  // TEST_INTERFACETESTBASE_HPP

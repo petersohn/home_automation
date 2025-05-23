@@ -1,13 +1,12 @@
+#include <boost/test/data/monomorphic.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
+#include <iostream>
+#include <string>
+
 #include "common/ArduinoJson.hpp"
 #include "common/Interface.hpp"
 #include "operation/OperationParser.hpp"
-
-#include <boost/test/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/data/monomorphic.hpp>
-
-#include <iostream>
-#include <string>
 
 using namespace ArduinoJson;
 
@@ -35,16 +34,16 @@ struct Fixture {
         return result;
     }
 
-    std::unique_ptr<operation::Operation> parse(const std::string& json,
-            const char* fieldName = "result",
-            const char* templateName = "template") {
+    std::unique_ptr<operation::Operation> parse(
+        const std::string& json, const char* fieldName = "result",
+        const char* templateName = "template") {
         auto& content = buffer.parseObject(json);
         return parser.parse(content, fieldName, templateName);
     }
 
     DynamicJsonBuffer buffer{512};
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces =
-            createInterfaces();
+        createInterfaces();
     operation::Parser parser{interfaces, interfaces[1].get()};
 };
 
@@ -63,8 +62,9 @@ BOOST_FIXTURE_TEST_CASE(ParseConstantInt, Fixture) {
 BOOST_FIXTURE_TEST_CASE(ParseConstantFloat, Fixture) {
     std::string json = R"({"result": 2.4})";
     auto operation = parse(json);
-    BOOST_TEST(std::atof(operation->evaluate().c_str()) == 2.4,
-            boost::test_tools::tolerance(1e-6));
+    BOOST_TEST(
+        std::atof(operation->evaluate().c_str()) == 2.4,
+        boost::test_tools::tolerance(1e-6));
 }
 
 BOOST_FIXTURE_TEST_CASE(ParseTemplate, Fixture) {
@@ -145,34 +145,34 @@ struct OperationTestSampleMapping {
     std::string expectedValue;
 };
 
-std::ostream& operator<<(std::ostream& os,
-        const OperationTestSampleString& sample) {
-    return os << sample.operation << "(" << sample.operands << ") = "
-            << sample.expectedValue;
+std::ostream& operator<<(
+    std::ostream& os, const OperationTestSampleString& sample) {
+    return os << sample.operation << "(" << sample.operands
+              << ") = " << sample.expectedValue;
 }
 
-std::ostream& operator<<(std::ostream& os,
-        const OperationTestSampleNumber& sample) {
-    return os << sample.operation << "(" << sample.operands << ") = "
-            << sample.expectedValue;
+std::ostream& operator<<(
+    std::ostream& os, const OperationTestSampleNumber& sample) {
+    return os << sample.operation << "(" << sample.operands
+              << ") = " << sample.expectedValue;
 }
 
-std::ostream& operator<<(std::ostream& os,
-        const OperationTestSampleConditional& sample) {
-    return os << sample.condition << " ? ("
-            << sample.thenBranch << ") : ("
-            << sample.elseBranch << ") = " << sample.expectedValue;
+std::ostream& operator<<(
+    std::ostream& os, const OperationTestSampleConditional& sample) {
+    return os << sample.condition << " ? (" << sample.thenBranch << ") : ("
+              << sample.elseBranch << ") = " << sample.expectedValue;
 }
 
-std::ostream& operator<<(std::ostream& os,
-        const OperationTestSampleMapping& sample) {
+std::ostream& operator<<(
+    std::ostream& os, const OperationTestSampleMapping& sample) {
     return os << sample.operation << "[" << sample.operands
-            << "] : " << sample.value << " = " << sample.expectedValue;
+              << "] : " << sample.value << " = " << sample.expectedValue;
 }
 
 OperationTestSampleString stringOperations[] = {
     {"s+", R"({ "type": "value", "interface": "str1", "index": 1 },
-              { "type": "value", "interface": "int", "index": 2 })", "foo63"},
+              { "type": "value", "interface": "int", "index": 2 })",
+     "foo63"},
     {"s+", R"("This ", "is ", "a ", "string.")", "This is a string."},
 };
 
@@ -180,10 +180,12 @@ OperationTestSampleNumber numericalOperations[] = {
     {"+", R"({ "type": "value", "interface": "int" }, 111)", 234},
     {"+", R"({ "type": "value", "interface": "int", "index": 1 },
              { "type": "value", "interface": "int", "index": 4 },
-             { "type": "value", "interface": "float", "index": 3 })", 1.45},
+             { "type": "value", "interface": "float", "index": 3 })",
+     1.45},
 
     {"-", R"({ "type": "value", "interface": "float", "index": 1 },
-             { "type": "value", "interface": "int", "index": 2 })", -61.8},
+             { "type": "value", "interface": "int", "index": 2 })",
+     -61.8},
     {"-", R"(50, 44, -3.2)", 9.2},
 
     {"*", R"(3, -6)", -18},
@@ -252,8 +254,10 @@ OperationTestSampleString comparisons[] = {
     {">=", R"(4, 4, 4, 4)", "1"},
     {">=", R"(3, 2, 1.8)", "1"},
 
-    {"s=", R"({ "type": "value", "interface": "str1", "index": 1 }, "foo")", "1"},
-    {"s=", R"({ "type": "value", "interface": "str1", "index": 2 }, "foo")", "0"},
+    {"s=", R"({ "type": "value", "interface": "str1", "index": 1 }, "foo")",
+     "1"},
+    {"s=", R"({ "type": "value", "interface": "str1", "index": 2 }, "foo")",
+     "0"},
     {"s=", R"("bar", "bar")", "1"},
     {"s=", R"("", "")", "1"},
     {"s=", R"(0, "0")", "1"},
@@ -262,8 +266,10 @@ OperationTestSampleString comparisons[] = {
     {"s=", R"("foo", "fo")", "0"},
     {"s=", R"("xxx", "xxx", "xx")", "0"},
 
-    {"s!=", R"({ "type": "value", "interface": "str1", "index": 1 }, "foo")", "0"},
-    {"s!=", R"({ "type": "value", "interface": "str1", "index": 2 }, "foo")", "1"},
+    {"s!=", R"({ "type": "value", "interface": "str1", "index": 1 }, "foo")",
+     "0"},
+    {"s!=", R"({ "type": "value", "interface": "str1", "index": 2 }, "foo")",
+     "1"},
     {"s!=", R"("bar", "bar")", "0"},
     {"s!=", R"("", "")", "0"},
     {"s!=", R"(0, "0")", "0"},
@@ -342,148 +348,157 @@ OperationTestSampleMapping mappingOperations[] = {
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 40, "max": 60, "value": "bar"})",
-        "6", "foo"},
+     "6", "foo"},
     {"map", R"(
             {"min": 40, "max": 50, "value": "foo"},
             {"min": 0, "max": 10, "value": "bar"})",
-        "6", "bar"},
+     "6", "bar"},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 40, "max": 60, "value": "bar"})",
-        "50", "bar"},
+     "50", "bar"},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 40, "max": 60, "value": "bar"})",
-        "-1", ""},
+     "-1", ""},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 40, "max": 60, "value": "bar"})",
-        "120", ""},
+     "120", ""},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 40, "max": 60, "value": "bar"})",
-        "60", ""},
+     "60", ""},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 40, "max": 60, "value": "bar"})",
-        "30", ""},
+     "30", ""},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 20, "max": 60, "value": "bar"})",
-        "15", "foo"},
+     "15", "foo"},
     {"map", R"(
             {"min": 0, "max": 30, "value": "foo"},
             {"min": 30, "max": 60, "value": "bar"},
             {"min": 60, "max": 80, "value": "baz"})",
-        "60", "baz"},
+     "60", "baz"},
 
     {"smap", R"(
             {"min": 40, "max": 90, "value": "foo"},
             {"min": 0, "max": 10, "value": "bar"})",
-        "6", "foo"},
+     "6", "foo"},
     {"smap", R"(
             {"min": "bar", "max": "foo", "value": "first"},
             {"min": "foo", "max": "widget", "value": "second"})",
-        "asd", ""},
+     "asd", ""},
     {"smap", R"(
             {"min": "bar", "max": "foo", "value": "first"},
             {"min": "foo", "max": "widget", "value": "second"})",
-        "ert", "first"},
+     "ert", "first"},
     {"smap", R"(
             {"min": "bar", "max": "foo", "value": "first"},
             {"min": "foo", "max": "widget", "value": "second"})",
-        "foo", "second"},
+     "foo", "second"},
     {"smap", R"(
             {"min": "bar", "max": "foo", "value": "first"},
             {"min": "foo", "max": "widget", "value": "second"})",
-        "vbvbvb", "second"},
+     "vbvbvb", "second"},
     {"smap", R"(
             {"min": "bar", "max": "foo", "value": "first"},
             {"min": "foo", "max": "widget", "value": "second"})",
-        "xxx", ""},
+     "xxx", ""},
     {"smap", R"(
             {"min": "foo", "max": "widget", "value": "second"},
             {"min": "bar", "max": "foo", "value": "first"})",
-        "vbvbvb", "second"},
+     "vbvbvb", "second"},
     {"smap", R"(
             {"min": "foo", "max": "widget", "value": "second"},
             {"min": "bar", "max": "foo", "value": "first"})",
-        "ert", "first"},
+     "ert", "first"},
 };
 
 OperationTestSampleConditional conditionalOperations[] = {
-    {
-        R"({"type": "=", "ops": [2, 2]})",
-        R"({"type": "value", "index": 1})",
-        R"({"type": "value", "index": 2})",
-        "asd"
-    },
-    {
-        R"({"type": "=", "ops": [2, 0]})",
-        R"({"type": "value", "index": 1})",
-        R"({"type": "value", "index": 2})",
-        "fgh"
-    },
+    {R"({"type": "=", "ops": [2, 2]})", R"({"type": "value", "index": 1})",
+     R"({"type": "value", "index": 2})", "asd"},
+    {R"({"type": "=", "ops": [2, 0]})", R"({"type": "value", "index": 1})",
+     R"({"type": "value", "index": 2})", "fgh"},
 };
 
-BOOST_DATA_TEST_CASE_F(Fixture, OperationTestWithStringResult,
-        boost::unit_test::data::make(stringOperations) + comparisons) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, OperationTestWithStringResult,
+    boost::unit_test::data::make(stringOperations) + comparisons) {
     std::string json = R"({
         "result": {
-            "type": ")" + sample.operation + R"(",
-            "ops": [)" + sample.operands + R"(]
+            "type": ")" +
+                       sample.operation + R"(",
+            "ops": [)" +
+                       sample.operands + R"(]
         }
     })";
     auto operation = parse(json);
     BOOST_TEST(operation->evaluate() == sample.expectedValue);
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, OperationTestWithNumericalResult,
-        boost::unit_test::data::make(numericalOperations)) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, OperationTestWithNumericalResult,
+    boost::unit_test::data::make(numericalOperations)) {
     std::string json = R"({
         "result": {
-            "type": ")" + sample.operation + R"(",
-            "ops": [)" + sample.operands + R"(]
+            "type": ")" +
+                       sample.operation + R"(",
+            "ops": [)" +
+                       sample.operands + R"(]
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(std::atof(operation->evaluate().c_str()) == sample.expectedValue,
-            boost::test_tools::tolerance(1e-6));
+    BOOST_TEST(
+        std::atof(operation->evaluate().c_str()) == sample.expectedValue,
+        boost::test_tools::tolerance(1e-6));
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, UnaryOperationTest,
-        boost::unit_test::data::make(unaryOperations)) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, UnaryOperationTest,
+    boost::unit_test::data::make(unaryOperations)) {
     std::string json = R"({
         "result": {
-            "type": ")" + sample.operation + R"(",
-            "op": )" + sample.operands + R"(
+            "type": ")" +
+                       sample.operation + R"(",
+            "op": )" + sample.operands +
+                       R"(
         }
     })";
     auto operation = parse(json);
     BOOST_TEST(operation->evaluate() == sample.expectedValue);
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, ConditionalTest,
-        boost::unit_test::data::make(conditionalOperations)) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, ConditionalTest,
+    boost::unit_test::data::make(conditionalOperations)) {
     std::string json = R"({
         "result": {
             "type": "if",
-            "cond": )" + sample.condition + R"(,
-            "then": )" + sample.thenBranch + R"(,
-            "else": )" + sample.elseBranch + R"(
+            "cond": )" +
+                       sample.condition + R"(,
+            "then": )" +
+                       sample.thenBranch + R"(,
+            "else": )" +
+                       sample.elseBranch + R"(
         }
     })";
     auto operation = parse(json);
     BOOST_TEST(operation->evaluate() == sample.expectedValue);
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, MappingTest,
-        boost::unit_test::data::make(mappingOperations)) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, MappingTest, boost::unit_test::data::make(mappingOperations)) {
     std::string json = R"({
         "result": {
-            "type": ")" + sample.operation + R"(",
-            "ops": [)" + sample.operands + R"(],
-            "value": )" + sample.value + R"(
+            "type": ")" +
+                       sample.operation + R"(",
+            "ops": [)" +
+                       sample.operands + R"(],
+            "value": )" +
+                       sample.value + R"(
         }
     })";
     auto operation = parse(json);
@@ -543,7 +558,6 @@ BOOST_FIXTURE_TEST_CASE(DifferentTemplateName, Fixture) {
     auto operation = parse(json, "result", "foobar");
     BOOST_TEST(operation->evaluate() == "asd");
 }
-
 
 BOOST_FIXTURE_TEST_CASE(ValueCondition, Fixture) {
     std::string json = R"({

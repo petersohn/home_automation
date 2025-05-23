@@ -10,10 +10,10 @@ public:
     std::string mac = "00:00:00:00:00:00";
 
     virtual void begin(
-            const std::string& ssid, const std::string& password) override;
+        const std::string& ssid, const std::string& password) override;
     virtual WifiStatus getStatus() override;
     virtual std::string getIp() override;
     virtual std::string getMac() override;
 };
 
-#endif // TEST_FAKEWIFI_HPP
+#endif  // TEST_FAKEWIFI_HPP

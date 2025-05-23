@@ -1,9 +1,9 @@
 #ifndef TEST_FAKEESPAPI_HPP
 #define TEST_FAKEESPAPI_HPP
 
-#include "common/EspApi.hpp"
-
 #include <map>
+
+#include "common/EspApi.hpp"
 
 class FakeEspApi : public EspApi {
 public:
@@ -18,16 +18,17 @@ public:
 
     virtual uint32_t getFreeHeap() override;
 
-    virtual void attachInterrupt(uint8_t pin,
-        std::function<void(void)> intRoutine, InterruptMode mode) override;
+    virtual void attachInterrupt(
+        uint8_t pin, std::function<void(void)> intRoutine,
+        InterruptMode mode) override;
     virtual void doDisableInterrupt() override;
     virtual void doEnableInterrupt() override;
 
     bool restarted = false;
+
 private:
     unsigned long time = 0;
     std::map<uint8_t, bool> pinValues;
 };
 
-
-#endif // TEST_FAKEESPAPI_HPP
+#endif  // TEST_FAKEESPAPI_HPP

@@ -1,11 +1,11 @@
 #ifndef TEST_FAKEMQTTCONNECTION_HPP
 #define TEST_FAKEMQTTCONNECTION_HPP
 
-#include "common/MqttConnection.hpp"
-
 #include <map>
-#include <string>
 #include <optional>
+#include <string>
+
+#include "common/MqttConnection.hpp"
 
 struct FakeMessage {
     std::string topic;
@@ -29,8 +29,8 @@ public:
     size_t connect(std::optional<FakeMessage> will);
     void disconnect(size_t id);
     bool subscribe(
-            size_t id, const std::string& topic,
-            std::function<void(size_t, FakeMessage)> callback);
+        size_t id, const std::string& topic,
+        std::function<void(size_t, FakeMessage)> callback);
     bool unsubscribe(size_t id, const std::string& topic);
     void publish(size_t id, const FakeMessage& message);
 
@@ -40,21 +40,21 @@ private:
     size_t nextId = 0;
     std::map<
         std::pair<std::string, size_t>,
-        std::function<void(size_t, FakeMessage)>> subscriptions;
-    std::map<std::string, std::pair<size_t, FakeMessage>>
-        retainedMessages;
+        std::function<void(size_t, FakeMessage)>>
+        subscriptions;
+    std::map<std::string, std::pair<size_t, FakeMessage>> retainedMessages;
     std::map<size_t, FakeMessage> wills;
 };
 
-class FakeMqttConnection: public MqttConnection {
+class FakeMqttConnection : public MqttConnection {
 public:
-    FakeMqttConnection(FakeMqttServer& server,
-            std::function<void(bool)> connectCallback);
-    virtual bool connect(const char* host, uint16_t port,
-            const char* username, const char* password,
-            const char* clientId,
-            const std::optional<Message>& will,
-            ReceiveHandler receiveFunc) override;
+    FakeMqttConnection(
+        FakeMqttServer& server, std::function<void(bool)> connectCallback);
+    virtual bool connect(
+        const char* host, uint16_t port, const char* username,
+        const char* password, const char* clientId,
+        const std::optional<Message>& will,
+        ReceiveHandler receiveFunc) override;
     virtual void disconnect() override;
     virtual bool isConnected() override;
 
@@ -70,9 +70,8 @@ private:
     ReceiveHandler receiveFunc;
     std::vector<FakeMessage> queue;
 
-    bool connectInner(const std::optional<Message>& will,
-        ReceiveHandler receiveFunc);
+    bool connectInner(
+        const std::optional<Message>& will, ReceiveHandler receiveFunc);
 };
 
-
-#endif // TEST_FAKEMQTTCONNECTION_HPP
+#endif  // TEST_FAKEMQTTCONNECTION_HPP

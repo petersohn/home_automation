@@ -26,8 +26,8 @@ Parser::Parser(
     std::transform(
         interfaces.begin(), interfaces.end(), this->interfaces.begin(),
         [](const std::unique_ptr<InterfaceConfig>& interface) {
-            return interface.get();
-        });
+        return interface.get();
+    });
 }
 
 std::unique_ptr<Operation> Parser::parse(

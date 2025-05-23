@@ -14,8 +14,8 @@ typename Collection::value_type::second_type const* findValue(
     auto iterator = std::find_if(
         begin(collection), end(collection),
         [&key](const typename Collection::value_type& element) {
-            return key == element.first;
-        });
+        return key == element.first;
+    });
     if (iterator == end(collection)) {
         return nullptr;
     }

@@ -1,12 +1,12 @@
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include "DummyBackoff.hpp"
 #include "EspTestBase.hpp"
 #include "FakeMqttConnection.hpp"
-#include "DummyBackoff.hpp"
-#include "common/MqttClient.hpp"
 #include "common/ArduinoJson.hpp"
+#include "common/MqttClient.hpp"
 #include "tools/string.hpp"
-
-#include <boost/test/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
 
 using namespace ArduinoJson;
 
@@ -18,19 +18,19 @@ struct StatusMessage {
     unsigned long maxCycleTime;
     float avgCycleTime;
 
-    StatusMessage(unsigned long time, bool restarted,
-            unsigned long maxCycleTime, float avgCycleTime)
+    StatusMessage(
+        unsigned long time, bool restarted, unsigned long maxCycleTime,
+        float avgCycleTime)
         : time(time)
         , restarted(restarted)
         , maxCycleTime(maxCycleTime)
-        , avgCycleTime(avgCycleTime)
-    {}
+        , avgCycleTime(avgCycleTime) {}
 };
 
 bool operator==(const StatusMessage& lhs, const StatusMessage& rhs) {
     return std::tie(lhs.time, lhs.restarted, lhs.maxCycleTime) ==
-        std::tie(rhs.time, rhs.restarted, rhs.maxCycleTime) &&
-        std::abs(lhs.avgCycleTime - rhs.avgCycleTime) < 0.01;
+               std::tie(rhs.time, rhs.restarted, rhs.maxCycleTime) &&
+           std::abs(lhs.avgCycleTime - rhs.avgCycleTime) < 0.01;
 }
 
 bool operator!=(const StatusMessage& lhs, const StatusMessage& rhs) {
@@ -58,12 +58,14 @@ std::ostream& operator<<(std::ostream& os, const AvailabilityMessage& msg) {
     return os << msg.time << " -> " << msg.isAvailable;
 }
 
-bool operator==(const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) {
+bool operator==(
+    const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) {
     return std::tie(lhs.time, lhs.isAvailable) ==
-        std::tie(rhs.time,rhs.isAvailable);
+           std::tie(rhs.time, rhs.isAvailable);
 }
 
-bool operator!=(const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) {
+bool operator!=(
+    const AvailabilityMessage& lhs, const AvailabilityMessage& rhs) {
     return !(lhs == rhs);
 }
 
@@ -80,8 +82,7 @@ std::ostream& operator<<(std::ostream& os, const ConnectionAttempt& msg) {
 }
 
 bool operator==(const ConnectionAttempt& lhs, const ConnectionAttempt& rhs) {
-    return std::tie(lhs.time, lhs.success) ==
-        std::tie(rhs.time,rhs.success);
+    return std::tie(lhs.time, lhs.success) == std::tie(rhs.time, rhs.success);
 }
 
 bool operator!=(const ConnectionAttempt& lhs, const ConnectionAttempt& rhs) {
@@ -92,8 +93,8 @@ class Fixture : public EspTestBase {
 public:
     FakeMqttServer server;
     FakeMqttConnection connection{server, [this](bool success) {
-            connectionAttempts.emplace_back(esp.millis(), success);
-        }};
+        connectionAttempts.emplace_back(esp.millis(), success);
+    }};
     DummyBackoff backoff;
     MqttClient mqttClient{debug, esp, wifi, backoff, connection, []() {}};
 
@@ -101,44 +102,42 @@ public:
     std::vector<StatusMessage> statusMessages;
     std::vector<AvailabilityMessage> availabilityMessages;
     std::vector<ConnectionAttempt> connectionAttempts;
-    const std::string deviceName =
-        "this name should be way long enough to fit";
+    const std::string deviceName = "this name should be way long enough to fit";
 
     Fixture() {
         connectionId = server.connect({});
-        server.subscribe(connectionId, "status", [this](
-                    size_t id, FakeMessage message) {
-                if (id == connectionId) {
-                    return;
-                }
+        server.subscribe(
+            connectionId, "status", [this](size_t id, FakeMessage message) {
+            if (id == connectionId) {
+                return;
+            }
 
-                BOOST_TEST_MESSAGE(message.payload);
-                DynamicJsonBuffer buffer(200);
-                auto& json = buffer.parseObject(message.payload);
-                auto name = json.get<std::string>("name");
-                auto uptime = json.get<unsigned long>("uptime");
-                auto restarted = json.get<bool>("restarted");
-                auto maxCycleTime = json.get<unsigned long>("maxCycleTime");
-                auto avgCycleTime = json.get<float>("avgCycleTime");
+            BOOST_TEST_MESSAGE(message.payload);
+            DynamicJsonBuffer buffer(200);
+            auto& json = buffer.parseObject(message.payload);
+            auto name = json.get<std::string>("name");
+            auto uptime = json.get<unsigned long>("uptime");
+            auto restarted = json.get<bool>("restarted");
+            auto maxCycleTime = json.get<unsigned long>("maxCycleTime");
+            auto avgCycleTime = json.get<float>("avgCycleTime");
 
-                BOOST_TEST(uptime == esp.millis());
-                BOOST_TEST(name == deviceName);
-                statusMessages.emplace_back(uptime, restarted, maxCycleTime,
-                        avgCycleTime);
-            });
-        server.subscribe(connectionId, "ava", [this](
-                    size_t id, FakeMessage message) {
-                if (id == connectionId) {
-                    return;
-                }
+            BOOST_TEST(uptime == esp.millis());
+            BOOST_TEST(name == deviceName);
+            statusMessages.emplace_back(
+                uptime, restarted, maxCycleTime, avgCycleTime);
+        });
+        server.subscribe(
+            connectionId, "ava", [this](size_t id, FakeMessage message) {
+            if (id == connectionId) {
+                return;
+            }
 
-                bool isAvailable = false;
-                auto res = tools::getBoolValue(
-                        message.payload.c_str(), isAvailable,
-                        message.payload.size());
-                BOOST_TEST_REQUIRE(res);
-                availabilityMessages.emplace_back(esp.millis(), isAvailable);
-            });
+            bool isAvailable = false;
+            auto res = tools::getBoolValue(
+                message.payload.c_str(), isAvailable, message.payload.size());
+            BOOST_TEST_REQUIRE(res);
+            availabilityMessages.emplace_back(esp.millis(), isAvailable);
+        });
 
         mqttClient.setConfig(
             MqttConfig{deviceName, {ServerConfig{}}, {"ava", "status"}});
@@ -158,37 +157,29 @@ public:
         server.publish(connectionId, {"status", std::move(result), true});
     }
 
-    void sendSameDeviceStatus() {
-        sendStatusMessage(wifi.getMac());
-    }
+    void sendSameDeviceStatus() { sendStatusMessage(wifi.getMac()); }
 
-    void sendOtherDeviceStatus() {
-        sendStatusMessage("11:11:11:11:11:11");
-    }
+    void sendOtherDeviceStatus() { sendStatusMessage("11:11:11:11:11:11"); }
 
     void sendAvailability(bool value) {
         server.publish(connectionId, {"ava", value ? "1" : "0", true});
     }
 
     void check(
-            const std::vector<ConnectionAttempt>& expectedConnectionAttempts,
-            const std::vector<StatusMessage>& expectedStatusMessages,
-            const std::vector<AvailabilityMessage>& expectedAvailabilityMessages) {
+        const std::vector<ConnectionAttempt>& expectedConnectionAttempts,
+        const std::vector<StatusMessage>& expectedStatusMessages,
+        const std::vector<AvailabilityMessage>& expectedAvailabilityMessages) {
         BOOST_CHECK_EQUAL_COLLECTIONS(
-                connectionAttempts.begin(),
-                connectionAttempts.end(),
-                expectedConnectionAttempts.begin(),
-                expectedConnectionAttempts.end());
+            connectionAttempts.begin(), connectionAttempts.end(),
+            expectedConnectionAttempts.begin(),
+            expectedConnectionAttempts.end());
         BOOST_CHECK_EQUAL_COLLECTIONS(
-                statusMessages.begin(),
-                statusMessages.end(),
-                expectedStatusMessages.begin(),
-                expectedStatusMessages.end());
+            statusMessages.begin(), statusMessages.end(),
+            expectedStatusMessages.begin(), expectedStatusMessages.end());
         BOOST_CHECK_EQUAL_COLLECTIONS(
-                availabilityMessages.begin(),
-                availabilityMessages.end(),
-                expectedAvailabilityMessages.begin(),
-                expectedAvailabilityMessages.end());
+            availabilityMessages.begin(), availabilityMessages.end(),
+            expectedAvailabilityMessages.begin(),
+            expectedAvailabilityMessages.end());
     }
 };
 
@@ -204,8 +195,7 @@ BOOST_FIXTURE_TEST_CASE(NormalFlow, Fixture) {
             {62100, false, 100, 100.0},
             {100200, false, 100, 100.0},
         },
-        {{2100, true}, {62100, true}, {100000, false}, {100200, true}}
-        );
+        {{2100, true}, {62100, true}, {100000, false}, {100200, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
@@ -215,15 +205,22 @@ BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
     loopUntil(250000);
 
     check(
-        {{100, false}, {600, false}, {1600, false}, {3600, false},
-         {7600, false}, {15600, false}, {31600, false}, {63600, false},
-         {123600, false}, {183600, false}, {243600, true}},
-        {{245600, true, 100, 100.0}},
-        {{245600, true}});
+        {{100, false},
+         {600, false},
+         {1600, false},
+         {3600, false},
+         {7600, false},
+         {15600, false},
+         {31600, false},
+         {63600, false},
+         {123600, false},
+         {183600, false},
+         {243600, true}},
+        {{245600, true, 100, 100.0}}, {{245600, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromSameDevice_Available_StatusFirst, Fixture) {
+    ConnectionFromSameDevice_Available_StatusFirst, Fixture) {
     loopUntil(20, 5);
     sendSameDeviceStatus();
     loopUntil(40, 5);
@@ -231,14 +228,11 @@ BOOST_FIXTURE_TEST_CASE(
     loopUntil(60, 5);
 
     BOOST_TEST(connection.isConnected());
-    check(
-        {{5, true}},
-        {{30, true, 5, 5.0}},
-        {{30, true}});
+    check({{5, true}}, {{30, true, 5, 5.0}}, {{30, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromSameDevice_NotAvailable_StatusFirst, Fixture) {
+    ConnectionFromSameDevice_NotAvailable_StatusFirst, Fixture) {
     loopUntil(20, 5);
     sendSameDeviceStatus();
     loopUntil(40, 5);
@@ -247,13 +241,12 @@ BOOST_FIXTURE_TEST_CASE(
 
     BOOST_TEST(connection.isConnected());
     check(
-        {{5, true}},
-        {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
+        {{5, true}}, {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
         {{30, true}, {50, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromSameDevice_Available_AvailabilityFirst, Fixture) {
+    ConnectionFromSameDevice_Available_AvailabilityFirst, Fixture) {
     loopUntil(20, 5);
     sendAvailability(true);
     loopUntil(40, 5);
@@ -261,14 +254,11 @@ BOOST_FIXTURE_TEST_CASE(
     loopUntil(60, 5);
 
     BOOST_TEST(connection.isConnected());
-    check(
-        {{5, true}},
-        {{50, true, 5, 5.0}},
-        {{50, true}});
+    check({{5, true}}, {{50, true, 5, 5.0}}, {{50, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromSameDevice_NotAvailable_AvailabilityFirst, Fixture) {
+    ConnectionFromSameDevice_NotAvailable_AvailabilityFirst, Fixture) {
     loopUntil(20, 5);
     sendAvailability(false);
     loopUntil(40, 5);
@@ -276,14 +266,11 @@ BOOST_FIXTURE_TEST_CASE(
     loopUntil(60, 5);
 
     BOOST_TEST(connection.isConnected());
-    check(
-        {{5, true}},
-        {{30, true, 5, 5.0}},
-        {{30, true}});
+    check({{5, true}}, {{30, true, 5, 5.0}}, {{30, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromOtherDevice_Available_StatusFirst, Fixture) {
+    ConnectionFromOtherDevice_Available_StatusFirst, Fixture) {
     loopUntil(20, 5);
     sendOtherDeviceStatus();
     loopUntil(40, 5);
@@ -291,14 +278,11 @@ BOOST_FIXTURE_TEST_CASE(
     loopUntil(60, 5);
 
     BOOST_TEST(!connection.isConnected());
-    check(
-        {{5, true}},
-        {},
-        {{45, false}});
+    check({{5, true}}, {}, {{45, false}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromOtherDevice_NotAvailable_StatusFirst, Fixture) {
+    ConnectionFromOtherDevice_NotAvailable_StatusFirst, Fixture) {
     loopUntil(20, 5);
     sendOtherDeviceStatus();
     loopUntil(40, 5);
@@ -306,14 +290,11 @@ BOOST_FIXTURE_TEST_CASE(
     loopUntil(60, 5);
 
     BOOST_TEST(connection.isConnected());
-    check(
-        {{5, true}},
-        {{50, true, 5, 5.0}},
-        {{50, true}});
+    check({{5, true}}, {{50, true, 5, 5.0}}, {{50, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromOtherDevice_Available_AvailabilityFirst, Fixture) {
+    ConnectionFromOtherDevice_Available_AvailabilityFirst, Fixture) {
     loopUntil(20, 5);
     sendAvailability(true);
     loopUntil(40, 5);
@@ -321,14 +302,11 @@ BOOST_FIXTURE_TEST_CASE(
     loopUntil(60, 5);
 
     BOOST_TEST(!connection.isConnected());
-    check(
-        {{5, true}},
-        {},
-        {{45, false}});
+    check({{5, true}}, {}, {{45, false}});
 }
 
 BOOST_FIXTURE_TEST_CASE(
-        ConnectionFromOtherDevice_NotAvailable_AvailabilityFirst, Fixture) {
+    ConnectionFromOtherDevice_NotAvailable_AvailabilityFirst, Fixture) {
     loopUntil(20, 5);
     sendAvailability(false);
     loopUntil(40, 5);
@@ -337,18 +315,17 @@ BOOST_FIXTURE_TEST_CASE(
 
     BOOST_TEST(connection.isConnected());
     check(
-        {{5, true}},
-        {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
+        {{5, true}}, {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
         {{30, true}, {50, true}});
 }
 
 BOOST_FIXTURE_TEST_CASE(Subscribe, Fixture) {
     std::string received;
 
-    mqttClient.subscribe("someTopic",
-            [&](const MqttConnection::Message& message) {
-                received = std::string{message.payload, message.payloadLength};
-            });
+    mqttClient.subscribe(
+        "someTopic", [&](const MqttConnection::Message& message) {
+        received = std::string{message.payload, message.payloadLength};
+    });
     sendAvailability(false);
     mqttClient.loop();
     esp.delay(100);
@@ -386,8 +363,7 @@ BOOST_FIXTURE_TEST_CASE(CycleTime, Fixture) {
             {20, true, 10, 10.0},
             {60020, false, 1000, 750.0},
         },
-        {{20, true}, {60020, true}}
-        );
+        {{20, true}, {60020, true}});
 }
 
 BOOST_AUTO_TEST_SUITE_END()

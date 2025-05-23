@@ -1,9 +1,7 @@
 #include "FakeWifi.hpp"
 
 void FakeWifi::begin(
-        const std::string& /*ssid*/, const std::string& /*password*/) {
-
-}
+    const std::string& /*ssid*/, const std::string& /*password*/) {}
 
 WifiStatus FakeWifi::getStatus() {
     return status;
@@ -16,4 +14,3 @@ std::string FakeWifi::getIp() {
 std::string FakeWifi::getMac() {
     return mac;
 }
-

@@ -81,11 +81,11 @@ public:
             operands.begin() + 1, operands.end(),
             translator.fromString(operands.front()->evaluate()),
             [this](const Type& lhs, const std::unique_ptr<Operation>& rhs) {
-                std::string value = rhs->evaluate();
-                auto translated = translator.fromString(value);
-                auto result = operator_(lhs, translated);
-                return result;
-            }));
+            std::string value = rhs->evaluate();
+            auto translated = translator.fromString(value);
+            auto result = operator_(lhs, translated);
+            return result;
+        }));
     }
 
 private:
@@ -111,10 +111,10 @@ public:
                 [this](
                     const std::unique_ptr<Operation>& lhs,
                     const std::unique_ptr<Operation>& rhs) {
-                    return !operator_(
-                        translator.fromString(lhs->evaluate()),
-                        translator.fromString(rhs->evaluate()));
-                }) == operands.end());
+            return !operator_(
+                translator.fromString(lhs->evaluate()),
+                translator.fromString(rhs->evaluate()));
+        }) == operands.end());
     }
 
 private:

@@ -1,6 +1,6 @@
-#include "FakeRtc.hpp"
-
 #include <boost/test/unit_test.hpp>
+
+#include "FakeRtc.hpp"
 
 Rtc::Data FakeRtc::get(unsigned id) {
     auto it = data.find(id);

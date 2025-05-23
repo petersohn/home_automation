@@ -1,6 +1,6 @@
-#include "TestStream.hpp"
-
 #include <boost/test/unit_test.hpp>
+
+#include "TestStream.hpp"
 
 int TestStreambuf::sync() {
     auto s = this->str();

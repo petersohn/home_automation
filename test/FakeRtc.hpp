@@ -1,9 +1,9 @@
 #ifndef TEST_FAKERTC_HPP
 #define TEST_FAKERTC_HPP
 
-#include "common/rtc.hpp"
-
 #include <map>
+
+#include "common/rtc.hpp"
 
 class FakeRtc : public Rtc {
 public:
@@ -18,5 +18,4 @@ private:
     unsigned current = 0;
 };
 
-
-#endif // TEST_FAKERTC_HPP
+#endif  // TEST_FAKERTC_HPP

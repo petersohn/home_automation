@@ -12,8 +12,8 @@ bool MqttConnectionImpl::connect(
         .setCallback([this](
                          const char* topic, const unsigned char* payload,
                          unsigned length) {
-            onMessageReceived(topic, payload, length);
-        });
+        onMessageReceived(topic, payload, length);
+    });
     if (will) {
         return mqttClient.connect(
             clientId, username, password, will->topic, 0, will->retain,

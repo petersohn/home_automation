@@ -181,8 +181,8 @@ void MqttClient::handleMessage(const MqttConnection::Message& message) {
     auto iterator = std::find_if(
         subscriptions.begin(), subscriptions.end(),
         [&message, this](const Subscription& element) {
-            return strcmp(message.topic, element.first.c_str()) == 0;
-        });
+        return strcmp(message.topic, element.first.c_str()) == 0;
+    });
     if (iterator == subscriptions.end()) {
         debug << "No subscription for topic." << std::endl;
         return;
@@ -207,8 +207,8 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
         server.address.c_str(), server.port, server.username.c_str(),
         server.password.c_str(), clientId.c_str(), will,
         [this](const MqttConnection::Message& message) {
-            handleMessage(message);
-        });
+        handleMessage(message);
+    });
 
     if (!result) {
         return false;
@@ -367,8 +367,8 @@ void MqttClient::unsubscribe(const char* topic) {
         std::remove_if(
             subscriptions.begin(), subscriptions.end(),
             [&topic](const Subscription& element) {
-                return element.first == topic;
-            }),
+        return element.first == topic;
+    }),
         subscriptions.end());
     if (connection.isConnected()) {
         connection.unsubscribe(topic);

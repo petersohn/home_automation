@@ -358,10 +358,10 @@ private:
                 mqttClient.subscribe(
                     commandTopic.c_str(),
                     [&interfaceConfig](const MqttConnection::Message& message) {
-                        std::string command{
-                            message.payload, message.payloadLength};  // FIXME
-                        interfaceConfig.interface->execute(command);
-                    });
+                    std::string command{
+                        message.payload, message.payloadLength};  // FIXME
+                    interfaceConfig.interface->execute(command);
+                });
             }
 
             interfaceConfig.interface = std::move(parsedInterface);

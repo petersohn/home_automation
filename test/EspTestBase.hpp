@@ -1,12 +1,12 @@
 #ifndef TEST_ESPTESTBASE_HPP
 #define TEST_ESPTESTBASE_HPP
 
-#include "TestStream.hpp"
+#include <ostream>
+
 #include "FakeEspApi.hpp"
 #include "FakeRtc.hpp"
 #include "FakeWifi.hpp"
-
-#include <ostream>
+#include "TestStream.hpp"
 
 class EspTestBase {
 public:
@@ -19,9 +19,8 @@ public:
     EspTestBase();
     ~EspTestBase();
 
-    void delayUntil(unsigned long time, unsigned long delay,
-            std::function<void()> func);
+    void delayUntil(
+        unsigned long time, unsigned long delay, std::function<void()> func);
 };
 
-
-#endif // TEST_ESPTESTBASE_HPP
+#endif  // TEST_ESPTESTBASE_HPP

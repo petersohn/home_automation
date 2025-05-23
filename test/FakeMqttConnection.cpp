@@ -1,24 +1,18 @@
-#include "FakeMqttConnection.hpp"
-
 #include <boost/test/unit_test.hpp>
+
+#include "FakeMqttConnection.hpp"
 
 FakeMessage::FakeMessage() : retain(false) {}
 
 FakeMessage::FakeMessage(std::string topic, std::string payload, bool retain)
-    : topic(std::move(topic))
-    , payload(std::move(payload))
-    , retain(retain) {
-}
+    : topic(std::move(topic)), payload(std::move(payload)), retain(retain) {}
 
 FakeMessage::FakeMessage(const MqttConnection::Message msg)
-    : topic(msg.topic)
-    , payload(msg.payload)
-    , retain(msg.retain) {
-}
+    : topic(msg.topic), payload(msg.payload), retain(msg.retain) {}
 
 MqttConnection::Message FakeMessage::toMessage() const {
-    return MqttConnection::Message{topic.c_str(), payload.c_str(),
-            payload.size(), retain};
+    return MqttConnection::Message{
+        topic.c_str(), payload.c_str(), payload.size(), retain};
 }
 
 size_t FakeMqttServer::connect(std::optional<FakeMessage> will) {
@@ -39,10 +33,9 @@ void FakeMqttServer::disconnect(size_t id) {
 void disconnect(size_t id);
 
 bool FakeMqttServer::subscribe(
-        size_t id, const std::string& topic,
-        std::function<void(size_t, FakeMessage)> callback) {
-    if (!subscriptions.emplace(
-            std::make_pair(topic, id), callback).second) {
+    size_t id, const std::string& topic,
+    std::function<void(size_t, FakeMessage)> callback) {
+    if (!subscriptions.emplace(std::make_pair(topic, id), callback).second) {
         return false;
     }
     auto it = retainedMessages.find(topic);
@@ -60,8 +53,7 @@ bool FakeMqttServer::unsubscribe(size_t id, const std::string& topic) {
 void FakeMqttServer::publish(size_t id, const FakeMessage& message) {
     BOOST_TEST_MESSAGE("publish " << message.topic << " " << message.payload);
     for (auto it = subscriptions.lower_bound(std::make_pair(message.topic, 0));
-            it != subscriptions.end() && it->first.first == message.topic;
-            ++it) {
+         it != subscriptions.end() && it->first.first == message.topic; ++it) {
         it->second(id, message);
     }
 
@@ -74,31 +66,26 @@ void FakeMqttServer::publish(size_t id, const FakeMessage& message) {
     }
 }
 
-FakeMqttConnection::FakeMqttConnection(FakeMqttServer& server,
-            std::function<void(bool)> connectCallback)
-    : server(server)
-    , connectCallback(connectCallback) {
-}
+FakeMqttConnection::FakeMqttConnection(
+    FakeMqttServer& server, std::function<void(bool)> connectCallback)
+    : server(server), connectCallback(connectCallback) {}
 
-bool FakeMqttConnection::connectInner(const std::optional<Message>& will,
-    ReceiveHandler receiveFunc_) {
+bool FakeMqttConnection::connectInner(
+    const std::optional<Message>& will, ReceiveHandler receiveFunc_) {
     if (connectionId || !server.working) {
         return false;
     }
 
-    connectionId = server.connect(will
-            ? FakeMessage{*will}
-            : std::optional<FakeMessage>{});
+    connectionId = server.connect(
+        will ? FakeMessage{*will} : std::optional<FakeMessage>{});
     receiveFunc = std::move(receiveFunc_);
     return true;
 }
 
 bool FakeMqttConnection::connect(
-        const char* /* host */, uint16_t /* port */,
-        const char* /* username */, const char* /* password */,
-        const char* /* clientId */,
-        const std::optional<Message>& will,
-        ReceiveHandler receiveFunc_) {
+    const char* /* host */, uint16_t /* port */, const char* /* username */,
+    const char* /* password */, const char* /* clientId */,
+    const std::optional<Message>& will, ReceiveHandler receiveFunc_) {
     auto result = connectInner(will, std::move(receiveFunc_));
     if (connectCallback) {
         connectCallback(result);
@@ -122,10 +109,10 @@ bool FakeMqttConnection::subscribe(const char* topic) {
         return false;
     }
 
-    return server.subscribe(*connectionId, topic,
-        [this](size_t /*id*/, FakeMessage message) {
-            queue.emplace_back(std::move(message));
-        });
+    return server.subscribe(
+        *connectionId, topic, [this](size_t /*id*/, FakeMessage message) {
+        queue.emplace_back(std::move(message));
+    });
 }
 
 bool FakeMqttConnection::unsubscribe(const char* topic) {

@@ -1,10 +1,9 @@
 #include "InterfaceTestBase.hpp"
+#include "boost/test/unit_test.hpp"
 #include "common/Interface.hpp"
 
-#include "boost/test/unit_test.hpp"
-
 void InterfaceTestBase::initInterface(
-        std::string name, std::unique_ptr<Interface>&& iface) {
+    std::string name, std::unique_ptr<Interface>&& iface) {
     interface.name = std::move(name);
     interface.interface = std::move(iface);
     interface.interface->start();

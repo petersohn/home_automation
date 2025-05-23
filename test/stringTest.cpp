@@ -1,6 +1,6 @@
-#include "tools/string.hpp"
-
 #include <boost/test/unit_test.hpp>
+
+#include "tools/string.hpp"
 
 BOOST_AUTO_TEST_SUITE(StringTest)
 
@@ -116,8 +116,8 @@ BOOST_AUTO_TEST_CASE(LongerSequence) {
     for (int i = 0; i < 1000; ++i) {
         values.push_back("value" + std::to_string(i));
     }
-    BOOST_TEST(tools::substitute("%124-->%654", values) ==
-            "value123-->value653");
+    BOOST_TEST(
+        tools::substitute("%124-->%654", values) == "value123-->value653");
 }
 
 BOOST_AUTO_TEST_CASE(LiteralPercent) {
