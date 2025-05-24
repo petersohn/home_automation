@@ -12,7 +12,8 @@ public:
     Cover(
         std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        bool invertInput, bool invertOutput, int closedPosition);
+        uint8_t stopPin, bool invertInput, bool invertOutput,
+        int closedPosition);
 
     void start() override;
     void execute(const std::string& command) override;
@@ -31,6 +32,8 @@ private:
         bool isStarted() const;
         unsigned getDidNotStartCount() const { return didNotStartCount; }
         void resetDidNotStartCount() { didNotStartCount = 0; }
+        bool shouldResetStop() const;
+        void resetStop();
 
     private:
         Cover& parent;
@@ -45,9 +48,14 @@ private:
         unsigned long startedTime = 0;
         int moveStartPosition = -2;
         unsigned didNotStartCount = 0;
+        bool startTriggered = false;
+        bool stopTriggered = false;
 
         bool isReallyMoving() const;
         void log(const std::string& msg);
+        void resetStarted();
+        void resetStart();
+        void handleStopped();
     };
 
     std::ostream& debug;
@@ -57,6 +65,7 @@ private:
     const std::string debugPrefix;
     Movement up;
     Movement down;
+    uint8_t stopPin;
     const bool invertInput;
     const bool invertOutput;
     const int closedPosition;
@@ -66,9 +75,12 @@ private:
     int targetPosition = -1;
     bool stateChanged = false;
 
+    bool isLatching() const;
     bool isMovingUp() const;
     bool isMovingDown() const;
     void stop();
+    void resetStop();
+    void setOutput(uint8_t pin, bool value);
 
     void log(const std::string& msg);
     void beginOpening();

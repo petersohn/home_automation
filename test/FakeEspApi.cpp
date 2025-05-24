@@ -1,9 +1,17 @@
 #include "FakeEspApi.hpp"
 
+#include <boost/test/unit_test_log.hpp>
+
 void FakeEspApi::pinMode(uint8_t /* pin */, GpioMode /* mode */) {}
 
 void FakeEspApi::digitalWrite(uint8_t pin, uint8_t val) {
-    pinValues[pin] = val != 0;
+    const bool value = val != 0;
+    if (value != pinValues[pin]) {
+        BOOST_TEST_MESSAGE(
+            "Pin " << static_cast<int>(pin)
+                   << " value=" << static_cast<int>(val));
+        pinValues[pin] = value;
+    }
 }
 
 int FakeEspApi::digitalRead(uint8_t pin) {

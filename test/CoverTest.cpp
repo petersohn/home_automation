@@ -1,39 +1,89 @@
 #include <algorithm>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_log.hpp>
 
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
 
 BOOST_AUTO_TEST_SUITE(CoverTest)
 
-enum Pin : uint8_t { UpOutput = 1, DownOutput, UpInput, DownInput };
+enum Pin : uint8_t {
+    UpOutput = 1,
+    DownOutput,
+    UpInput,
+    DownInput,
+    StopOutput,
+};
 
 class Fixture : public InterfaceTestBase {
 public:
-    int maxPosition = 10000;
+    const int maxPosition = 10000;
+    bool latching = false;
     int position = 0;
     bool isWorking = true;
     unsigned long previousTime = 0;
+    bool movingUp = false;
+    bool movingDown = false;
 
-    Fixture() {
+    Fixture() {}
+
+    void init(bool isLatching) {
+        latching = isLatching;
         initInterface(
-            "cover", std::make_unique<Cover>(
-                         debug, esp, rtc, UpInput, DownInput, UpOutput,
-                         DownOutput, false, false, 10));
+            "cover",
+            std::make_unique<Cover>(
+                debug, esp, rtc, UpInput, DownInput, UpOutput, DownOutput,
+                isLatching ? StopOutput : 0, false, false, 10));
     }
 
-    bool isMovingUp() { return esp.digitalRead(UpOutput) != 0; }
+    bool isMoving(uint8_t pin, bool value) {
+        bool isStarted = esp.digitalRead(pin) != 0;
+        bool result =
+            latching ? esp.digitalRead(StopOutput) == 0 && (value || isStarted)
+                     : isStarted;
+        BOOST_TEST_MESSAGE(
+            "pin " << pin << " isStarted=" << isStarted
+                   << " isMoving=" << result);
+        return result;
+    }
 
-    bool isMovingDown() { return esp.digitalRead(DownOutput) != 0; }
+    bool isMovingUp() { return isMoving(UpOutput, movingUp); }
+
+    bool isMovingDown() { return isMoving(DownOutput, movingDown); }
 
     void loop() {
         auto now = esp.millis();
         int delta = now - previousTime;
-        auto movingUp = isWorking && isMovingUp();
-        auto movingDown = isWorking && isMovingDown();
-        if (movingUp && movingDown) {
-            BOOST_FAIL("Should not try to move in both directions.");
+        const bool upOn = esp.digitalRead(UpOutput) != 0;
+        const bool downOn = esp.digitalRead(DownOutput) != 0;
+
+        if (isWorking) {
+            if (upOn && downOn) {
+                BOOST_FAIL("Should not try to move in both directions.");
+            }
+
+            if (latching) {
+                if (upOn) {
+                    BOOST_TEST_MESSAGE("Start moving up");
+                    movingUp = true;
+                    movingDown = false;
+                } else if (downOn) {
+                    BOOST_TEST_MESSAGE("Start moving down");
+                    movingUp = false;
+                    movingDown = true;
+                } else if (esp.digitalRead(StopOutput) != 0) {
+                    BOOST_TEST_MESSAGE("Stop");
+                    movingUp = false;
+                    movingDown = false;
+                }
+            } else {
+                movingUp = upOn;
+                movingDown = downOn;
+            }
+        } else {
+            movingUp = false;
+            movingDown = false;
         }
 
         int newPosition = position;
@@ -44,8 +94,25 @@ public:
             newPosition = std::max(0, position - delta);
         }
 
-        esp.digitalWrite(UpInput, newPosition > position);
-        esp.digitalWrite(DownInput, newPosition < position);
+        const auto movedUp = newPosition > position;
+        const auto movedDown = newPosition < position;
+
+        if (!movedUp) {
+            movingUp = false;
+        }
+
+        if (!movedDown) {
+            movingDown = false;
+        }
+
+        BOOST_TEST_MESSAGE(
+            "upOn=" << upOn << " downOn=" << downOn << " movingUp=" << movingUp
+                    << " movingDown=" << movingDown
+                    << " position=" << newPosition << " movedUp=" << movedUp
+                    << " movedDown=" << movedDown);
+
+        esp.digitalWrite(UpInput, movedUp);
+        esp.digitalWrite(DownInput, movedDown);
 
         position = newPosition;
         previousTime = now;
@@ -94,11 +161,15 @@ public:
 };
 
 namespace {
-auto delays1 = boost::unit_test::data::make({1, 10, 100, 500});
-auto delays2 = boost::unit_test::data::make({1, 10, 100});
+const auto delays1 = boost::unit_test::data::make({1, 10, 100, 500});
+const auto delays2 = boost::unit_test::data::make({1, 10, 100});
+const auto latchings = boost::unit_test::data::make({false, true});
+const auto params1 = delays1 * latchings;
+const auto params2 = delays2 * latchings;
 }  // namespace
 
-BOOST_DATA_TEST_CASE_F(Fixture, Open, delays1, delay) {
+BOOST_DATA_TEST_CASE_F(Fixture, Open, params1, delay, isLatching) {
+    init(isLatching);
     esp.delay(10);
     loop();
 
@@ -121,7 +192,8 @@ BOOST_DATA_TEST_CASE_F(Fixture, Open, delays1, delay) {
     BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, Close, delays1, delay) {
+BOOST_DATA_TEST_CASE_F(Fixture, Close, params1, delay, isLatching) {
+    init(isLatching);
     position = 10000;
     esp.delay(10);
     loop();
@@ -145,10 +217,15 @@ BOOST_DATA_TEST_CASE_F(Fixture, Close, delays1, delay) {
     BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
+namespace {
+const auto calibrateStartPositions =
+    boost::unit_test::data::make({0, 5000, 8000, 10000});
+const auto calibrateParams = params1 * calibrateStartPositions;
+}  // namespace
+
 BOOST_DATA_TEST_CASE_F(
-    Fixture, Calibrate,
-    delays1* boost::unit_test::data::make({0, 5000, 8000, 10000}), delay,
-    start) {
+    Fixture, Calibrate, calibrateParams, delay, isLatching, start) {
+    init(isLatching);
     position = start;
     esp.delay(10);
     loop();
@@ -244,7 +321,9 @@ BOOST_DATA_TEST_CASE_F(
     BOOST_TEST(!isMovingDown());
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, OpenAfterCalibrate, delays2, delay) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, OpenAfterCalibrate, params2, delay, isLatching) {
+    init(isLatching);
     BOOST_REQUIRE_NO_THROW(calibrateToPosition(60, 100));
     open();
     auto func = [&](unsigned long time, size_t round) {
@@ -271,7 +350,9 @@ BOOST_DATA_TEST_CASE_F(Fixture, OpenAfterCalibrate, delays2, delay) {
     BOOST_REQUIRE_NO_THROW(loopFor(4200, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, CloseAfterCalibrate, delays2, delay) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, CloseAfterCalibrate, params2, delay, isLatching) {
+    init(isLatching);
     BOOST_REQUIRE_NO_THROW(calibrateToPosition(60, 100));
     close();
     auto func = [&](unsigned long time, size_t round) {

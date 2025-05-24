@@ -1,6 +1,9 @@
+#include "Cover.hpp"
+
+#include <cstdint>
+
 #include "../tools/string.hpp"
 #include "ArduinoJson.hpp"
-#include "Cover.hpp"
 
 using namespace ArduinoJson;
 
@@ -29,23 +32,42 @@ Cover::Movement::Movement(
 }
 
 void Cover::Movement::start() {
-    auto value = getActualValue(true, parent.invertOutput);
-    log("Start " + tools::intToString(parent.invertOutput) + " " +
-        tools::intToString(value));
-    parent.esp.digitalWrite(outputPin, value);
+    parent.resetStop();
+    log("Start");
+    parent.setOutput(outputPin, true);
+    startTriggered = true;
     if (!isStarted()) {
         startedTime = parent.esp.millis();
     }
 }
 
 void Cover::Movement::stop() {
-    auto value = getActualValue(false, parent.invertOutput);
-    log("stop " + tools::intToString(parent.invertOutput) + " " +
-        tools::intToString(value));
-    parent.esp.digitalWrite(outputPin, value);
+    log("stop");
+    resetStart();
+    if (parent.isLatching()) {
+        stopTriggered = true;
+        parent.setOutput(parent.stopPin, true);
+    }
+    resetStarted();
+}
+
+void Cover::Movement::resetStarted() {
     if (startedTime != 0) {
         startedTime = 0;
         parent.stateChanged = true;
+    }
+}
+
+void Cover::Movement::resetStart() {
+    parent.setOutput(outputPin, false);
+    startTriggered = false;
+}
+
+void Cover::Movement::handleStopped() {
+    if (!parent.isLatching() || startTriggered) {
+        stop();
+    } else {
+        resetStarted();
     }
 }
 
@@ -65,10 +87,25 @@ bool Cover::Movement::isReallyMoving() const {
     return moveStartPosition != -2;
 }
 
+bool Cover::Movement::shouldResetStop() const {
+    return stopTriggered && !isMoving();
+}
+
+void Cover::Movement::resetStop() {
+    stopTriggered = false;
+}
+
 int Cover::Movement::update() {
     int newPosition = parent.position;
     auto now = parent.esp.millis();
     bool moving = isMoving();
+
+    if (parent.isLatching()) {
+        if (moving && startTriggered) {
+            log("Reset start");
+            resetStart();
+        }
+    }
 
     if (moving) {
         didNotStartCount = 0;
@@ -99,7 +136,8 @@ int Cover::Movement::update() {
         } else if (isStarted()) {
             log("End position reached.");
             newPosition = endPosition;
-            stop();
+            handleStopped();
+
             if (moveStartPosition == 100 - endPosition) {
                 moveTime = now - moveStartTime;
                 parent.rtc.set(timeId, moveTime);
@@ -109,7 +147,7 @@ int Cover::Movement::update() {
     } else if (!moving && isStarted() && now - startedTime > startTimeout) {
         ++didNotStartCount;
         log("Was at end position.");
-        stop();
+        handleStopped();
         newPosition = endPosition;
     }
 
@@ -126,8 +164,8 @@ int Cover::Movement::update() {
 
 Cover::Cover(
     std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
-    uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, bool invertInput,
-    bool invertOutput, int closedPosition)
+    uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
+    bool invertInput, bool invertOutput, int closedPosition)
     : debug(debug)
     , esp(esp)
     , rtc(rtc)
@@ -136,6 +174,7 @@ Cover::Cover(
           tools::intToString(downPin) + ": ")
     , up(*this, upMovementPin, upPin, 100, 1, "up")
     , down(*this, downMovementPin, downPin, 0, -1, "down")
+    , stopPin(stopPin)
     , invertInput(invertInput)
     , invertOutput(invertOutput)
     , closedPosition(closedPosition)
@@ -143,6 +182,10 @@ Cover::Cover(
     position = rtc.get(positionId) - 1;
     log("Initial position: " + tools::intToString(position));
     stop();
+}
+
+bool Cover::isLatching() const {
+    return stopPin != 0;
 }
 
 void Cover::start() {
@@ -193,7 +236,9 @@ void Cover::setPosition(int value) {
 
 void Cover::beginOpening() {
     if (!up.isStarted()) {
-        down.stop();
+        if (!isLatching()) {
+            down.stop();
+        }
         up.start();
         stateChanged = true;
     }
@@ -201,10 +246,22 @@ void Cover::beginOpening() {
 
 void Cover::beginClosing() {
     if (!down.isStarted()) {
-        up.stop();
+        if (!isLatching()) {
+            up.stop();
+        }
         down.start();
         stateChanged = true;
     }
+}
+
+void Cover::resetStop() {
+    if (!isLatching()) {
+        return;
+    }
+
+    setOutput(stopPin, false);
+    up.resetStop();
+    down.resetStop();
 }
 
 void Cover::update(Actions action) {
@@ -219,6 +276,11 @@ void Cover::update(Actions action) {
         newPosition = newPositionUp;
     } else {
         newPosition = newPositionDown;
+    }
+
+    if (up.shouldResetStop() && down.shouldResetStop()) {
+        log("Reset stop");
+        resetStop();
     }
 
     if (newPosition != position || stateChanged) {
@@ -262,6 +324,10 @@ void Cover::update(Actions action) {
             }
         }
     }
+}
+
+void Cover::setOutput(uint8_t pin, bool value) {
+    esp.digitalWrite(pin, getActualValue(value, invertOutput));
 }
 
 void Cover::stop() {
