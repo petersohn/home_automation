@@ -217,6 +217,41 @@ BOOST_DATA_TEST_CASE_F(Fixture, Close, params1, delay, isLatching) {
     BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
+BOOST_DATA_TEST_CASE_F(Fixture, StopWhileOpening, params1, delay, isLatching) {
+    init(isLatching);
+    esp.delay(10);
+    loop();
+
+    open();
+    BOOST_REQUIRE_NO_THROW(loopFor(2000, delay, [](unsigned long, size_t) {}));
+
+    stop();
+    esp.delay(delay);
+    loop();
+
+    BOOST_TEST(!isMovingUp());
+    BOOST_TEST(!isMovingDown());
+    BOOST_TEST(position == 2000);
+}
+
+BOOST_DATA_TEST_CASE_F(Fixture, StopWhileClosing, params1, delay, isLatching) {
+    init(isLatching);
+    position = 10000;
+    esp.delay(10);
+    loop();
+
+    close();
+    BOOST_REQUIRE_NO_THROW(loopFor(2000, delay, [](unsigned long, size_t) {}));
+
+    stop();
+    esp.delay(delay);
+    loop();
+
+    BOOST_TEST(!isMovingUp());
+    BOOST_TEST(!isMovingDown());
+    BOOST_TEST(position == 8000);
+}
+
 namespace {
 const auto calibrateStartPositions =
     boost::unit_test::data::make({0, 5000, 8000, 10000});
