@@ -42,9 +42,6 @@ public:
         bool result =
             latching ? esp.digitalRead(StopOutput) == 0 && (value || isStarted)
                      : isStarted;
-        BOOST_TEST_MESSAGE(
-            "pin " << pin << " isStarted=" << isStarted
-                   << " isMoving=" << result);
         return result;
     }
 
