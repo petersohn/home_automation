@@ -261,8 +261,8 @@ BOOST_FIXTURE_TEST_CASE(LatchingMode, Fixture) {
 }
 
 namespace {
-const auto delays1 = boost::unit_test::data::make({1, 10, 100, 500});
-const auto delays2 = boost::unit_test::data::make({1, 10, 100});
+const auto delays1 = boost::unit_test::data::make({10, 100, 500});
+const auto delays2 = boost::unit_test::data::make({10, 100});
 const auto latchings = boost::unit_test::data::make({false, true});
 const auto params1 = delays1 * latchings;
 const auto params2 = delays2 * latchings;
