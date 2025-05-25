@@ -170,6 +170,79 @@ public:
     }
 };
 
+BOOST_FIXTURE_TEST_CASE(NormalMode, Fixture) {
+    position = 5000;
+    init(false);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+
+    open();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+
+    stop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+
+    close();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+
+    stop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+
+    open();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+
+    close();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+
+    open();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+
+    close();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+}
+
 BOOST_FIXTURE_TEST_CASE(LatchingMode, Fixture) {
     position = 5000;
     init(true);
