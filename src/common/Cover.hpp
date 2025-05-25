@@ -34,6 +34,7 @@ private:
         void resetDidNotStartCount() { didNotStartCount = 0; }
         bool shouldResetStop() const;
         void resetStop();
+        void resetStarted();
 
     private:
         Cover& parent;
@@ -53,7 +54,6 @@ private:
 
         bool isReallyMoving() const;
         void log(const std::string& msg);
-        void resetStarted();
         void resetStart();
         void handleStopped();
     };
@@ -85,6 +85,7 @@ private:
     void log(const std::string& msg);
     void beginOpening();
     void beginClosing();
+    void beginMoving(Movement& direction, Movement& reverse);
     void setPosition(int value);
 };
 

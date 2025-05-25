@@ -2,6 +2,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_log.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
@@ -51,6 +52,7 @@ public:
 
     void loop() {
         auto now = esp.millis();
+        BOOST_TEST_MESSAGE("Loop begin, time=" << now);
         int delta = now - previousTime;
         const bool upOn = esp.digitalRead(UpOutput) != 0;
         const bool downOn = esp.digitalRead(DownOutput) != 0;
@@ -115,13 +117,24 @@ public:
         previousTime = now;
 
         updateInterface();
+
+        BOOST_TEST_MESSAGE("Loop end");
     }
 
-    void open() { interface.interface->execute("OPEN"); }
+    void open() {
+        BOOST_TEST_MESSAGE("Open");
+        interface.interface->execute("OPEN");
+    }
 
-    void close() { interface.interface->execute("CLOSE"); }
+    void close() {
+        BOOST_TEST_MESSAGE("Close");
+        interface.interface->execute("CLOSE");
+    }
 
-    void stop() { interface.interface->execute("STOP"); }
+    void stop() {
+        BOOST_TEST_MESSAGE("Stop");
+        interface.interface->execute("STOP");
+    }
 
     void setPosition(int value) {
         interface.interface->execute(std::to_string(value));
@@ -157,6 +170,96 @@ public:
     }
 };
 
+BOOST_FIXTURE_TEST_CASE(LatchingMode, Fixture) {
+    position = 5000;
+    init(true);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    open();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    stop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 1);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    close();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    stop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 1);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    open();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    close();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    open();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+
+    close();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    esp.delay(10);
+    loop();
+    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+}
+
 namespace {
 const auto delays1 = boost::unit_test::data::make({1, 10, 100, 500});
 const auto delays2 = boost::unit_test::data::make({1, 10, 100});
@@ -164,6 +267,7 @@ const auto latchings = boost::unit_test::data::make({false, true});
 const auto params1 = delays1 * latchings;
 const auto params2 = delays2 * latchings;
 }  // namespace
+//
 
 BOOST_DATA_TEST_CASE_F(Fixture, Open, params1, delay, isLatching) {
     init(isLatching);

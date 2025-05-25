@@ -234,24 +234,24 @@ void Cover::setPosition(int value) {
     }
 }
 
-void Cover::beginOpening() {
-    if (!up.isStarted()) {
-        if (!isLatching()) {
-            down.stop();
+void Cover::beginMoving(Movement& direction, Movement& reverse) {
+    if (!direction.isStarted()) {
+        if (isLatching()) {
+            reverse.resetStarted();
+        } else {
+            reverse.stop();
         }
-        up.start();
+        direction.start();
         stateChanged = true;
     }
 }
 
+void Cover::beginOpening() {
+    beginMoving(up, down);
+}
+
 void Cover::beginClosing() {
-    if (!down.isStarted()) {
-        if (!isLatching()) {
-            up.stop();
-        }
-        down.start();
-        stateChanged = true;
-    }
+    beginMoving(down, up);
 }
 
 void Cover::resetStop() {
