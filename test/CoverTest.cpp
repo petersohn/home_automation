@@ -171,166 +171,89 @@ public:
 };
 
 BOOST_FIXTURE_TEST_CASE(NormalMode, Fixture) {
+    auto check = [this](const std::string& name, int upValue, int downValue) {
+        BOOST_TEST_CONTEXT(name) {
+            BOOST_TEST(esp.digitalRead(UpOutput) == upValue);
+            BOOST_TEST(esp.digitalRead(DownOutput) == downValue);
+            esp.delay(10);
+            loop();
+            BOOST_TEST(esp.digitalRead(UpOutput) == upValue);
+            BOOST_TEST(esp.digitalRead(DownOutput) == downValue);
+        }
+    };
+
     position = 5000;
     init(false);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    check("initial state", 0, 0);
 
     open();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    check("open at init", 1, 0);
 
     stop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    check("stop after open", 0, 0);
 
     close();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    check("close after stop", 0, 1);
 
     stop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    check("stop after close", 0, 0);
 
     open();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    check("open after stop", 1, 0);
 
     close();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    check("close after open 1", 0, 1);
 
     open();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+    check("open after close", 1, 0);
 
     close();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
+    check("close after open 2", 0, 1);
 }
 
 BOOST_FIXTURE_TEST_CASE(LatchingMode, Fixture) {
+    auto check = [this](
+                     const std::string& name, int upValue, int downValue,
+                     int stopValue) {
+        BOOST_TEST_CONTEXT(name) {
+            BOOST_TEST(esp.digitalRead(UpOutput) == upValue);
+            BOOST_TEST(esp.digitalRead(DownOutput) == downValue);
+            BOOST_TEST(esp.digitalRead(StopOutput) == stopValue);
+            esp.delay(10);
+            loop();
+            BOOST_TEST(esp.digitalRead(UpOutput) == 0);
+            BOOST_TEST(esp.digitalRead(DownOutput) == 0);
+            BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+        }
+    };
+
     position = 5000;
     init(true);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("initial state", 0, 0, 1);
 
     open();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("open at init", 1, 0, 0);
 
     stop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 1);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("stop after open", 0, 0, 1);
 
     close();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("close after stop", 0, 1, 0);
 
     stop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 1);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("stop after close", 0, 0, 1);
 
     open();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("open after stop", 1, 0, 0);
 
     close();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("close after open 1", 0, 1, 0);
 
     open();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 1);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("open after close", 1, 0, 0);
 
     close();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 1);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
-    esp.delay(10);
-    loop();
-    BOOST_TEST(esp.digitalRead(UpOutput) == 0);
-    BOOST_TEST(esp.digitalRead(DownOutput) == 0);
-    BOOST_TEST(esp.digitalRead(StopOutput) == 0);
+    check("close after open 2", 0, 1, 0);
 }
 
 namespace {
