@@ -24,11 +24,17 @@ Cover::Movement::Movement(
     , outputPin(outputPin)
     , endPosition(endPosition)
     , direction(direction)
-    , timeId(parent.rtc.next())
     , debugPrefix(parent.debugPrefix + directionName + ": ") {
     parent.esp.pinMode(inputPin, GpioMode::input);
     parent.esp.pinMode(outputPin, GpioMode::output);
-    moveTime = parent.rtc.get(timeId);
+    if (parent.hasPositionSensors()) {
+        const auto timeCount = parent.positionSensors.size() - 1;
+        moveTimes.reserve(timeCount);
+        for (size_t i = 0; i < timeCount; ++i) {
+            const auto id = parent.rtc.next();
+            moveTimes.emplace_back(id, parent.rtc.get(id));
+        }
+    }
 }
 
 void Cover::Movement::start() {
@@ -165,7 +171,8 @@ int Cover::Movement::update() {
 Cover::Cover(
     std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
     uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
-    bool invertInput, bool invertOutput, int closedPosition)
+    bool invertInput, bool invertOutput, int closedPosition,
+    std::vector<PositionSensor> positionSensors, bool invertPositionSensors)
     : debug(debug)
     , esp(esp)
     , rtc(rtc)
@@ -178,7 +185,21 @@ Cover::Cover(
     , invertInput(invertInput)
     , invertOutput(invertOutput)
     , closedPosition(closedPosition)
+    , positionSensors(std::move(positionSensors))
+    , invertPositionSensors(invertPositionSensors)
     , positionId(rtc.next()) {
+    if (this->positionSensors.size() == 1) {
+        debug << "Invalid position sensors: there should be zero or at least 2."
+              << std::endl;
+        this->positionSensors.clear();
+    }
+
+    std::sort(
+        this->positionSensors.begin(), this->positionSensors.end(),
+        [](const PositionSensor& lhs, const PositionSensor& rhs) {
+        return lhs.position < rhs.position;
+    });
+
     position = rtc.get(positionId) - 1;
     log("Initial position: " + tools::intToString(position));
     stop();
@@ -186,6 +207,10 @@ Cover::Cover(
 
 bool Cover::isLatching() const {
     return stopPin != 0;
+}
+
+bool Cover::hasPositionSensors() const {
+    return !positionSensors.empty();
 }
 
 void Cover::start() {
@@ -265,6 +290,20 @@ void Cover::resetStop() {
 }
 
 void Cover::update(Actions action) {
+    int newPositionSensor = -1;
+    for (int i = 0; i < positionSensors.size(); ++i) {
+        if (getActualValue(
+                esp.digitalRead(positionSensors[i].pin) != 0,
+                invertPositionSensors)) {
+            newPositionSensor = i;
+            break;
+        }
+    }
+
+    previouslyActivePositionSensor =
+        newPositionSensor == -1 ? activePositionSensor : -1;
+    activePositionSensor = newPositionSensor;
+
     int newPositionUp = up.update();
     int newPositionDown = down.update();
     int newPosition = position;
@@ -276,6 +315,10 @@ void Cover::update(Actions action) {
         newPosition = newPositionUp;
     } else {
         newPosition = newPositionDown;
+    }
+
+    if (activePositionSensor != -1) {
+        newPosition = positionSensors[activePositionSensor].position;
     }
 
     if (up.shouldResetStop() && down.shouldResetStop()) {

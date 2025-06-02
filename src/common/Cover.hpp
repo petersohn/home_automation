@@ -7,19 +7,30 @@
 #include "Interface.hpp"
 #include "rtc.hpp"
 
+struct PositionSensor {
+    int position;
+    uint8_t pin;
+};
+
 class Cover : public Interface {
 public:
     Cover(
         std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
         uint8_t stopPin, bool invertInput, bool invertOutput,
-        int closedPosition);
+        int closedPosition, std::vector<PositionSensor> positionSensors,
+        bool invertPositionSensors);
 
     void start() override;
     void execute(const std::string& command) override;
     void update(Actions action) override;
 
 private:
+    class MoveTime {
+        int rtcId;
+        unsigned time;
+    };
+
     class Movement {
     public:
         Movement(
@@ -42,9 +53,9 @@ private:
         const uint8_t outputPin;
         const int endPosition;
         const int direction;
-        const int timeId;
         const std::string debugPrefix;
-        unsigned moveTime = 0;
+        std::vector<MoveTime> moveTimes;
+        int moveTimeIndex = -1;
         unsigned long moveStartTime = 0;
         unsigned long startedTime = 0;
         int moveStartPosition = -2;
@@ -69,13 +80,18 @@ private:
     const bool invertInput;
     const bool invertOutput;
     const int closedPosition;
+    std::vector<PositionSensor> positionSensors;
+    const bool invertPositionSensors;
     const unsigned positionId;
 
     int position = -1;
+    int activePositionSensor = -1;
+    int previouslyActivePositionSensor = -1;
     int targetPosition = -1;
     bool stateChanged = false;
 
     bool isLatching() const;
+    bool hasPositionSensors() const;
     bool isMovingUp() const;
     bool isMovingDown() const;
     void stop();
