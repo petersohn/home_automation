@@ -22,18 +22,22 @@ Cover::Movement::Movement(
     : parent(parent)
     , inputPin(inputPin)
     , outputPin(outputPin)
+    , beginPosition(100 - endPosition)
     , endPosition(endPosition)
     , direction(direction)
     , debugPrefix(parent.debugPrefix + directionName + ": ") {
     parent.esp.pinMode(inputPin, GpioMode::input);
     parent.esp.pinMode(outputPin, GpioMode::output);
+    size_t timeCount = 1;
     if (parent.hasPositionSensors()) {
-        const auto timeCount = parent.positionSensors.size() - 1;
-        moveTimes.reserve(timeCount);
-        for (size_t i = 0; i < timeCount; ++i) {
-            const auto id = parent.rtc.next();
-            moveTimes.emplace_back(id, parent.rtc.get(id));
-        }
+        timeCount = parent.positionSensors.size() - 1;
+    } else {
+        moveTimeIndex = 0;
+    }
+    moveTimes.reserve(timeCount);
+    for (size_t i = 0; i < timeCount; ++i) {
+        const auto id = parent.rtc.next();
+        moveTimes.emplace_back(id, parent.rtc.get(id));
     }
 }
 
@@ -113,48 +117,88 @@ int Cover::Movement::update() {
         }
     }
 
-    if (moving) {
-        didNotStartCount = 0;
-        if (moveStartTime == 0) {
-            moveStartTime = now;
-        } else if (!isReallyMoving() && now - moveStartTime >= debounceTime) {
-            moveStartPosition = parent.position;
-            log("Started moving");
-        }
-        if (parent.position == endPosition) {
-            newPosition = endPosition - direction;
+    if (parent.activePositionSensor >= 0) {
+        calculateMoveTimeIfNeeded();
+        moveStartTime = 0;
+        moveStartPosition = -2;
+        return parent.position;
+    } else if (parent.position != 0 && moveTimeIndex < 0) {
+        for (size_t i = 0; i < parent.positionSensors.size(); ++i) {
+            size_t j = parent.positionSensors.size() - 1 - i;
+            if (parent.position >= parent.positionSensors[j].position) {
+                if (j < parent.positionSensors.size() - 1) {
+                    log("Found position index: " + tools::intToString(j));
+                    moveTimeIndex = j;
+                }
+                break;
+            }
         }
     }
 
-    if (isReallyMoving()) {
+    if (moving) {
+        didNotStartCount = 0;
+
+        const auto paps = parent.previouslyActivePositionSensor;
+        if (paps >= 0) {
+            moveTimeIndex = direction > 0 ? paps : paps - 1;
+            if (moveTimeIndex >= static_cast<int>(moveTimes.size())) {
+                moveTimeIndex = -1;
+            }
+            if (moveTimeIndex >= 0) {
+                moveStartTime = now;
+                newPosition = endPosition - direction;
+                beginPosition = parent.positionSensors[paps].position;
+                endPosition = parent.positionSensors[paps + direction].position;
+                moveStartPosition = beginPosition;
+            }
+        } else {
+            // FIXME
+            if (moveStartTime == 0) {
+                moveStartTime = now;
+            } else if (
+                !isReallyMoving() && now - moveStartTime >= debounceTime) {
+                moveStartPosition = parent.position;
+                log("Started moving");
+            }
+            if (parent.position == endPosition) {
+                newPosition = endPosition - direction;
+            }
+        }
+    }
+
+    if (moveTimeIndex >= 0 && isReallyMoving()) {
+        const auto& moveTime = moveTimes[moveTimeIndex].time;
         if (moving) {
             if (parent.position != -1 && moveTime != 0) {
                 newPosition =
-                    moveStartPosition +
-                    static_cast<int>(
-                        direction * 100.0 * (now - moveStartTime) / moveTime);
+                    moveStartPosition + static_cast<int>(
+                                            static_cast<double>(
+                                                (endPosition - beginPosition) *
+                                                (now - moveStartTime)) /
+                                            moveTime);
                 if (direction * newPosition >= endPosition) {
                     newPosition = endPosition - direction;
                 }
             } else {
-                newPosition = 100 - endPosition + direction;
+                newPosition = beginPosition + direction;
             }
         } else if (isStarted()) {
-            log("End position reached.");
-            newPosition = endPosition;
-            handleStopped();
-
-            if (moveStartPosition == 100 - endPosition) {
-                moveTime = now - moveStartTime;
-                parent.rtc.set(timeId, moveTime);
-                log("Move time: " + tools::intToString(moveTime));
+            if (parent.hasPositionSensors()) {
+                log("Stopped.");
+            } else {
+                log("End position reached.");
+                newPosition = endPosition;
+                calculateMoveTimeIfNeeded();
             }
+            handleStopped();
         }
     } else if (!moving && isStarted() && now - startedTime > startTimeout) {
         ++didNotStartCount;
         log("Was at end position.");
         handleStopped();
-        newPosition = endPosition;
+        if (!parent.hasPositionSensors()) {
+            newPosition = endPosition;
+        }
     }
 
     if (!moving) {
@@ -166,6 +210,19 @@ int Cover::Movement::update() {
     }
 
     return newPosition;
+}
+
+void Cover::Movement::calculateMoveTimeIfNeeded() {
+    if (moveTimeIndex < 0) {
+        return;
+    }
+
+    auto& moveTime = moveTimes[moveTimeIndex];
+    if (moveStartPosition == beginPosition) {
+        moveTime.time = parent.esp.millis() - moveStartTime;
+        parent.rtc.set(moveTime.rtcId, moveTime.time);
+        log("Move time: " + tools::intToString(moveTime.time));
+    }
 }
 
 Cover::Cover(
@@ -291,7 +348,7 @@ void Cover::resetStop() {
 
 void Cover::update(Actions action) {
     int newPositionSensor = -1;
-    for (int i = 0; i < positionSensors.size(); ++i) {
+    for (size_t i = 0; i < positionSensors.size(); ++i) {
         if (getActualValue(
                 esp.digitalRead(positionSensors[i].pin) != 0,
                 invertPositionSensors)) {

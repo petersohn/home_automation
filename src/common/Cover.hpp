@@ -26,7 +26,7 @@ public:
     void update(Actions action) override;
 
 private:
-    class MoveTime {
+    struct MoveTime {
         int rtcId;
         unsigned time;
     };
@@ -51,7 +51,8 @@ private:
         Cover& parent;
         const uint8_t inputPin;
         const uint8_t outputPin;
-        const int endPosition;
+        int beginPosition;
+        int endPosition;
         const int direction;
         const std::string debugPrefix;
         std::vector<MoveTime> moveTimes;
@@ -67,6 +68,7 @@ private:
         void log(const std::string& msg);
         void resetStart();
         void handleStopped();
+        void calculateMoveTimeIfNeeded();
     };
 
     std::ostream& debug;
