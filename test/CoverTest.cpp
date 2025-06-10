@@ -32,10 +32,10 @@ public:
     void init(bool isLatching) {
         latching = isLatching;
         initInterface(
-            "cover",
-            std::make_unique<Cover>(
-                debug, esp, rtc, UpInput, DownInput, UpOutput, DownOutput,
-                isLatching ? StopOutput : 0, false, false, 10));
+            "cover", std::make_unique<Cover>(
+                         debug, esp, rtc, UpInput, DownInput, UpOutput,
+                         DownOutput, isLatching ? StopOutput : 0, false, false,
+                         10, std::vector<PositionSensor>{}, false));
     }
 
     bool isMoving(uint8_t pin, bool value) {

@@ -37,7 +37,7 @@ Cover::Movement::Movement(
     moveTimes.reserve(timeCount);
     for (size_t i = 0; i < timeCount; ++i) {
         const auto id = parent.rtc.next();
-        moveTimes.emplace_back(id, parent.rtc.get(id));
+        moveTimes.emplace_back(MoveTime{id, parent.rtc.get(id)});
     }
 }
 
@@ -122,13 +122,16 @@ int Cover::Movement::update() {
         moveStartTime = 0;
         moveStartPosition = -2;
         return parent.position;
-    } else if (parent.position != 0 && moveTimeIndex < 0) {
+    }
+
+    if (parent.position != 0 && moveTimeIndex < 0) {
         for (size_t i = 0; i < parent.positionSensors.size(); ++i) {
             size_t j = parent.positionSensors.size() - 1 - i;
             if (parent.position >= parent.positionSensors[j].position) {
                 if (j < parent.positionSensors.size() - 1) {
                     log("Found position index: " + tools::intToString(j));
                     moveTimeIndex = j;
+                    calculateBeginAndEndPosition();
                 }
                 break;
             }
@@ -140,19 +143,18 @@ int Cover::Movement::update() {
 
         const auto paps = parent.previouslyActivePositionSensor;
         if (paps >= 0) {
+            log("Just left position sensor " + tools::intToString(paps));
             moveTimeIndex = direction > 0 ? paps : paps - 1;
             if (moveTimeIndex >= static_cast<int>(moveTimes.size())) {
                 moveTimeIndex = -1;
             }
             if (moveTimeIndex >= 0) {
                 moveStartTime = now;
-                newPosition = endPosition - direction;
-                beginPosition = parent.positionSensors[paps].position;
-                endPosition = parent.positionSensors[paps + direction].position;
+                calculateBeginAndEndPosition();
+                newPosition = beginPosition + direction;
                 moveStartPosition = beginPosition;
             }
         } else {
-            // FIXME
             if (moveStartTime == 0) {
                 moveStartTime = now;
             } else if (
@@ -160,8 +162,11 @@ int Cover::Movement::update() {
                 moveStartPosition = parent.position;
                 log("Started moving");
             }
+
             if (parent.position == endPosition) {
                 newPosition = endPosition - direction;
+            } else if (parent.position == beginPosition) {
+                newPosition = beginPosition + direction;
             }
         }
     }
@@ -182,7 +187,7 @@ int Cover::Movement::update() {
             } else {
                 newPosition = beginPosition + direction;
             }
-        } else if (isStarted()) {
+        } else {
             if (parent.hasPositionSensors()) {
                 log("Stopped.");
             } else {
@@ -190,13 +195,13 @@ int Cover::Movement::update() {
                 newPosition = endPosition;
                 calculateMoveTimeIfNeeded();
             }
-            handleStopped();
         }
     } else if (!moving && isStarted() && now - startedTime > startTimeout) {
         ++didNotStartCount;
-        log("Was at end position.");
-        handleStopped();
-        if (!parent.hasPositionSensors()) {
+        if (parent.hasPositionSensors()) {
+            log("Did not start.");
+        } else {
+            log("Was at end position.");
             newPosition = endPosition;
         }
     }
@@ -205,11 +210,30 @@ int Cover::Movement::update() {
         if (isReallyMoving()) {
             log("Stopped moving");
         }
+
         moveStartTime = 0;
         moveStartPosition = -2;
+
+        if (isStarted()) {
+            handleStopped();
+        }
     }
 
     return newPosition;
+}
+
+void Cover::Movement::calculateBeginAndEndPosition() {
+    if (moveTimeIndex < 0) {
+        return;
+    }
+
+    if (direction > 0) {
+        beginPosition = parent.positionSensors[moveTimeIndex].position;
+        endPosition = parent.positionSensors[moveTimeIndex + 1].position;
+    } else {
+        beginPosition = parent.positionSensors[moveTimeIndex + 1].position;
+        endPosition = parent.positionSensors[moveTimeIndex].position;
+    }
 }
 
 void Cover::Movement::calculateMoveTimeIfNeeded() {

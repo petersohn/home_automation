@@ -27,7 +27,7 @@ public:
 
 private:
     struct MoveTime {
-        int rtcId;
+        unsigned rtcId;
         unsigned time;
     };
 
@@ -69,6 +69,7 @@ private:
         void resetStart();
         void handleStopped();
         void calculateMoveTimeIfNeeded();
+        void calculateBeginAndEndPosition();
     };
 
     std::ostream& debug;
