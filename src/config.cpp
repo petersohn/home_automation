@@ -303,7 +303,7 @@ private:
                     getRequiredValue(data, "downPin", downPin))
                        ? std::make_unique<Cover>(
                              debug, esp, rtc, upMovementPin, downMovementPin,
-                             upPin, downPin,
+                             upPin, downPin, 0,
                              getJsonWithDefault(data["invertInput"], false),
                              getJsonWithDefault(data["invertOutput"], false),
                              getJsonWithDefault(data["closedPosition"], 0))
