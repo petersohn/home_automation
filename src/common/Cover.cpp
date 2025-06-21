@@ -196,6 +196,7 @@ int Cover::Movement::update() {
                 newPosition = endPosition;
                 calculateMoveTimeIfNeeded();
             }
+            handleStopped();
         }
     } else if (!moving && isStarted() && now - startedTime > startTimeout) {
         ++didNotStartCount;
@@ -205,6 +206,7 @@ int Cover::Movement::update() {
             log("Was at end position.");
             newPosition = endPosition;
         }
+        handleStopped();
     }
 
     if (!moving) {
@@ -214,10 +216,6 @@ int Cover::Movement::update() {
 
         moveStartTime = 0;
         moveStartPosition = -2;
-
-        if (isStarted()) {
-            handleStopped();
-        }
     }
 
     return newPosition;

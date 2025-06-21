@@ -385,11 +385,13 @@ BOOST_DATA_TEST_CASE_F(
         BOOST_REQUIRE_NO_THROW(loopFor(10000 - start, delay, func1));
     }
 
-    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
+    auto funcOpen = [&](unsigned long, size_t) {
         BOOST_TEST(isMovingDown());
         BOOST_TEST(getValue(0) == "OPEN");
         BOOST_TEST(getValue(1) == "100");
-    }));
+    };
+
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcOpen));
 
     auto func2 = [&](unsigned long time, size_t round) {
         BOOST_TEST(isMovingDown());
