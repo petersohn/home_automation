@@ -260,13 +260,13 @@ Cover::Cover(
     , debugPrefix(
           "Cover " + tools::intToString(upPin) + "." +
           tools::intToString(downPin) + ": ")
+    , positionSensors(std::move(positionSensors))
     , up(*this, upMovementPin, upPin, 100, 1, "up")
     , down(*this, downMovementPin, downPin, 0, -1, "down")
     , stopPin(stopPin)
     , invertInput(invertInput)
     , invertOutput(invertOutput)
     , closedPosition(closedPosition)
-    , positionSensors(std::move(positionSensors))
     , invertPositionSensors(invertPositionSensors)
     , positionId(rtc.next()) {
     if (this->positionSensors.size() == 1) {

@@ -77,13 +77,13 @@ private:
     Rtc& rtc;
 
     const std::string debugPrefix;
+    std::vector<PositionSensor> positionSensors;
     Movement up;
     Movement down;
     uint8_t stopPin;
     const bool invertInput;
     const bool invertOutput;
     const int closedPosition;
-    std::vector<PositionSensor> positionSensors;
     const bool invertPositionSensors;
     const unsigned positionId;
 
