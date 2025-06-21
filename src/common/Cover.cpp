@@ -138,6 +138,8 @@ int Cover::Movement::update() {
         }
     }
 
+    log("moveStartTime=" + tools::intToString(moveStartTime));
+
     if (moving) {
         didNotStartCount = 0;
 
@@ -165,8 +167,8 @@ int Cover::Movement::update() {
 
             if (parent.position == endPosition) {
                 newPosition = endPosition - direction;
-            } else if (parent.position == beginPosition) {
-                newPosition = beginPosition + direction;
+                //} else if (parent.position == beginPosition) {
+                //    newPosition = beginPosition + direction;
             }
         }
     }
@@ -175,19 +177,18 @@ int Cover::Movement::update() {
         const auto& moveTime = moveTimes[moveTimeIndex].time;
         if (moving) {
             if (parent.position != -1 && moveTime != 0) {
-                newPosition =
-                    moveStartPosition + static_cast<int>(
-                                            static_cast<double>(
-                                                (endPosition - beginPosition) *
-                                                (now - moveStartTime)) /
-                                            moveTime);
+                const int a =
+                    (endPosition - beginPosition) * (now - moveStartTime);
+                const auto d =
+                    static_cast<int>(static_cast<double>(a) / moveTime);
+                newPosition = moveStartPosition + d;
                 if (direction * newPosition >= endPosition) {
                     newPosition = endPosition - direction;
                 }
             } else {
                 newPosition = beginPosition + direction;
             }
-        } else {
+        } else if (isStarted()) {
             if (parent.hasPositionSensors()) {
                 log("Stopped.");
             } else {
