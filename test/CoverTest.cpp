@@ -15,6 +15,16 @@ enum Pin : uint8_t {
     UpInput,
     DownInput,
     StopOutput,
+    PositionSensorBegin,
+};
+
+struct TestPositionSensor {
+    PositionSensor sensor;
+    int min;
+    int max;
+
+    TestPositionSensor(int value, int min, int max)
+        : sensor{value, 0}, min(min), max(max) {}
 };
 
 class Fixture : public InterfaceTestBase {
@@ -26,17 +36,39 @@ public:
     unsigned long previousTime = 0;
     bool movingUp = false;
     bool movingDown = false;
+    std::vector<TestPositionSensor> positionSensors;
 
     Fixture() {}
 
-    void init(bool isLatching) {
+    void init(
+        bool isLatching, std::vector<TestPositionSensor> positionSensors_) {
         latching = isLatching;
+
+        std::vector<PositionSensor> positionSensorInput;
+        positionSensorInput.reserve(positionSensors_.size());
+        for (size_t i = 0; i < positionSensors_.size(); ++i) {
+            positionSensors_[i].sensor.pin = PositionSensorBegin + i;
+            positionSensorInput.push_back(positionSensors_[i].sensor);
+        }
+        positionSensors = std::move(positionSensors_);
+
         initInterface(
             "cover", std::make_unique<Cover>(
                          debug, esp, rtc, UpInput, DownInput, UpOutput,
                          DownOutput, isLatching ? StopOutput : 0, false, false,
                          10, std::vector<PositionSensor>{}, false));
         esp.delay(10);
+    }
+
+    std::vector<TestPositionSensor> getPositionSensors(bool hasPositionSensor) {
+        if (!hasPositionSensor) {
+            return {};
+        }
+
+        return {
+            TestPositionSensor(0, 0, 0),
+            TestPositionSensor(100, maxPosition, maxPosition),
+        };
     }
 
     void reboot() {
@@ -47,7 +79,7 @@ public:
         previousTime = 0;
         movingUp = false;
         movingDown = false;
-        init(latching);
+        init(latching, positionSensors);
     }
 
     bool isMoving(uint8_t pin, bool value) {
@@ -116,6 +148,12 @@ public:
             movingDown = false;
         }
 
+        for (const auto& sensor : positionSensors) {
+            esp.digitalWrite(
+                sensor.sensor.pin,
+                newPosition >= sensor.min && newPosition <= sensor.max);
+        }
+
         BOOST_TEST_MESSAGE(
             "upOn=" << upOn << " downOn=" << downOn << " movingUp=" << movingUp
                     << " movingDown=" << movingDown
@@ -182,7 +220,13 @@ public:
     }
 };
 
-BOOST_FIXTURE_TEST_CASE(NormalMode, Fixture) {
+namespace {
+const auto hasPositionSensorValues =
+    boost::unit_test::data::make({false, true});
+}
+
+BOOST_DATA_TEST_CASE_F(
+    Fixture, NormalMode, hasPositionSensorValues, hasPositionSensor) {
     auto check = [this](const std::string& name, int upValue, int downValue) {
         BOOST_TEST_CONTEXT(name) {
             BOOST_TEST(esp.digitalRead(UpOutput) == upValue);
@@ -195,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE(NormalMode, Fixture) {
     };
 
     position = 5000;
-    init(false);
+    init(false, getPositionSensors(hasPositionSensor));
     check("initial state", 0, 0);
 
     open();
@@ -223,7 +267,8 @@ BOOST_FIXTURE_TEST_CASE(NormalMode, Fixture) {
     check("close after open 2", 0, 1);
 }
 
-BOOST_FIXTURE_TEST_CASE(LatchingMode, Fixture) {
+BOOST_DATA_TEST_CASE_F(
+    Fixture, LatchingMode, hasPositionSensorValues, hasPositionSensor) {
     auto check = [this](
                      const std::string& name, int upValue, int downValue,
                      int stopValue) {
@@ -240,7 +285,7 @@ BOOST_FIXTURE_TEST_CASE(LatchingMode, Fixture) {
     };
 
     position = 5000;
-    init(true);
+    init(true, getPositionSensors(hasPositionSensor));
     check("initial state", 0, 0, 1);
 
     open();
@@ -272,13 +317,14 @@ namespace {
 const auto delays1 = boost::unit_test::data::make({10, 100, 500});
 const auto delays2 = boost::unit_test::data::make({10, 100});
 const auto latchings = boost::unit_test::data::make({false, true});
-const auto params1 = delays1 * latchings;
-const auto params2 = delays2 * latchings;
+const auto params1 = delays1 * latchings * hasPositionSensorValues;
+const auto params2 = delays2 * latchings * hasPositionSensorValues;
 }  // namespace
 //
 
-BOOST_DATA_TEST_CASE_F(Fixture, Open, params1, delay, isLatching) {
-    init(isLatching);
+BOOST_DATA_TEST_CASE_F(
+    Fixture, Open, params1, delay, isLatching, hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     loop();
 
     open();
@@ -300,8 +346,9 @@ BOOST_DATA_TEST_CASE_F(Fixture, Open, params1, delay, isLatching) {
     BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, Close, params1, delay, isLatching) {
-    init(isLatching);
+BOOST_DATA_TEST_CASE_F(
+    Fixture, Close, params1, delay, isLatching, hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     position = 10000;
     loop();
 
@@ -324,8 +371,9 @@ BOOST_DATA_TEST_CASE_F(Fixture, Close, params1, delay, isLatching) {
     BOOST_REQUIRE_NO_THROW(loopFor(10100, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, StopWhileOpening, params1, delay, isLatching) {
-    init(isLatching);
+BOOST_DATA_TEST_CASE_F(
+    Fixture, StopWhileOpening, params1, delay, isLatching, hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     loop();
 
     open();
@@ -340,8 +388,9 @@ BOOST_DATA_TEST_CASE_F(Fixture, StopWhileOpening, params1, delay, isLatching) {
     BOOST_TEST(position == 2000);
 }
 
-BOOST_DATA_TEST_CASE_F(Fixture, StopWhileClosing, params1, delay, isLatching) {
-    init(isLatching);
+BOOST_DATA_TEST_CASE_F(
+    Fixture, StopWhileClosing, params1, delay, isLatching, hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     position = 10000;
     loop();
 
@@ -364,8 +413,9 @@ const auto calibrateParams = params1 * calibrateStartPositions;
 }  // namespace
 
 BOOST_DATA_TEST_CASE_F(
-    Fixture, Calibrate, calibrateParams, delay, isLatching, start) {
-    init(isLatching);
+    Fixture, Calibrate, calibrateParams, delay, isLatching, hasPositionSensor,
+    start) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     position = start;
     loop();
 
@@ -463,8 +513,9 @@ BOOST_DATA_TEST_CASE_F(
 }
 
 BOOST_DATA_TEST_CASE_F(
-    Fixture, OpenAfterCalibrate, params2, delay, isLatching) {
-    init(isLatching);
+    Fixture, OpenAfterCalibrate, params2, delay, isLatching,
+    hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     BOOST_REQUIRE_NO_THROW(calibrateToPosition(60, 100));
     open();
     auto func = [&](unsigned long time, size_t round) {
@@ -492,8 +543,9 @@ BOOST_DATA_TEST_CASE_F(
 }
 
 BOOST_DATA_TEST_CASE_F(
-    Fixture, CloseAfterCalibrate, params2, delay, isLatching) {
-    init(isLatching);
+    Fixture, CloseAfterCalibrate, params2, delay, isLatching,
+    hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     BOOST_REQUIRE_NO_THROW(calibrateToPosition(60, 100));
     close();
     auto func = [&](unsigned long time, size_t round) {
@@ -517,8 +569,9 @@ BOOST_DATA_TEST_CASE_F(
 }
 
 BOOST_DATA_TEST_CASE_F(
-    Fixture, RestartAfterCalibrate, params2, delay, isLatching) {
-    init(isLatching);
+    Fixture, RestartAfterCalibrate, params2, delay, isLatching,
+    hasPositionSensor) {
+    init(isLatching, getPositionSensors(hasPositionSensor));
     BOOST_REQUIRE_NO_THROW(calibrateToPosition(60, 100));
     reboot();
     position = 6000;
