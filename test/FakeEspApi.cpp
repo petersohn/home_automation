@@ -32,6 +32,7 @@ void FakeEspApi::delay(unsigned long ms) {
 }
 
 void FakeEspApi::restart(bool /*hard*/) {
+    BOOST_TEST_MESSAGE("REBOOT");
     restarted = true;
     time = 0;
 }
