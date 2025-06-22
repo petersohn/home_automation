@@ -36,6 +36,7 @@ public:
             std::make_unique<Cover>(
                 debug, esp, rtc, UpInput, DownInput, UpOutput, DownOutput,
                 isLatching ? StopOutput : 0, false, false, 10));
+        esp.delay(10);
     }
 
     bool isMoving(uint8_t pin, bool value) {
@@ -267,7 +268,6 @@ const auto params2 = delays2 * latchings;
 
 BOOST_DATA_TEST_CASE_F(Fixture, Open, params1, delay, isLatching) {
     init(isLatching);
-    esp.delay(10);
     loop();
 
     open();
@@ -292,7 +292,6 @@ BOOST_DATA_TEST_CASE_F(Fixture, Open, params1, delay, isLatching) {
 BOOST_DATA_TEST_CASE_F(Fixture, Close, params1, delay, isLatching) {
     init(isLatching);
     position = 10000;
-    esp.delay(10);
     loop();
 
     close();
@@ -316,7 +315,6 @@ BOOST_DATA_TEST_CASE_F(Fixture, Close, params1, delay, isLatching) {
 
 BOOST_DATA_TEST_CASE_F(Fixture, StopWhileOpening, params1, delay, isLatching) {
     init(isLatching);
-    esp.delay(10);
     loop();
 
     open();
@@ -334,7 +332,6 @@ BOOST_DATA_TEST_CASE_F(Fixture, StopWhileOpening, params1, delay, isLatching) {
 BOOST_DATA_TEST_CASE_F(Fixture, StopWhileClosing, params1, delay, isLatching) {
     init(isLatching);
     position = 10000;
-    esp.delay(10);
     loop();
 
     close();
@@ -359,7 +356,6 @@ BOOST_DATA_TEST_CASE_F(
     Fixture, Calibrate, calibrateParams, delay, isLatching, start) {
     init(isLatching);
     position = start;
-    esp.delay(10);
     loop();
 
     setPosition(40);
