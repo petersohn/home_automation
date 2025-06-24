@@ -438,6 +438,9 @@ BOOST_DATA_TEST_CASE_F(
                 BOOST_TEST(getValue(0) == "OPENING");
             };
             BOOST_REQUIRE_NO_THROW(loopFor(1000, delay, func1));
+        } else {
+            BOOST_TEST(getValue(0) == "OPEN");
+            BOOST_TEST(getValue(1) == "100");
         }
     } else {
         const unsigned long travelTime = 10000 - start;
@@ -458,41 +461,51 @@ BOOST_DATA_TEST_CASE_F(
         BOOST_REQUIRE_NO_THROW(loopFor(travelTime, delay, func1));
     }
 
-    auto funcOpen = [&](unsigned long, size_t) {
+    if (!(hasPositionSensor && start == maxPosition)) {
+        auto funcOpen = [&](unsigned long, size_t) {
+            BOOST_TEST(isMovingDown());
+            BOOST_TEST(getValue(0) == "OPEN");
+            BOOST_TEST(getValue(1) == "100");
+        };
+
+        BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcOpen));
+    }
+
+    auto func2 = [&](unsigned long time, size_t round) {
         BOOST_TEST(isMovingDown());
-        BOOST_TEST(getValue(0) == "OPEN");
-        BOOST_TEST(getValue(1) == "100");
+        BOOST_TEST(getValue(0) == "CLOSING");
+        if (!hasPositionSensor && (time <= 20 || round == 1)) {
+            BOOST_TEST(getValue(1) == "100");
+        } else {
+            if (hasPositionSensor && time == 10000) {
+                BOOST_TEST(getValue(1) == "0");
+            } else {
+                BOOST_TEST(getValue(1) == "99");
+            }
+        }
     };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func2));
 
-    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcOpen));
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
+        BOOST_TEST(isMovingUp());
+        BOOST_TEST(getValue(0) == "CLOSED");
+        BOOST_TEST(getValue(1) == "0");
+    }));
 
-    // auto func2 = [&](unsigned long time, size_t round) {
-    //     BOOST_TEST(isMovingDown());
-    //     BOOST_TEST(getValue(0) == "CLOSING");
-    //     if (time <= 20 || round == 1) {
-    //         BOOST_TEST(getValue(1) == "100");
-    //     } else {
-    //         BOOST_TEST(getValue(1) == "99");
-    //     }
-    // };
-    // BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func2));
-    //
-    // BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
-    //     BOOST_TEST(isMovingUp());
-    //     BOOST_TEST(getValue(0) == "CLOSED");
-    //     BOOST_TEST(getValue(1) == "0");
-    // }));
-    //
-    // auto func3 = [&](unsigned long time, size_t round) {
-    //     BOOST_TEST(isMovingUp());
-    //     BOOST_TEST(getValue(0) == "OPENING");
-    //     if (time <= 20 || round == 1) {
-    //         BOOST_TEST(getValue(1) == "0");
-    //     } else {
-    //         BOOST_TEST(getValue(1) == "1");
-    //     }
-    // };
-    // BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
+    auto func3 = [&](unsigned long time, size_t round) {
+        BOOST_TEST(isMovingUp());
+        BOOST_TEST(getValue(0) == "OPENING");
+        if (!hasPositionSensor && (time <= 20 || round == 1)) {
+            BOOST_TEST(getValue(1) == "0");
+        } else {
+            if (hasPositionSensor && time == 10000) {
+                BOOST_TEST(getValue(1) == "100");
+            } else {
+                BOOST_TEST(getValue(1) == "1");
+            }
+        }
+    };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
     //
     // BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
     //     BOOST_TEST(isMovingDown());
