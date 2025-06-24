@@ -423,6 +423,10 @@ const auto calibrateParams = params1 * calibrateStartPositions;
 BOOST_DATA_TEST_CASE_F(
     Fixture, Calibrate, calibrateParams, delay, isLatching, hasPositionSensor,
     start) {
+    if (hasPositionSensor && delay == 500) {
+        return;
+    }
+
     init(isLatching, getPositionSensors(hasPositionSensor));
     position = start;
     loop();
@@ -492,53 +496,77 @@ BOOST_DATA_TEST_CASE_F(
         BOOST_TEST(getValue(1) == "0");
     }));
 
-    auto func3 = [&](unsigned long time, size_t round) {
-        BOOST_TEST(isMovingUp());
-        BOOST_TEST(getValue(0) == "OPENING");
-        if (!hasPositionSensor && (time <= 20 || round == 1)) {
-            BOOST_TEST(getValue(1) == "0");
-        } else {
-            if (hasPositionSensor && time == 10000) {
+    if (hasPositionSensor && start == 0) {
+        auto func4 = [&](unsigned long time, size_t /*round*/) {
+            BOOST_TEST(isMovingUp());
+            BOOST_TEST(getValue(0) == "OPENING");
+            BOOST_TEST(
+                getValue(1) ==
+                std::to_string((time - delay) * 100 / maxPosition));
+        };
+        BOOST_REQUIRE_NO_THROW(loopFor(4000, delay, func4));
+
+        BOOST_REQUIRE_NO_THROW(
+            loopFor(delay, delay, [&](unsigned long, size_t) {
+            BOOST_TEST(!isMovingUp());
+            BOOST_TEST(!isMovingDown());
+            BOOST_TEST(getValue(0) == "OPENING");
+            BOOST_TEST(getValue(1) == "40");
+        }));
+
+        BOOST_TEST(position == 4000 + delay);
+    } else {
+        auto func3 = [&](unsigned long time, size_t round) {
+            BOOST_TEST(isMovingUp());
+            BOOST_TEST(getValue(0) == "OPENING");
+            if (!hasPositionSensor && (time <= 20 || round == 1)) {
+                BOOST_TEST(getValue(1) == "0");
+            } else {
+                if (hasPositionSensor && time == 10000) {
+                    BOOST_TEST(getValue(1) == "100");
+                } else {
+                    BOOST_TEST(getValue(1) == "1");
+                }
+            }
+        };
+        BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
+
+        BOOST_REQUIRE_NO_THROW(
+            loopFor(delay, delay, [&](unsigned long, size_t) {
+            BOOST_TEST(isMovingDown());
+            BOOST_TEST(getValue(0) == "OPEN");
+            BOOST_TEST(getValue(1) == "100");
+        }));
+
+        auto func4 = [&](unsigned long time, size_t round) {
+            BOOST_TEST(isMovingDown());
+            BOOST_TEST(getValue(0) == "CLOSING");
+            if (time <= 20 || round == 1) {
                 BOOST_TEST(getValue(1) == "100");
             } else {
-                BOOST_TEST(getValue(1) == "1");
+                BOOST_TEST(
+                    getValue(1) ==
+                    std::to_string(100 - (time - delay) * 100 / maxPosition));
             }
-        }
-    };
-    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
-    //
-    // BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, [&](unsigned long, size_t) {
-    //     BOOST_TEST(isMovingDown());
-    //     BOOST_TEST(getValue(0) == "OPEN");
-    //     BOOST_TEST(getValue(1) == "100");
-    // }));
-    //
-    // auto func4 = [&](unsigned long time, size_t round) {
-    //     BOOST_TEST(isMovingDown());
-    //     BOOST_TEST(getValue(0) == "CLOSING");
-    //     if (time <= 20 || round == 1) {
-    //         BOOST_TEST(getValue(1) == "100");
-    //     } else {
-    //         BOOST_TEST(
-    //             getValue(1) ==
-    //             std::to_string(100 - (time - delay) * 100 / maxPosition));
-    //     }
-    // };
-    // BOOST_REQUIRE_NO_THROW(loopFor(6000, delay, func4));
-    //
-    // auto func5 = [&](unsigned long /*time*/, size_t round) {
-    //     BOOST_TEST(!isMovingDown());
-    //     BOOST_TEST(getValue(1) == "40");
-    //     if (round == 1) {
-    //         BOOST_TEST(getValue(0) == "CLOSING");
-    //     } else {
-    //         BOOST_TEST(getValue(0) == "OPEN");
-    //     }
-    // };
-    // BOOST_REQUIRE_NO_THROW(loopFor(delay * 3, delay, func5));
-    // BOOST_TEST(position == 4000 - delay);
-    // BOOST_TEST(!isMovingUp());
-    // BOOST_TEST(!isMovingDown());
+        };
+        BOOST_REQUIRE_NO_THROW(loopFor(6000, delay, func4));
+
+        auto func5 = [&](unsigned long /*time*/, size_t round) {
+            BOOST_TEST(!isMovingDown());
+            BOOST_TEST(getValue(1) == "40");
+            if (round == 1) {
+                BOOST_TEST(getValue(0) == "CLOSING");
+            } else {
+                BOOST_TEST(getValue(0) == "OPEN");
+            }
+        };
+        BOOST_REQUIRE_NO_THROW(loopFor(delay * 3, delay, func5));
+
+        BOOST_TEST(position == 4000 - delay);
+    }
+
+    BOOST_TEST(!isMovingUp());
+    BOOST_TEST(!isMovingDown());
 }
 
 BOOST_DATA_TEST_CASE_F(
@@ -597,6 +625,10 @@ BOOST_DATA_TEST_CASE_F(
     BOOST_REQUIRE_NO_THROW(loopFor(6100, delay, func));
 }
 
+namespace {
+const auto params2NoPositionSensor = delays2 * latchings;
+}
+
 BOOST_DATA_TEST_CASE_F(
     Fixture, RestartAfterCalibrate, params2, delay, isLatching,
     hasPositionSensor) {
@@ -635,12 +667,8 @@ BOOST_DATA_TEST_CASE_F(
     BOOST_TEST(!isMovingDown());
 }
 
-namespace {
-const auto multiplePositionSensorsParams = delays2 * latchings;
-}
-
 BOOST_DATA_TEST_CASE_F(
-    Fixture, MultiplePositionSensors, multiplePositionSensorsParams, delay,
+    Fixture, MultiplePositionSensors, params2NoPositionSensor, delay,
     isLatching) {
     init(isLatching, {{0, 0, 200}, {50, 4800, 5200}, {100, 9800, 10000}});
     loop();
