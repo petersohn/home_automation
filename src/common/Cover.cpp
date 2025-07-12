@@ -17,6 +17,7 @@ constexpr int startTimeout = 1000;
 constexpr int papsNoChange = -2;
 constexpr int noPosition = -1;
 constexpr int noPositionSensor = -1;
+constexpr int mspNotMoving = -2;
 }  // namespace
 
 Cover::Movement::Movement(
@@ -100,7 +101,7 @@ bool Cover::Movement::isStarted() const {
 }
 
 bool Cover::Movement::isReallyMoving() const {
-    return moveStartPosition != -2;
+    return moveStartPosition != mspNotMoving;
 }
 
 bool Cover::Movement::shouldResetStop() const {
@@ -218,7 +219,7 @@ int Cover::Movement::update() {
         }
 
         moveStartTime = 0;
-        moveStartPosition = -2;
+        moveStartPosition = mspNotMoving;
     }
 
     return newPosition;
