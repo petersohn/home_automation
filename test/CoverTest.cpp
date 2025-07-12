@@ -708,14 +708,14 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func1));
 
-    auto func1End = [&](unsigned long /*time*/, size_t /*round*/) {
+    auto funcOpen = [&](unsigned long /*time*/, size_t /*round*/) {
         BOOST_TEST(!isMovingUp());
         BOOST_TEST(!isMovingDown());
         BOOST_TEST(getValue(0) == "OPEN");
         BOOST_TEST(getValue(1) == "100");
         BOOST_TEST(position == 10000);
     };
-    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, func1End));
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcOpen));
 
     close();
 
@@ -736,14 +736,14 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func2));
 
-    auto func2End = [&](unsigned long /*time*/, size_t /*round*/) {
+    auto funcClosed = [&](unsigned long /*time*/, size_t /*round*/) {
         BOOST_TEST(!isMovingUp());
         BOOST_TEST(!isMovingDown());
         BOOST_TEST(getValue(0) == "CLOSED");
         BOOST_TEST(getValue(1) == "0");
         BOOST_TEST(position == 0);
     };
-    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, func2End));
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcClosed));
 
     open();
 
@@ -768,8 +768,33 @@ BOOST_DATA_TEST_CASE_F(
         }
     };
     BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcOpen));
 
-    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, func1End));
+    close();
+
+    auto func4 = [&](unsigned long time, size_t /*round*/) {
+        BOOST_TEST(isMovingDown());
+        BOOST_TEST(getValue(0) == "CLOSING");
+        if (time <= 200) {
+            BOOST_TEST(getValue(1) == "100");
+        } else if (time < 4800) {
+            BOOST_TEST(
+                getValue(1) ==
+                std::to_string(
+                    100 - (time - 200 - delay) * 50 / (4600 - delay)));
+        } else if (time <= 5200) {
+            BOOST_TEST(getValue(1) == "50");
+        } else if (time < 9800) {
+            BOOST_TEST(
+                getValue(1) ==
+                std::to_string(
+                    50 - (time - 5200 - delay) * 50 / (4600 - delay)));
+        } else {
+            BOOST_TEST(getValue(1) == "0");
+        }
+    };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func4));
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, funcClosed));
 }
 
 BOOST_AUTO_TEST_SUITE_END();
