@@ -316,8 +316,8 @@ BOOST_DATA_TEST_CASE_F(
 }
 
 namespace {
-const auto delays1 = boost::unit_test::data::make({10, 100, 500});
-const auto delays2 = boost::unit_test::data::make({10, 100});
+const auto delays1 = boost::unit_test::data::make({10, 50, 100, 500});
+const auto delays2 = boost::unit_test::data::make({10, 50, 100});
 const auto latchings = boost::unit_test::data::make({false, true});
 const auto params1 = delays1 * latchings * hasPositionSensorValues;
 const auto params2 = delays2 * latchings * hasPositionSensorValues;
