@@ -14,6 +14,9 @@ bool getActualValue(bool value, bool invert) {
 
 constexpr int debounceTime = 20;
 constexpr int startTimeout = 1000;
+constexpr int papsNoChange = -2;
+constexpr int noPosition = -1;
+constexpr int noPositionSensor = -1;
 }  // namespace
 
 Cover::Movement::Movement(
@@ -123,13 +126,12 @@ int Cover::Movement::update() {
     const auto paps = parent.previouslyActivePositionSensor;
     const bool hasActivePositionSensor = parent.activePositionSensor >= 0;
     if (hasActivePositionSensor) {
-        if (paps == -1) {
+        if (paps == noPositionSensor) {
             calculateMoveTimeIfNeeded();
         }
         moveStartTime = 0;
     } else {
-        if (!hasActivePositionSensor && parent.position != 0 &&
-            moveTimeIndex < 0) {
+        if (parent.position != noPosition && moveTimeIndex < 0) {
             for (size_t i = 0; i < parent.positionSensors.size(); ++i) {
                 size_t j = parent.positionSensors.size() - 1 - i;
                 if (parent.position >= parent.positionSensors[j].position) {
@@ -150,7 +152,7 @@ int Cover::Movement::update() {
                 log("Just left position sensor " + tools::intToString(paps));
                 moveTimeIndex = direction > 0 ? paps : paps - 1;
                 if (moveTimeIndex >= static_cast<int>(moveTimes.size())) {
-                    moveTimeIndex = -1;
+                    moveTimeIndex = noPositionSensor;
                 }
                 if (moveTimeIndex >= 0) {
                     moveStartTime = now;
@@ -169,8 +171,6 @@ int Cover::Movement::update() {
 
                 if (parent.position == endPosition) {
                     newPosition = endPosition - direction;
-                    //} else if (parent.position == beginPosition) {
-                    //    newPosition = beginPosition + direction;
                 }
             }
         }
@@ -180,7 +180,7 @@ int Cover::Movement::update() {
         if (moving) {
             if (!hasActivePositionSensor && moveTimeIndex >= 0) {
                 const auto& moveTime = moveTimes[moveTimeIndex].time;
-                if (parent.position != -1 && moveTime != 0) {
+                if (parent.position != noPosition && moveTime != 0) {
                     const int a =
                         (endPosition - beginPosition) * (now - moveStartTime);
                     const auto d =
@@ -310,13 +310,13 @@ void Cover::start() {
 
 void Cover::execute(const std::string& command) {
     if (command == "STOP") {
-        targetPosition = -1;
+        targetPosition = noPosition;
         stop();
     } else if (command == "OPEN") {
-        targetPosition = -1;
+        targetPosition = noPosition;
         beginOpening();
     } else if (command == "CLOSE") {
-        targetPosition = -1;
+        targetPosition = noPosition;
         beginClosing();
     } else {
         StaticJsonBuffer<20> buf;
@@ -335,7 +335,7 @@ void Cover::setPosition(int value) {
         return;
     }
 
-    if (position == -1) {
+    if (position == noPosition) {
         log("Position is not known, calibrating.");
     }
 
@@ -381,7 +381,7 @@ void Cover::resetStop() {
 }
 
 void Cover::update(Actions action) {
-    int newPositionSensor = -1;
+    int newPositionSensor = noPositionSensor;
     for (size_t i = 0; i < positionSensors.size(); ++i) {
         if (getActualValue(
                 esp.digitalRead(positionSensors[i].pin) != 0,
@@ -402,7 +402,7 @@ void Cover::update(Actions action) {
         }
         activePositionSensor = newPositionSensor;
     } else {
-        previouslyActivePositionSensor = -2;
+        previouslyActivePositionSensor = papsNoChange;
     }
 
     int newPositionUp = up.update();
@@ -410,7 +410,7 @@ void Cover::update(Actions action) {
     int newPosition = position;
     if (newPositionUp != position && newPositionDown != position) {
         log("Inconsistent moving state.");
-        newPosition = -1;
+        newPosition = noPosition;
         stop();
     } else if (newPositionUp != position) {
         newPosition = newPositionUp;
@@ -418,7 +418,7 @@ void Cover::update(Actions action) {
         newPosition = newPositionDown;
     }
 
-    if (activePositionSensor != -1) {
+    if (activePositionSensor != noPositionSensor) {
         newPosition = positionSensors[activePositionSensor].position;
     }
 
@@ -445,7 +445,7 @@ void Cover::update(Actions action) {
         log("state=" + stateName + " position=" + tools::intToString(position));
 
         std::vector<std::string> values{std::move(stateName)};
-        if (position != -1) {
+        if (position != noPosition) {
             values.push_back(tools::intToString(position));
         }
         action.fire(values);
@@ -453,16 +453,16 @@ void Cover::update(Actions action) {
         stateChanged = false;
     }
 
-    if (targetPosition != -1) {
+    if (targetPosition != noPosition) {
         if (position == targetPosition) {
-            targetPosition = -1;
+            targetPosition = noPosition;
             stop();
         } else if (!up.isStarted() && !down.isStarted()) {
             if (up.getDidNotStartCount() < 2 &&
                 down.getDidNotStartCount() < 2) {
                 setPosition(targetPosition);
             } else {
-                targetPosition = -1;
+                targetPosition = noPosition;
                 up.resetDidNotStartCount();
                 down.resetDidNotStartCount();
             }
