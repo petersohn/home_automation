@@ -195,6 +195,7 @@ public:
         std::function<void(unsigned long delta, size_t round)> func) {
         auto beginTime = esp.millis();
         size_t round = 0;
+        BOOST_TEST_MESSAGE("---- loopFor " << time << "----");
         delayUntil(beginTime + time, delay, [&]() {
             loop();
             auto time = esp.millis() - beginTime;
@@ -205,6 +206,7 @@ public:
                 BOOST_REQUIRE_NO_THROW(func(time, round));
             }
         });
+        BOOST_TEST_MESSAGE("---- loopFor done ----");
     }
 
     void calibrateToPosition(int position, unsigned long delay) {
@@ -216,7 +218,7 @@ public:
             BOOST_TEST_REQUIRE(getValue(0) == "OPEN");
         }
         BOOST_TEST_REQUIRE(getValue(1) == std::to_string(position));
-        BOOST_TEST_MESSAGE("---- Calibration done. ----");
+        BOOST_TEST_MESSAGE("---- Calibration done ----");
     }
 };
 
@@ -715,30 +717,59 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, func1End));
 
-    // close();
-    //
-    // auto func2 = [&](unsigned long time, size_t /*round*/) {
-    //     BOOST_TEST(isMovingDown());
-    //     BOOST_TEST(getValue(0) == "CLOSING");
-    //     if (time <= 200) {
-    //         BOOST_TEST(getValue(1) == "100");
-    //     } else if (time < 4800) {
-    //         BOOST_TEST(getValue(1) == "99");
-    //     } else if (time <= 5200) {
-    //         BOOST_TEST(getValue(1) == "50");
-    //     } else if (time < 9800) {
-    //         BOOST_TEST(getValue(1) == "49");
-    //     } else {
-    //         BOOST_TEST(getValue(1) == "0");
-    //     }
-    // };
-    // BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func2));
-    //
-    // BOOST_TEST(!isMovingUp());
-    // BOOST_TEST(!isMovingDown());
-    // BOOST_TEST(getValue(0) == "CLOSED");
-    // BOOST_TEST(getValue(1) == "0");
-    // BOOST_TEST(position == 0);
+    close();
+
+    auto func2 = [&](unsigned long time, size_t /*round*/) {
+        BOOST_TEST(isMovingDown());
+        BOOST_TEST(getValue(0) == "CLOSING");
+        if (time <= 200) {
+            BOOST_TEST(getValue(1) == "100");
+        } else if (time < 4800) {
+            BOOST_TEST(getValue(1) == "99");
+        } else if (time <= 5200) {
+            BOOST_TEST(getValue(1) == "50");
+        } else if (time < 9800) {
+            BOOST_TEST(getValue(1) == "49");
+        } else {
+            BOOST_TEST(getValue(1) == "0");
+        }
+    };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func2));
+
+    auto func2End = [&](unsigned long /*time*/, size_t /*round*/) {
+        BOOST_TEST(!isMovingUp());
+        BOOST_TEST(!isMovingDown());
+        BOOST_TEST(getValue(0) == "CLOSED");
+        BOOST_TEST(getValue(1) == "0");
+        BOOST_TEST(position == 0);
+    };
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, func2End));
+
+    open();
+
+    auto func3 = [&](unsigned long time, size_t /*round*/) {
+        BOOST_TEST(isMovingUp());
+        BOOST_TEST(getValue(0) == "OPENING");
+        if (time <= 200) {
+            BOOST_TEST(getValue(1) == "0");
+        } else if (time < 4800) {
+            BOOST_TEST(
+                getValue(1) ==
+                std::to_string((time - 200 - delay) * 50 / (4600 - delay)));
+        } else if (time <= 5200) {
+            BOOST_TEST(getValue(1) == "50");
+        } else if (time < 9800) {
+            BOOST_TEST(
+                getValue(1) ==
+                std::to_string(
+                    50 + (time - 5200 - delay) * 50 / (4600 - delay)));
+        } else {
+            BOOST_TEST(getValue(1) == "100");
+        }
+    };
+    BOOST_REQUIRE_NO_THROW(loopFor(10000, delay, func3));
+
+    BOOST_REQUIRE_NO_THROW(loopFor(delay, delay, func1End));
 }
 
 BOOST_AUTO_TEST_SUITE_END();
