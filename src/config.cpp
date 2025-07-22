@@ -1,3 +1,5 @@
+#include "config.hpp"
+
 #include "AnalogSensor.hpp"
 #include "CounterInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
@@ -15,7 +17,6 @@
 #include "common/ArduinoJson.hpp"
 #include "common/Cover.hpp"
 #include "common/MqttClient.hpp"
-#include "config.hpp"
 // #include "SDS011Sensor.hpp"
 #include <FS.h>
 
@@ -124,11 +125,7 @@ private:
 
     template <typename T>
     T getJsonWithDefault(JsonVariant data, T defaultValue) {
-        T result = data.as<T>();
-        if (result == T{}) {
-            return defaultValue;
-        }
-        return result;
+        return data | defaultValue;
     }
 
     const std::initializer_list<std::pair<const char*, int>> dhtTypes{
@@ -296,6 +293,19 @@ private:
             uint8_t downMovementPin = 0;
             uint8_t upPin = 0;
             uint8_t downPin = 0;
+            std::vector<PositionSensor> positionSensors;
+            const JsonArray& positionSensorConfigs = data["positionSensors"];
+            positionSensors.reserve(positionSensorConfigs.size());
+            for (const JsonObject& sensorConfig : positionSensorConfigs) {
+                PositionSensor sensor;
+                if (!getRequiredValue(
+                        sensorConfig, "position", sensor.position) ||
+                    !getRequiredValue(sensorConfig, "pin", sensor.pin)) {
+                    continue;
+                }
+                positionSensors.push_back(sensor);
+            }
+
             return (getRequiredValue(data, "upMovementPin", upMovementPin) &&
                     getRequiredValue(
                         data, "downMovementPin", downMovementPin) &&
@@ -303,10 +313,13 @@ private:
                     getRequiredValue(data, "downPin", downPin))
                        ? std::make_unique<Cover>(
                              debug, esp, rtc, upMovementPin, downMovementPin,
-                             upPin, downPin, 0,
+                             upPin, downPin,
+                             getJsonWithDefault(data["stopPin"], 0),
                              getJsonWithDefault(data["invertInput"], false),
                              getJsonWithDefault(data["invertOutput"], false),
-                             getJsonWithDefault(data["closedPosition"], 0))
+                             getJsonWithDefault(data["closedPosition"], 0),
+                             std::move(positionSensors),
+                             getJsonWithDefault(data["invertOutput"], false))
                        : nullptr;
             //        } else if (type == "hlw8012") {
             //            uint8_t powerPin = 0;

@@ -8,8 +8,8 @@
 #include "rtc.hpp"
 
 struct PositionSensor {
-    int position;
-    uint8_t pin;
+    int position = 0;
+    uint8_t pin = 0;
 };
 
 class Cover : public Interface {
