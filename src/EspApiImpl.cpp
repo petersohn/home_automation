@@ -1,8 +1,9 @@
+#include "EspApiImpl.hpp"
+
 #include <Arduino.h>
 #include <FunctionalInterrupt.h>
 #include <ets_sys.h>
 
-#include "EspApiImpl.hpp"
 #include "config.hpp"
 
 void EspApiImpl::pinMode(uint8_t pin, GpioMode mode) {
@@ -27,10 +28,6 @@ void EspApiImpl::digitalWrite(uint8_t pin, uint8_t val) {
 
 int EspApiImpl::digitalRead(uint8_t pin) {
     return ::digitalRead(pin);
-}
-
-int EspApiImpl::analogRead(uint8_t pin) {
-    return ::analogRead(pin);
 }
 
 unsigned long EspApiImpl::millis() {

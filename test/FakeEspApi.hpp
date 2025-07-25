@@ -10,7 +10,6 @@ public:
     virtual void pinMode(uint8_t pin, GpioMode mode) override;
     virtual void digitalWrite(uint8_t pin, uint8_t val) override;
     virtual int digitalRead(uint8_t pin) override;
-    virtual int analogRead(uint8_t pin) override;
 
     virtual unsigned long millis() override;
     virtual void delay(unsigned long ms) override;

@@ -30,7 +30,6 @@ public:
     virtual void pinMode(uint8_t pin, GpioMode mode) = 0;
     virtual void digitalWrite(uint8_t pin, uint8_t val) = 0;
     virtual int digitalRead(uint8_t pin) = 0;
-    virtual int analogRead(uint8_t pin) = 0;
 
     virtual unsigned long millis() = 0;
     virtual void delay(unsigned long ms) = 0;

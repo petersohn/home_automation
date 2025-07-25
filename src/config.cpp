@@ -1,33 +1,38 @@
 #include "config.hpp"
 
-#include "AnalogSensor.hpp"
-#include "CounterInterface.hpp"
-#include "DallasTemperatureSensor.hpp"
-#include "DhtSensor.hpp"
-#include "EchoDistanceReaderInterface.hpp"
-#include "EchoDistanceSensor.hpp"
-#include "GpioInput.hpp"
-#include "GpioOutput.hpp"
-#include "HM3301Sensor.hpp"
-#include "Hlw8012Interface.hpp"
-#include "KeepaliveInterface.hpp"
-#include "MqttInterface.hpp"
-#include "PowerSupplyInterface.hpp"
-#include "PublishAction.hpp"
-#include "common/ArduinoJson.hpp"
-#include "common/Cover.hpp"
-#include "common/MqttClient.hpp"
-// #include "SDS011Sensor.hpp"
 #include <FS.h>
 
 #include <algorithm>
 #include <memory>
+#include <optional>
+#include <unordered_map>
 
+#include "CounterInterface.hpp"
+#include "DallasTemperatureSensor.hpp"
 #include "DebugStream.hpp"
+#include "DhtSensor.hpp"
+#include "EchoDistanceReaderInterface.hpp"
+#include "EchoDistanceSensor.hpp"
+#include "EspAnalogInput.hpp"
+#include "GpioInput.hpp"
+#include "GpioOutput.hpp"
+#include "HM3301Sensor.hpp"
+#include "Hlw8012Interface.hpp"
 #include "JsonParser.hpp"
+#include "KeepaliveInterface.hpp"
+#include "Mcp3008AnalogInput.hpp"
+#include "MqttInterface.hpp"
+#include "PowerSupplyInterface.hpp"
+#include "PublishAction.hpp"
 #include "SensorInterface.hpp"
 #include "StatusInterface.hpp"
+#include "common/AnalogInput.hpp"
+#include "common/AnalogInputWithChannel.hpp"
+#include "common/AnalogSensor.hpp"
+#include "common/ArduinoJson.hpp"
 #include "common/CommandAction.hpp"
+#include "common/Cover.hpp"
+#include "common/MqttClient.hpp"
 #include "operation/OperationParser.hpp"
 #include "tools/collection.hpp"
 
@@ -62,6 +67,8 @@ private:
     MqttClient& mqttClient;
 
     JsonParser jsonParser;
+
+    std::unordered_map<std::string, std::shared_ptr<AnalogInput>> analogInputs;
 
     ServerConfig parseServerConfig(const JsonObject& data) {
         ServerConfig result;
@@ -139,6 +146,44 @@ private:
         return getJsonWithDefault(data["offset"], 0) * 1000;
     }
 
+    AnalogInputWithChannel getEspAnalogInput() {
+        auto it = analogInputs.find("");
+        if (it == analogInputs.end()) {
+            it = analogInputs.emplace("", std::make_shared<EspAnalogInput>())
+                     .first;
+        }
+        return AnalogInputWithChannel(it->second, A0);
+    }
+
+    std::optional<AnalogInputWithChannel> parseAnalogInputWithChannel(
+        const std::string& value) {
+        if (value.empty()) {
+            return getEspAnalogInput();
+        }
+
+        auto dotLocation = value.find('.');
+        if (dotLocation == std::string::npos) {
+            debug << "Invalid input format: " << value << std::endl;
+            return std::nullopt;
+        }
+
+        auto name = value.substr(0, dotLocation);
+        auto it = analogInputs.find(name);
+        if (it == analogInputs.end()) {
+            debug << "Input not found: " << name << std::endl;
+            return std::nullopt;
+        }
+        auto channelStr = value.substr(dotLocation + 1);
+        StaticJsonBuffer<10> buf;
+        auto v = buf.parse(channelStr);
+        if (!v.is<uint8_t>()) {
+            debug << "Not a valid channel number: " << channelStr << std::endl;
+            return std::nullopt;
+        }
+
+        return AnalogInputWithChannel(std::move(it->second), v.as<uint8_t>());
+    }
+
     std::vector<std::string> getPulse(const JsonObject& data) {
         auto pulse = data.get<JsonVariant>("pulse");
         if (!pulse.success()) {
@@ -193,8 +238,14 @@ private:
                                            data["default"], data["invert"])
                                      : nullptr;
         } else if (type == "analog") {
+            auto input =
+                parseAnalogInputWithChannel(data["input"].as<std::string>());
+            if (!input) {
+                debug << "Invalid analog input." << std::endl;
+                return nullptr;
+            }
             return createSensorInterface(
-                data, std::make_unique<AnalogSensor>());
+                data, std::make_unique<AnalogSensor>(std::move(*input)));
         } else if (type == "dht") {
             uint8_t pin = 0;
             auto type =
@@ -338,6 +389,60 @@ private:
         }
     }
 
+    std::shared_ptr<AnalogInput> parseAnalogInput(const JsonObject& data) {
+        std::string type = data["type"];
+        if (type.empty()) {
+            debug << "Input needs a valid type.\n";
+            return nullptr;
+        }
+
+        if (type == "mcp3008") {
+            uint8_t sck = 0;
+            uint8_t mosi = 0;
+            uint8_t miso = 0;
+            uint8_t cs = 0;
+            if (!getRequiredValue(data, "sck", sck) ||
+                !getRequiredValue(data, "mosi", mosi) ||
+                !getRequiredValue(data, "miso", miso) ||
+                !getRequiredValue(data, "cs", cs)) {
+                return nullptr;
+            }
+            return std::make_shared<Mcp3008AnalogInput>(sck, mosi, miso, cs);
+        } else {
+            debug << "Invalid input type: " << type << "\n";
+            return nullptr;
+        }
+    }
+
+    void parseAnalogInputs(const JsonObject& data) {
+        const JsonArray& inputs = data["analogInputs"];
+        if (inputs == JsonArray::invalid()) {
+            return;
+        }
+
+        analogInputs.reserve(inputs.size());
+        for (const JsonObject& input : inputs) {
+            if (input == JsonObject::invalid()) {
+                debug << "Input configuration must be an object." << std::endl;
+                continue;
+            }
+
+            std::string name = input["name"];
+            if (name.empty()) {
+                debug << "Input needs a valid name." << std::endl;
+                continue;
+            }
+
+            auto inputConfig = parseAnalogInput(input);
+            if (!inputConfig) {
+                debug << name << ": invalid config." << std::endl;
+                continue;
+            }
+
+            analogInputs.emplace(std::move(name), std::move(inputConfig));
+        }
+    }
+
     void parseInterfaces(
         const JsonObject& data,
         std::vector<std::unique_ptr<InterfaceConfig>>& result) {
@@ -350,7 +455,7 @@ private:
         result.reserve(interfaces.size());
         for (const JsonObject& interface : interfaces) {
             if (interface == JsonObject::invalid()) {
-                debug << "Interface configuration must be an array."
+                debug << "Interface configuration must be an object."
                       << std::endl;
                 continue;
             }
@@ -489,6 +594,7 @@ private:
         PARSE(jsonParser, *data.root, result.topics, availabilityTopic);
         PARSE(jsonParser, *data.root, result.topics, statusTopic);
 
+        parseAnalogInputs(*data.root);
         parseInterfaces(*data.root, result.interfaces);
         parseActions(*data.root, result.interfaces);
 

@@ -19,10 +19,6 @@ int FakeEspApi::digitalRead(uint8_t pin) {
     return it != pinValues.end() ? it->second : 0;
 }
 
-int FakeEspApi::analogRead(uint8_t /* pin */) {
-    return 0;
-}
-
 unsigned long FakeEspApi::millis() {
     return time;
 }
