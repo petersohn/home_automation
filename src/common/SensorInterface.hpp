@@ -4,9 +4,9 @@
 #include <memory>
 #include <ostream>
 
-#include "common/EspApi.hpp"
-#include "common/Interface.hpp"
-#include "common/Sensor.hpp"
+#include "EspApi.hpp"
+#include "Interface.hpp"
+#include "Sensor.hpp"
 
 class SensorInterface : public Interface {
 public:

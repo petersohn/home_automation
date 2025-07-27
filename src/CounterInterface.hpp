@@ -3,9 +3,9 @@
 
 #include <ostream>
 
-#include "SensorInterface.hpp"
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
+#include "common/SensorInterface.hpp"
 
 class CounterInterface : public Interface {
 public:

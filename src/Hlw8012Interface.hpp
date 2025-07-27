@@ -9,9 +9,9 @@
 #include <ostream>
 
 #include "JsonParser.hpp"
-#include "SensorInterface.hpp"
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
+#include "common/SensorInterface.hpp"
 
 class Hlw8012Interface : public Interface {
 public:

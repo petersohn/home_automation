@@ -24,7 +24,6 @@
 #include "MqttInterface.hpp"
 #include "PowerSupplyInterface.hpp"
 #include "PublishAction.hpp"
-#include "SensorInterface.hpp"
 #include "StatusInterface.hpp"
 #include "common/AnalogInput.hpp"
 #include "common/AnalogInputWithChannel.hpp"
@@ -33,6 +32,7 @@
 #include "common/CommandAction.hpp"
 #include "common/Cover.hpp"
 #include "common/MqttClient.hpp"
+#include "common/SensorInterface.hpp"
 #include "operation/OperationParser.hpp"
 #include "tools/collection.hpp"
 
