@@ -245,7 +245,7 @@ private:
                 return nullptr;
             }
             return createSensorInterface(
-                data, std::make_unique<AnalogSensor>(std::move(*input)));
+                data, std::make_unique<AnalogSensor>(esp, std::move(*input), 0, 0, 0));
         } else if (type == "dht") {
             uint8_t pin = 0;
             auto type =
