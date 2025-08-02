@@ -10,13 +10,12 @@
 class AnalogSensor : public Sensor {
 public:
     AnalogSensor(
-        std::ostream& debug, EspApi& esp, AnalogInputWithChannel input,
-        double max, int precision, unsigned aggregateTime);
+        EspApi& esp, AnalogInputWithChannel input, double max, int precision,
+        unsigned aggregateTime);
 
     std::optional<std::vector<std::string>> measure() override;
 
 private:
-    std::ostream& debug;
     EspApi& esp;
     AnalogInputWithChannel input;
 

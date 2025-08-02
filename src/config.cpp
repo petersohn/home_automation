@@ -13,7 +13,9 @@
 #include "DhtSensor.hpp"
 #include "EchoDistanceReaderInterface.hpp"
 #include "EchoDistanceSensor.hpp"
+#include "EncoderInterface.hpp"
 #include "EspAnalogInput.hpp"
+#include "EspEncoder.hpp"
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
 #include "HM3301Sensor.hpp"
@@ -229,7 +231,8 @@ private:
             return getPin(data, pin)
                        ? std::make_unique<GpioInput>(
                              debug, pin,
-                             getCycleType(data.get<std::string>("cycle")))
+                             getCycleType(data.get<std::string>("cycle")),
+                             getJsonWithDefault(data["debounce"], 10))
                        : nullptr;
         } else if (type == "output") {
             uint8_t pin = 0;
@@ -245,7 +248,17 @@ private:
                 return nullptr;
             }
             return createSensorInterface(
-                data, std::make_unique<AnalogSensor>(esp, std::move(*input), 0, 0, 0));
+                data, std::make_unique<AnalogSensor>(
+                          esp, std::move(*input), 0, 0, 0));
+        } else if (type == "encoder") {
+            uint8_t downPin = 0;
+            uint8_t upPin = 0;
+            return getRequiredValue(data, "downPin", downPin) &&
+                           getRequiredValue(data, "upPin", upPin)
+                       ? std::make_unique<EncoderInterface>(
+                             std::make_unique<EspEncoder>(downPin, upPin),
+                             getJsonWithDefault(data["pulse"], false))
+                       : nullptr;
         } else if (type == "dht") {
             uint8_t pin = 0;
             auto type =

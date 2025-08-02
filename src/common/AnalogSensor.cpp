@@ -7,10 +7,9 @@
 #include "../tools/string.hpp"
 
 AnalogSensor::AnalogSensor(
-    std::ostream& debug, EspApi& esp, AnalogInputWithChannel input, double max,
-    int precision, unsigned aggregateTime)
-    : debug(debug)
-    , esp(esp)
+    EspApi& esp, AnalogInputWithChannel input, double max, int precision,
+    unsigned aggregateTime)
+    : esp(esp)
     , input(std::move(input))
     , max(max)
     , precision(precision)
@@ -26,14 +25,12 @@ std::optional<std::vector<std::string>> AnalogSensor::measure() {
     auto now = esp.millis();
 
     if (aggregateBegin == 0) {
-        debug << "begin" << std::endl;
         aggregateBegin = now;
         sum = 0.0;
     } else {
         auto avgValue = (value + previousValue) / 2.0;
         sum += avgValue * avgValue * (now - previousTime);
         auto timeDiff = now - aggregateBegin;
-        debug << "timeDiff=" << timeDiff << std::endl;
         if (timeDiff >= aggregateTime) {
             aggregateBegin = 0;
             return std::vector<std::string>{
