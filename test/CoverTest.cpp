@@ -3,6 +3,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_log.hpp>
 #include <boost/test/unit_test_suite.hpp>
+#include <tuple>
 
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
@@ -23,8 +24,8 @@ struct TestPositionSensor {
     int min;
     int max;
 
-    TestPositionSensor(int value, int min, int max)
-        : sensor{value, 0}, min(min), max(max) {}
+    TestPositionSensor(int value, int min, int max, bool invert)
+        : sensor{value, 0, invert}, min(min), max(max) {}
 };
 
 class Fixture : public InterfaceTestBase {
@@ -47,8 +48,9 @@ public:
         std::vector<PositionSensor> positionSensorInput;
         positionSensorInput.reserve(positionSensors_.size());
         for (size_t i = 0; i < positionSensors_.size(); ++i) {
-            positionSensors_[i].sensor.pin = PositionSensorBegin + i;
-            positionSensorInput.push_back(positionSensors_[i].sensor);
+            auto& ps = positionSensors_[i];
+            ps.sensor.pin = PositionSensorBegin + i;
+            positionSensorInput.push_back(ps.sensor);
         }
         positionSensors = std::move(positionSensors_);
 
@@ -66,8 +68,8 @@ public:
         }
 
         return {
-            TestPositionSensor(0, 0, 0),
-            TestPositionSensor(100, maxPosition, maxPosition),
+            TestPositionSensor(0, 0, 0, false),
+            TestPositionSensor(100, maxPosition, maxPosition, false),
         };
     }
 
@@ -149,9 +151,9 @@ public:
         }
 
         for (const auto& sensor : positionSensors) {
+            bool value = newPosition >= sensor.min && newPosition <= sensor.max;
             esp.digitalWrite(
-                sensor.sensor.pin,
-                newPosition >= sensor.min && newPosition <= sensor.max);
+                sensor.sensor.pin, sensor.sensor.invert ? !value : value);
         }
 
         BOOST_TEST_MESSAGE(
@@ -675,13 +677,22 @@ BOOST_DATA_TEST_CASE_F(
 }
 
 namespace {
-const auto params2NoPositionSensor = delays2 * latchings;
-}
+const auto params2NoPositionSensor =
+    delays2 * latchings * boost::unit_test::data::make({false, true}) *
+    boost::unit_test::data::make({false, true}) *
+    boost::unit_test::data::make({false, true});
+
+}  // namespace
 
 BOOST_DATA_TEST_CASE_F(
     Fixture, MultiplePositionSensors, params2NoPositionSensor, delay,
-    isLatching) {
-    init(isLatching, {{0, 0, 200}, {50, 4800, 5200}, {100, 9800, 10000}});
+    isLatching, invertClosed, invertMiddle, invertOpen) {
+    init(
+        isLatching, {
+                        TestPositionSensor{0, 0, 200, invertClosed},
+                        TestPositionSensor{50, 4800, 5200, invertMiddle},
+                        TestPositionSensor{100, 9800, 10000, invertOpen},
+                    });
     loop();
 
     BOOST_TEST(!isMovingUp());

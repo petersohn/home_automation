@@ -385,7 +385,9 @@ void Cover::update(Actions action) {
     int newPositionSensor = noPositionSensor;
     for (size_t i = 0; i < positionSensors.size(); ++i) {
         if (getActualValue(
-                esp.digitalRead(positionSensors[i].pin) != 0,
+                getActualValue(
+                    esp.digitalRead(positionSensors[i].pin),
+                    positionSensors[i].invert) != 0,
                 invertPositionSensors)) {
             newPositionSensor = i;
             break;

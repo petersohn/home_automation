@@ -10,6 +10,7 @@
 struct PositionSensor {
     int position = 0;
     uint8_t pin = 0;
+    bool invert = false;
 };
 
 class Cover : public Interface {

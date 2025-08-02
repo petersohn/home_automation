@@ -43,7 +43,7 @@ public:
 
     void init(double max, int precision, unsigned aggregateTime) {
         sensor = std::make_unique<AnalogSensor>(
-            debug, esp, AnalogInputWithChannel(input, 0), max, precision,
+            esp, AnalogInputWithChannel(input, 0), max, precision,
             aggregateTime);
         esp.delay(10);
     }
