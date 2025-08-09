@@ -28,6 +28,9 @@ void PublishAction::fire(const InterfaceConfig& /*interface*/) {
             return;
         }
         valueNum = tools::fromString<double>(value);
+        if (!valueNum.has_value()) {
+            debug << "Failed to parse numerical value: " << value << std::endl;
+        }
     }
 
     if (lastSend != 0 && now - lastSend < minimumSendInterval &&

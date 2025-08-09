@@ -249,7 +249,10 @@ private:
             }
             return createSensorInterface(
                 data, std::make_unique<AnalogSensor>(
-                          esp, std::move(*input), 0, 0, 0));
+                          esp, std::move(*input),
+                          getJsonWithDefault(data["max"], 0.0),
+                          getJsonWithDefault(data["precision"], 0),
+                          getJsonWithDefault(data["aggregateTime"], 0U)));
         } else if (type == "encoder") {
             uint8_t downPin = 0;
             uint8_t upPin = 0;
@@ -526,7 +529,8 @@ private:
                 debug, esp, mqttClient, topic,
                 operationParser.parse(data, "payload", "template"),
                 data.get<bool>("retain"),
-                data.get<unsigned>("minimumSendInterval"));
+                data.get<unsigned>("minimumSendInterval"),
+                data.get<double>("sendDiff"));
         } else if (type == "command") {
             auto target = findInterface(interfaces, data["target"]);
             if (!target) {
