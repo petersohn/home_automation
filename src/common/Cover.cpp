@@ -2,10 +2,8 @@
 
 #include <cstdint>
 
+#include "../tools/fromString.hpp"
 #include "../tools/string.hpp"
-#include "ArduinoJson.hpp"
-
-using namespace ArduinoJson;
 
 namespace {
 bool getActualValue(bool value, bool invert) {
@@ -320,13 +318,12 @@ void Cover::execute(const std::string& command) {
         targetPosition = noPosition;
         beginClosing();
     } else {
-        StaticJsonBuffer<20> buf;
-        auto json = buf.parse(command);
-        if (!json.is<int>()) {
+        auto pos = tools::fromString<int>(command);
+        if (!pos.has_value()) {
             log("Invalid command: " + command);
             return;
         }
-        setPosition(json.as<int>());
+        setPosition(*pos);
     }
 }
 

@@ -14,7 +14,7 @@ public:
         std::ostream& debug, EspApi& esp, MqttClient& mqttClient,
         const std::string& topic,
         std::unique_ptr<operation::Operation>&& operation, bool retain,
-        unsigned minimumSendInterval);
+        unsigned minimumSendInterval, double sendDiff);
 
     void fire(const InterfaceConfig& interface);
 
@@ -27,7 +27,9 @@ private:
     std::unique_ptr<operation::Operation> operation;
     bool retain;
     const unsigned minimumSendInterval;
+    const double sendDiff;
     unsigned lastSend;
+    std::optional<double> lastSentValue;
 };
 
 #endif  // PUBLISHACTION_HPP
