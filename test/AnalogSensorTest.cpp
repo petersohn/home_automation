@@ -41,9 +41,10 @@ public:
         std::make_shared<FakeAnalogInput>();
     std::unique_ptr<AnalogSensor> sensor;
 
-    void init(double max, int precision, unsigned aggregateTime) {
+    void init(
+        double max, double offset, int precision, unsigned aggregateTime) {
         sensor = std::make_unique<AnalogSensor>(
-            esp, AnalogInputWithChannel(input, 0), max, precision,
+            esp, AnalogInputWithChannel(input, 0), max, offset, precision,
             aggregateTime);
         esp.delay(10);
     }
@@ -53,10 +54,16 @@ public:
     std::optional<std::vector<std::string>> expected(std::string value) {
         return std::make_optional<std::vector<std::string>>({std::move(value)});
     }
+
+    std::optional<std::vector<std::string>> expected2(
+        std::string avg, std::string max) {
+        return std::make_optional<std::vector<std::string>>(
+            {std::move(avg), std::move(max)});
+    }
 };
 
 BOOST_FIXTURE_TEST_CASE(Basic, Fixture) {
-    init(0.0, 0, 0);
+    init(0.0, 0.0, 0, 0);
     input->values = {12};
     BOOST_TEST(sensor->measure() == expected("12"));
     input->values = {232};
@@ -64,24 +71,40 @@ BOOST_FIXTURE_TEST_CASE(Basic, Fixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(Divide, Fixture) {
-    init(16.0, 2, 0);
+    init(16.0, 0.0, 2, 0);
     input->values = {1024};
     BOOST_TEST(sensor->measure() == expected("16"));
     input->values = {512};
     BOOST_TEST(sensor->measure() == expected("8"));
+    input->values = {0};
+    BOOST_TEST(sensor->measure() == expected("0"));
     input->values = {32};
     BOOST_TEST(sensor->measure() == expected("0.5"));
 }
 
+BOOST_FIXTURE_TEST_CASE(Offset, Fixture) {
+    init(16.0, 8.0, 2, 0);
+    input->values = {1024};
+    BOOST_TEST(sensor->measure() == expected("8"));
+    input->values = {512};
+    BOOST_TEST(sensor->measure() == expected("0"));
+    input->values = {0};
+    BOOST_TEST(sensor->measure() == expected("-8"));
+    input->values = {544};
+    BOOST_TEST(sensor->measure() == expected("0.5"));
+    input->values = {480};
+    BOOST_TEST(sensor->measure() == expected("-0.5"));
+}
+
 BOOST_FIXTURE_TEST_CASE(AggregateSameValue, Fixture) {
-    init(0, 2, 10);
+    init(0, 0, 2, 10);
 
     input->values = {123};
     for (std::size_t i = 0; i < 10; ++i) {
         BOOST_TEST(sensor->measure() == none());
         esp.delay(1);
     }
-    BOOST_TEST(sensor->measure() == expected("123"));
+    BOOST_TEST(sensor->measure() == expected2("123", "123"));
 
     esp.delay(10);
 
@@ -90,11 +113,11 @@ BOOST_FIXTURE_TEST_CASE(AggregateSameValue, Fixture) {
         BOOST_TEST(sensor->measure() == none());
         esp.delay(2);
     }
-    BOOST_TEST(sensor->measure() == expected("54"));
+    BOOST_TEST(sensor->measure() == expected2("54", "54"));
 }
 
 BOOST_FIXTURE_TEST_CASE(Aggregate50HzSine, Fixture) {
-    init(0, 0, 20);
+    init(0, 0, 0, 20);
 
     const double pi = std::acos(-1);
     const double effective = 10000.0;
@@ -107,10 +130,13 @@ BOOST_FIXTURE_TEST_CASE(Aggregate50HzSine, Fixture) {
     }
     auto result = sensor->measure();
     BOOST_REQUIRE(result);
-    BOOST_REQUIRE(result->size() == 1);
-    auto value = std::stoi((*result)[0]);
-    BOOST_TEST(value >= 9900);
-    BOOST_TEST(value <= 11000);
+    BOOST_REQUIRE(result->size() == 2);
+    auto avg = std::stoi((*result)[0]);
+    auto max = std::stoi((*result)[1]);
+    BOOST_TEST(avg >= effective * 0.9);
+    BOOST_TEST(avg <= effective * 1.1);
+    BOOST_TEST(max >= peak * 0.9);
+    BOOST_TEST(max <= peak);
 }
 
 BOOST_AUTO_TEST_SUITE_END();
