@@ -22,7 +22,7 @@ private:
     const double max;
     const double offset;
     const int precision;
-    const unsigned aggregateTime;
+    const unsigned long aggregateTime;
 
     unsigned long aggregateBegin = 0;
     double sum = 0.0;

@@ -32,6 +32,7 @@ public:
     virtual int digitalRead(uint8_t pin) = 0;
 
     virtual unsigned long millis() = 0;
+    virtual unsigned long micros() = 0;
     virtual void delay(unsigned long ms) = 0;
     virtual void restart(bool hard) = 0;
 

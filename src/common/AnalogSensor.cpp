@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <ostream>
 
 #include "../tools/string.hpp"
 
@@ -14,7 +13,7 @@ AnalogSensor::AnalogSensor(
     , max(max)
     , offset(offset)
     , precision(precision)
-    , aggregateTime(aggregateTime) {}
+    , aggregateTime(aggregateTime * 1000UL) {}
 
 std::optional<std::vector<std::string>> AnalogSensor::measure() {
     auto value = doMeasure();
@@ -23,9 +22,9 @@ std::optional<std::vector<std::string>> AnalogSensor::measure() {
         return std::vector<std::string>{tools::floatToString(value, precision)};
     }
 
-    auto now = esp.millis();
+    auto now = esp.micros();
 
-    if (aggregateBegin == 0) {
+    if (aggregateBegin == 0 || now < previousTime) {
         aggregateBegin = now;
         sum = 0.0;
         maxValue = value;
@@ -45,7 +44,7 @@ std::optional<std::vector<std::string>> AnalogSensor::measure() {
 
     previousValue = value;
     previousTime = now;
-    return {};
+    return std::nullopt;
 }
 
 double AnalogSensor::doMeasure() {

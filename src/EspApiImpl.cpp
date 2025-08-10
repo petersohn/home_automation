@@ -34,6 +34,10 @@ unsigned long EspApiImpl::millis() {
     return ::millis();
 }
 
+unsigned long EspApiImpl::micros() {
+    return ::micros();
+}
+
 void EspApiImpl::delay(unsigned long ms) {
     ::delay(ms);
 }

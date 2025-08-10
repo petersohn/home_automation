@@ -23,6 +23,10 @@ unsigned long FakeEspApi::millis() {
     return time;
 }
 
+unsigned long FakeEspApi::micros() {
+    return time * 1000;
+}
+
 void FakeEspApi::delay(unsigned long ms) {
     time += ms;
 }

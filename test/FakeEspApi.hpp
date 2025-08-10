@@ -12,6 +12,7 @@ public:
     virtual int digitalRead(uint8_t pin) override;
 
     virtual unsigned long millis() override;
+    virtual unsigned long micros() override;
     virtual void delay(unsigned long ms) override;
     virtual void restart(bool hard) override;
 

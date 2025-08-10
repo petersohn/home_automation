@@ -116,26 +116,32 @@ BOOST_FIXTURE_TEST_CASE(AggregateSameValue, Fixture) {
     BOOST_TEST(sensor->measure() == expected2("54", "54"));
 }
 
-BOOST_FIXTURE_TEST_CASE(Aggregate50HzSine, Fixture) {
+namespace {
+const auto delays = boost::unit_test::data::make({1, 2});
+}
+
+BOOST_DATA_TEST_CASE_F(Fixture, Aggregate50HzSine, delays, delay) {
     init(0, 0, 0, 20);
 
     const double pi = std::acos(-1);
     const double effective = 10000.0;
     const double peak = effective * std::sqrt(2);
 
-    for (std::size_t i = 0; i < 20; ++i) {
-        input->values = {static_cast<int>(peak * std::sin(i * pi / 10.0))};
+    for (std::size_t i = 0; i < 20; i += delay) {
+        input->values = {
+            std::abs(static_cast<int>(peak * std::sin(i * pi / 10.0)))};
         BOOST_TEST(sensor->measure() == none());
-        esp.delay(1);
+        esp.delay(delay);
     }
     auto result = sensor->measure();
     BOOST_REQUIRE(result);
     BOOST_REQUIRE(result->size() == 2);
     auto avg = std::stoi((*result)[0]);
     auto max = std::stoi((*result)[1]);
-    BOOST_TEST(avg >= effective * 0.9);
-    BOOST_TEST(avg <= effective * 1.1);
-    BOOST_TEST(max >= peak * 0.9);
+    BOOST_TEST_MESSAGE("avg=" << avg << " max=" << max);
+    BOOST_TEST(avg >= effective * 0.97);
+    BOOST_TEST(avg <= effective * 1.03);
+    BOOST_TEST(max >= peak * 0.95);
     BOOST_TEST(max <= peak);
 }
 
