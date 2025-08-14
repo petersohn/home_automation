@@ -145,4 +145,32 @@ BOOST_DATA_TEST_CASE_F(Fixture, Aggregate50HzSine, delays, delay) {
     BOOST_TEST(max <= peak);
 }
 
+BOOST_DATA_TEST_CASE_F(Fixture, Aggregate50HzSineWithScaling, delays, delay) {
+    const double peakOut = 10000.0;
+    const double realPeakOut = peakOut / 2.0;
+    const double peakIn = peakOut / 100;
+    const double effective = realPeakOut / std::sqrt(2);
+    const double pi = std::acos(-1);
+
+    init(peakOut, peakOut / 2.0, 0, 20);
+
+    input->maxValue = peakIn;
+
+    for (std::size_t i = 0; i < 20; i += delay) {
+        input->values = {std::abs(
+            static_cast<int>(peakIn / 2.0 * (std::sin(i * pi / 10.0) + 1)))};
+        BOOST_TEST(sensor->measure() == none());
+        esp.delay(delay);
+    }
+    auto result = sensor->measure();
+    BOOST_REQUIRE(result);
+    BOOST_REQUIRE(result->size() == 2);
+    auto avg = std::stoi((*result)[0]);
+    auto max = std::stoi((*result)[1]);
+    BOOST_TEST_MESSAGE("avg=" << avg << " max=" << max);
+    BOOST_TEST(avg >= effective * 0.97);
+    BOOST_TEST(avg <= effective * 1.03);
+    BOOST_TEST(max >= realPeakOut * 0.95);
+    BOOST_TEST(max <= realPeakOut);
+}
 BOOST_AUTO_TEST_SUITE_END();

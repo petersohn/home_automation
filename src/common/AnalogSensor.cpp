@@ -27,11 +27,11 @@ std::optional<std::vector<std::string>> AnalogSensor::measure() {
     if (aggregateBegin == 0 || now < previousTime) {
         aggregateBegin = now;
         sum = 0.0;
-        maxValue = value;
+        maxValue = std::abs(value);
     } else {
         auto avgValue = (value + previousValue) / 2.0;
         sum += avgValue * avgValue * (now - previousTime);
-        maxValue = std::max(maxValue, value);
+        maxValue = std::max(maxValue, std::abs(value));
         auto timeDiff = now - aggregateBegin;
         if (timeDiff >= aggregateTime) {
             aggregateBegin = 0;
