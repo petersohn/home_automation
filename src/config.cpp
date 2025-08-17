@@ -141,6 +141,10 @@ private:
         {"", DHT22}, {"dht11", DHT11}, {"dht22", DHT22}, {"dht21", DHT21}};
 
     int getInterval(const JsonObject& data) {
+        auto intervalMs = data["intervalMs"].as<int>();
+        if (intervalMs != 0) {
+            return intervalMs;
+        }
         return getJsonWithDefault(data["interval"], 60) * 1000;
     }
 
@@ -183,7 +187,7 @@ private:
             return std::nullopt;
         }
 
-        return AnalogInputWithChannel(std::move(it->second), v.as<uint8_t>());
+        return AnalogInputWithChannel(it->second, v.as<uint8_t>());
     }
 
     std::vector<std::string> getPulse(const JsonObject& data) {
@@ -251,7 +255,7 @@ private:
                 data, std::make_unique<AnalogSensor>(
                           esp, std::move(*input),
                           getJsonWithDefault(data["max"], 0.0),
-                          getJsonWithDefault(data["offset"], 0.0),
+                          getJsonWithDefault(data["valueOffset"], 0.0),
                           getJsonWithDefault(data["precision"], 0),
                           getJsonWithDefault(data["aggregateTime"], 0U)));
         } else if (type == "encoder") {
