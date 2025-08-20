@@ -26,6 +26,7 @@
 #include "MqttInterface.hpp"
 #include "PowerSupplyInterface.hpp"
 #include "PublishAction.hpp"
+#include "PwmOutput.hpp"
 #include "StatusInterface.hpp"
 #include "common/AnalogInput.hpp"
 #include "common/AnalogInputWithChannel.hpp"
@@ -241,6 +242,12 @@ private:
         } else if (type == "output") {
             uint8_t pin = 0;
             return getPin(data, pin) ? std::make_unique<GpioOutput>(
+                                           debug, esp, rtc, pin,
+                                           data["default"], data["invert"])
+                                     : nullptr;
+        } else if (type == "pwm") {
+            uint8_t pin = 0;
+            return getPin(data, pin) ? std::make_unique<PwmOutput>(
                                            debug, esp, rtc, pin,
                                            data["default"], data["invert"])
                                      : nullptr;

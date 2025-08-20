@@ -44,12 +44,12 @@
 		<link>
 			<name>libraries/Adafruit_BusIO</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Adafruit_BusIO/1.17.2</locationURI>
+			<location>/home/petersohn/Arduino/libraries/Adafruit_BusIO</location>
 		</link>
 		<link>
 			<name>libraries/Adafruit_MCP3008</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Adafruit_MCP3008/1.3.3</locationURI>
+			<location>/home/petersohn/Arduino/libraries/Adafruit_MCP3008</location>
 		</link>
 		<link>
 			<name>libraries/Adafruit_Unified_Sensor</name>
