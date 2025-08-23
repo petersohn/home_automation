@@ -1,4 +1,5 @@
 #include "DallasTemperatureSensor.hpp"
+
 #include "tools/string.hpp"
 
 DallasTemperatureSensor::DallasTemperatureSensor(

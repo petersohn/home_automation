@@ -26,6 +26,8 @@ private:
     const unsigned rtcId;
     int currentValue;
     bool changed = false;
+
+    void set();
 };
 
 #endif  // PWMOUTPUT_HPP

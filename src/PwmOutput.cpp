@@ -5,6 +5,10 @@
 #include "tools/fromString.hpp"
 #include "tools/string.hpp"
 
+namespace {
+constexpr int maxValue = 255;
+}
+
 PwmOutput::PwmOutput(
     std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin, int defaultValue,
     bool invert)
@@ -19,15 +23,16 @@ PwmOutput::PwmOutput(
     if (rtcData != 0) {
         currentValue = rtcData - 1;
     }
-    analogWrite(pin, currentValue);
+    esp.pinMode(pin, GpioMode::output);
+    set();
+}
+
+void PwmOutput::set() {
+    analogWrite(pin, invert ? maxValue - currentValue : currentValue);
 }
 
 void PwmOutput::start() {
     changed = true;
-}
-
-namespace {
-constexpr int maxValue = 255;
 }
 
 void PwmOutput::execute(const std::string& command) {
@@ -54,12 +59,9 @@ void PwmOutput::execute(const std::string& command) {
         realValue = boolValue ? maxValue : 0;
     }
 
-    if (invert) {
-        realValue = maxValue - realValue;
-    }
     if (realValue != currentValue) {
         currentValue = realValue;
-        analogWrite(pin, currentValue);
+        set();
         rtc.set(rtcId, currentValue);
         changed = true;
     }
