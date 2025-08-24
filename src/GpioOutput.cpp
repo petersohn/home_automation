@@ -1,6 +1,7 @@
+#include "GpioOutput.hpp"
+
 #include <cstdlib>
 
-#include "GpioOutput.hpp"
 #include "tools/string.hpp"
 
 namespace {
@@ -104,10 +105,12 @@ void GpioOutput::toggle() {
 }
 
 void GpioOutput::clearBlink() {
-    nextBlink = 0;
-    blinkOn = 0;
-    blinkOff = 0;
-    changed = true;
+    if (nextBlink != 0) {
+        nextBlink = 0;
+        blinkOn = 0;
+        blinkOff = 0;
+        changed = true;
+    }
 }
 
 void GpioOutput::setValue() {
