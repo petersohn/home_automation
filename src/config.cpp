@@ -544,8 +544,10 @@ private:
                 data.get<unsigned>("minimumSendInterval"),
                 data.get<double>("sendDiff"));
         } else if (type == "command") {
-            auto target = findInterface(interfaces, data["target"]);
+            const std::string targetName = data["target"];
+            auto target = findInterface(interfaces, targetName);
             if (!target) {
+                debug << "Interface not found: " << targetName << std::endl;
                 return {};
             }
 
