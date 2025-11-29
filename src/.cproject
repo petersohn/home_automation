@@ -34,6 +34,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/SPI}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_MCP3008}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_BusIO}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/VL53L1X}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.1156095381" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
@@ -54,6 +55,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/SPI}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_MCP3008}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_BusIO}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/VL53L1X}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.1236170514" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
@@ -74,6 +76,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/SPI}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_MCP3008}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/Adafruit_BusIO}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/home_automation/libraries/VL53L1X}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.1094414370" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>
