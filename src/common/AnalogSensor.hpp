@@ -11,7 +11,7 @@ class AnalogSensor : public Sensor {
 public:
     AnalogSensor(
         EspApi& esp, AnalogInputWithChannel input, double max, double offset,
-        int precision, unsigned aggregateTime);
+        double cutoff, int precision, unsigned aggregateTime);
 
     std::optional<std::vector<std::string>> measure() override;
 
@@ -21,6 +21,7 @@ private:
 
     const double max;
     const double offset;
+    const double cutoff;
     const int precision;
     const unsigned long aggregateTime;
 

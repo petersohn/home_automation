@@ -263,6 +263,7 @@ private:
                           esp, std::move(*input),
                           getJsonWithDefault(data["max"], 0.0),
                           getJsonWithDefault(data["valueOffset"], 0.0),
+                          getJsonWithDefault(data["cutoff"], 0.0),
                           getJsonWithDefault(data["precision"], 0),
                           getJsonWithDefault(data["aggregateTime"], 0U)));
         } else if (type == "encoder") {

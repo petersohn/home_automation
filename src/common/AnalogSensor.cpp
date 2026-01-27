@@ -7,11 +7,12 @@
 
 AnalogSensor::AnalogSensor(
     EspApi& esp, AnalogInputWithChannel input, double max, double offset,
-    int precision, unsigned aggregateTime)
+    double cutoff, int precision, unsigned aggregateTime)
     : esp(esp)
     , input(std::move(input))
     , max(max)
     , offset(offset)
+    , cutoff(cutoff)
     , precision(precision)
     , aggregateTime(aggregateTime * 1000UL) {}
 
@@ -50,9 +51,13 @@ std::optional<std::vector<std::string>> AnalogSensor::measure() {
 double AnalogSensor::doMeasure() {
     double value = input.read();
     if (max != 0.0) {
-        double inputMax = this->input.getMaxValue();
-        return value * max / inputMax - offset;
-    } else {
-        return value;
+        const double inputMax = this->input.getMaxValue();
+        value = value * max / inputMax - offset;
     }
+
+    if (std::abs(value) < cutoff) {
+        return 0;
+    }
+
+    return value;
 }
