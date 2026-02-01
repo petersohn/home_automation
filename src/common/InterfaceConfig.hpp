@@ -14,6 +14,8 @@ struct InterfaceConfig {
     std::unique_ptr<Interface> interface;
     std::vector<std::shared_ptr<Action>> actions;
     std::vector<std::string> storedValue;
+    bool hasExternalAction = false;
+    bool hasInternalAction = false;
 
     InterfaceConfig() = default;
     InterfaceConfig(const InterfaceConfig&) = delete;

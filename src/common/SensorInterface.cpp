@@ -14,7 +14,13 @@ SensorInterface::SensorInterface(
 void SensorInterface::start() {
     // When connected to the network, all sensors make a measurement.
     // Afterwards, measurements are shifted by offset.
-    nextExecution = esp.millis() - offset;
+    const auto now = esp.millis();
+    // TODO: this is not really good if we have an offset
+    if (now > offset) {
+        nextExecution = now - offset;
+    } else {
+        nextExecution = 1;
+    }
 }
 
 void SensorInterface::execute(const std::string& /*command*/) {}

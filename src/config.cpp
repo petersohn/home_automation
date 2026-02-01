@@ -530,6 +530,7 @@ private:
         auto type = data.get<std::string>("type");
         operation::Parser operationParser{interfaces, defaultInterface};
         std::unique_ptr<Action> result;
+        bool InterfaceConfig::* actionType = nullptr;
         if (type == "publish") {
             std::string topic = getMandatoryArgument(data, "topic");
             if (topic.empty()) {
@@ -544,6 +545,7 @@ private:
                 data.get<bool>("retain"),
                 data.get<unsigned>("minimumSendInterval"),
                 data.get<double>("sendDiff"));
+            actionType = &InterfaceConfig::hasExternalAction;
         } else if (type == "command") {
             const std::string targetName = data["target"];
             auto target = findInterface(interfaces, targetName);
@@ -555,12 +557,21 @@ private:
             result = std::make_unique<CommandAction>(
                 *target->interface,
                 operationParser.parse(data, "command", "template"));
+            actionType = &InterfaceConfig::hasInternalAction;
         } else {
             debug << "Invalid action type: " + type << std::endl;
         }
 
-        return {
-            std::move(result), std::move(operationParser).getUsedInterfaces()};
+        auto usedInterfaces = std::move(operationParser).getUsedInterfaces();
+
+        if (actionType != nullptr) {
+            defaultInterface->*actionType = true;
+            for (auto& interface : usedInterfaces) {
+                interface->*actionType = true;
+            }
+        }
+
+        return {std::move(result), std::move(usedInterfaces)};
     }
 
     void parseActions(

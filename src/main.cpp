@@ -57,7 +57,9 @@ BackoffImpl mqttBackoff(debug, "mqtt: ", esp, rtc, 210000, 2100000);
 MqttConnectionImpl mqttConnection(debug, mqttLock);
 MqttClient mqttClient(debug, esp, wifi, mqttBackoff, mqttConnection, []() {
     for (const auto& interface : deviceConfig.interfaces) {
-        interface->interface->start();
+        if (interface->hasExternalAction) {
+            interface->interface->start();
+        }
     }
 });
 std::unique_ptr<WifiStreambuf> wifiStream;
@@ -68,17 +70,24 @@ std::unique_ptr<MqttStreambuf> mqttStream;
 void setup() {
     WiFi.mode(WIFI_STA);
     initConfig(debug, debugStream, esp, rtc, mqttClient);
-    mqttClient.setConfig(MqttConfig{
-        deviceConfig.name,
-        std::move(globalConfig.servers),
-        std::move(deviceConfig.topics),
-    });
+    mqttClient.setConfig(
+        MqttConfig{
+            deviceConfig.name,
+            std::move(globalConfig.servers),
+            std::move(deviceConfig.topics),
+        });
     setDeviceName();
 
     if (deviceConfig.debugTopic != "") {
         mqttStream = std::make_unique<MqttStreambuf>(
             mqttLock, mqttClient, deviceConfig.debugTopic);
         debugStream.add(mqttStream.get());
+    }
+
+    for (const auto& interface : deviceConfig.interfaces) {
+        if (interface->hasInternalAction) {
+            interface->interface->start();
+        }
     }
 }
 
