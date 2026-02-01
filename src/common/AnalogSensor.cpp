@@ -6,9 +6,10 @@
 #include "../tools/string.hpp"
 
 AnalogSensor::AnalogSensor(
-    EspApi& esp, AnalogInputWithChannel input, double max, double offset,
-    double cutoff, int precision, unsigned aggregateTime)
+    EspApi& esp, std::ostream& debug, AnalogInputWithChannel input, double max,
+    double offset, double cutoff, int precision, unsigned aggregateTime)
     : esp(esp)
+    , debug(debug)
     , input(std::move(input))
     , max(max)
     , offset(offset)

@@ -260,7 +260,7 @@ private:
             }
             return createSensorInterface(
                 data, std::make_unique<AnalogSensor>(
-                          esp, std::move(*input),
+                          esp, debug, std::move(*input),
                           getJsonWithDefault(data["max"], 0.0),
                           getJsonWithDefault(data["valueOffset"], 0.0),
                           getJsonWithDefault(data["cutoff"], 0.0),
@@ -573,9 +573,8 @@ private:
         }
 
         for (JsonObject& action : actions) {
-            std::string interfaceName = action["interface"];
-            auto defaultInterface =
-                findInterface(interfaces, action["interface"]);
+            const std::string interfaceName = action["interface"];
+            auto defaultInterface = findInterface(interfaces, interfaceName);
 
             auto parseResult =
                 parseAction(action, defaultInterface, interfaces);
