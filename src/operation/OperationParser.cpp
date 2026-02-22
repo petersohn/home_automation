@@ -1,10 +1,11 @@
+#include "OperationParser.hpp"
+
 #include <functional>
 #include <memory>
 
-#include "../common/InterfaceConfig.hpp"
-#include "OperationParser.hpp"
 #include "Operations.hpp"
 #include "Translator.hpp"
+#include "common/InterfaceConfig.hpp"
 
 using namespace ArduinoJson;
 
@@ -190,9 +191,10 @@ std::vector<MappingElement> Parser::parseMappingElements(
             continue;
         }
 
-        elements.push_back(MappingElement{
-            doParse(elementObject["min"]), doParse(elementObject["max"]),
-            doParse(elementObject["value"])});
+        elements.push_back(
+            MappingElement{
+                doParse(elementObject["min"]), doParse(elementObject["max"]),
+                doParse(elementObject["value"])});
     }
     return elements;
 }

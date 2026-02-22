@@ -3,10 +3,12 @@
 
 #include <memory>
 #include <unordered_set>
+#include <vector>
 
 #include "../common/ArduinoJson.hpp"
-#include "../common/InterfaceConfig.hpp"
 #include "Operation.hpp"
+
+class InterfaceConfig;
 
 namespace operation {
 

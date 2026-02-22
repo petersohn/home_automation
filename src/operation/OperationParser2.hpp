@@ -2,12 +2,13 @@
 #define OPERATIONPARSER2_HPP
 
 #include <memory>
+#include <ostream>
 #include <unordered_set>
 #include <vector>
 
-#include "../common/Interface.hpp"
-#include "../common/InterfaceConfig.hpp"
 #include "Operation.hpp"
+
+class InterfaceConfig;
 
 namespace operation {
 

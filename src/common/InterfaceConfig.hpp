@@ -17,7 +17,9 @@ struct InterfaceConfig {
     bool hasExternalAction = false;
     bool hasInternalAction = false;
 
-    InterfaceConfig() = default;
+    InterfaceConfig();
+    ~InterfaceConfig();
+
     InterfaceConfig(const InterfaceConfig&) = delete;
     InterfaceConfig& operator=(const InterfaceConfig&) = delete;
     InterfaceConfig(InterfaceConfig&&) = delete;
