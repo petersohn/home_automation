@@ -421,11 +421,11 @@ private:
             return parseStringLiteral();
         }
 
-        if (match("true")) {
+        if (match("true") || match("on")) {
             return std::make_unique<Constant>("1");
         }
 
-        if (match("false")) {
+        if (match("false") || match("off")) {
             return std::make_unique<Constant>("0");
         }
 

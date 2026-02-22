@@ -51,6 +51,20 @@ BOOST_FIXTURE_TEST_CASE(ConstantTrue, Fixture) {
     BOOST_TEST(operation->evaluate() == "1");
 }
 
+BOOST_FIXTURE_TEST_CASE(ConstantOff, Fixture) {
+    operation::Parser2 parser{debug, interfaces, nullptr};
+    auto operation = parser.parse("off");
+    BOOST_REQUIRE(operation != nullptr);
+    BOOST_TEST(operation->evaluate() == "0");
+}
+
+BOOST_FIXTURE_TEST_CASE(ConstantOn, Fixture) {
+    operation::Parser2 parser{debug, interfaces, nullptr};
+    auto operation = parser.parse("on");
+    BOOST_REQUIRE(operation != nullptr);
+    BOOST_TEST(operation->evaluate() == "1");
+}
+
 BOOST_FIXTURE_TEST_CASE(StringLiteralWithEscapeSequences, Fixture) {
     operation::Parser2 parser{debug, interfaces, nullptr};
     auto operation = parser.parse(R"('foo\'bar"foobar\\baz')");
@@ -485,6 +499,12 @@ BOOST_FIXTURE_TEST_CASE(LogicalAnd, Fixture) {
     interfaces[0]->storedValue[0] = "1";
     interfaces[0]->storedValue[1] = "true";
     BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue[0] = "off";
+    interfaces[0]->storedValue[1] = "true";
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue[0] = "on";
+    interfaces[0]->storedValue[1] = "true";
+    BOOST_TEST(operation->evaluate() == "1");
     interfaces[0]->storedValue[0] = "foo";
     interfaces[0]->storedValue[1] = "true";
     BOOST_TEST(operation->evaluate() == "0");
@@ -513,6 +533,12 @@ BOOST_FIXTURE_TEST_CASE(LogicalOr, Fixture) {
     interfaces[0]->storedValue[0] = "1";
     interfaces[0]->storedValue[1] = "false";
     BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue[0] = "off";
+    interfaces[0]->storedValue[1] = "false";
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue[0] = "on";
+    interfaces[0]->storedValue[1] = "false";
+    BOOST_TEST(operation->evaluate() == "1");
     interfaces[0]->storedValue[0] = "foo";
     interfaces[0]->storedValue[1] = "false";
     BOOST_TEST(operation->evaluate() == "0");
@@ -531,11 +557,26 @@ BOOST_FIXTURE_TEST_CASE(LogicalNot, Fixture) {
     BOOST_TEST(operation->evaluate() == "1");
     interfaces[0]->storedValue[0] = "1";
     BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue[0] = "off";
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue[0] = "on";
+    BOOST_TEST(operation->evaluate() == "0");
     interfaces[0]->storedValue[0] = "5";
     BOOST_TEST(operation->evaluate() == "1");
     interfaces[0]->storedValue[0] = "-5";
     BOOST_TEST(operation->evaluate() == "1");
     interfaces[0]->storedValue[0] = "foo";
+    BOOST_TEST(operation->evaluate() == "1");
+}
+
+BOOST_FIXTURE_TEST_CASE(DoubleLogicalNot, Fixture) {
+    addInterface("itf1", {""});
+    operation::Parser2 parser{debug, interfaces, interfaces[0].get()};
+    auto operation = parser.parse("!!%1");
+    BOOST_REQUIRE(operation != nullptr);
+    interfaces[0]->storedValue[0] = "false";
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue[0] = "true";
     BOOST_TEST(operation->evaluate() == "1");
 }
 
