@@ -57,7 +57,7 @@ double AnalogSensor::doMeasure() {
     }
 
     if (std::abs(value) < cutoff) {
-        return 0;
+        return 0.0;
     }
 
     return value;
