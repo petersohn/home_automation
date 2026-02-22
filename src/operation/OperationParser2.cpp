@@ -111,14 +111,6 @@ private:
         return false;
     }
 
-    char peek() {
-        skipWhitespace();
-        if (pos < data.size()) {
-            return data[pos];
-        }
-        return '\0';
-    }
-
     std::unique_ptr<Operation> parseExpression() {
         auto condition = parseOr();
         if (!condition) {
