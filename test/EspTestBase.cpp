@@ -1,5 +1,7 @@
 #include "EspTestBase.hpp"
 
+#include "LogExpectation.hpp"
+
 EspTestBase::EspTestBase() : debug(&debugStreambuf) {
     debugStreambuf.esp = &esp;
 }
@@ -14,4 +16,11 @@ void EspTestBase::delayUntil(
         esp.delay(std::min(delay, time - esp.millis()));
         func();
     }
+}
+
+std::shared_ptr<LogExpectation> EspTestBase::expectLog(
+    std::string log, size_t count) {
+    auto expectation = std::make_shared<LogExpectation>(log, count);
+    debugStreambuf.addExpectation(expectation);
+    return expectation;
 }

@@ -8,6 +8,8 @@
 #include "FakeWifi.hpp"
 #include "TestStream.hpp"
 
+class LogExpectation;
+
 class EspTestBase {
 public:
     TestStreambuf debugStreambuf;
@@ -21,6 +23,8 @@ public:
 
     void delayUntil(
         unsigned long time, unsigned long delay, std::function<void()> func);
+    std::shared_ptr<LogExpectation> expectLog(
+        std::string log, size_t count = 1);
 };
 
 #endif  // TEST_ESPTESTBASE_HPP
