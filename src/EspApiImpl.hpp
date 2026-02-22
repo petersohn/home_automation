@@ -18,9 +18,6 @@ public:
 
     virtual uint32_t getFreeHeap() override;
 
-    virtual void attachInterrupt(
-        uint8_t pin, std::function<void(void)> intRoutine,
-        InterruptMode mode) override;
     virtual void doDisableInterrupt() override;
     virtual void doEnableInterrupt() override;
 };

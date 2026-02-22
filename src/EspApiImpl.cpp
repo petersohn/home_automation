@@ -59,23 +59,6 @@ uint32_t EspApiImpl::getFreeHeap() {
     return ESP.getFreeHeap();
 }
 
-void EspApiImpl::attachInterrupt(
-    uint8_t pin, std::function<void(void)> intRoutine, InterruptMode mode) {
-    int realMode = CHANGE;
-    switch (mode) {
-    case InterruptMode::rise:
-        realMode = RISING;
-        break;
-    case InterruptMode::fall:
-        realMode = FALLING;
-        break;
-    case InterruptMode::change:
-        realMode = CHANGE;
-        break;
-    }
-    return ::attachInterrupt(pin, intRoutine, realMode);
-}
-
 void EspApiImpl::doDisableInterrupt() {
     ETS_GPIO_INTR_DISABLE();
 }

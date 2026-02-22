@@ -41,10 +41,6 @@ uint32_t FakeEspApi::getFreeHeap() {
     return 0;
 }
 
-void FakeEspApi::attachInterrupt(
-    uint8_t /* pin */, std::function<void(void)> /* intRoutine */,
-    InterruptMode /* mode */) {}
-
 void FakeEspApi::doDisableInterrupt() {}
 
 void FakeEspApi::doEnableInterrupt() {}

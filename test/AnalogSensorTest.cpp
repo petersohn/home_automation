@@ -44,8 +44,8 @@ public:
     void init(
         double max, double offset, int precision, unsigned aggregateTime) {
         sensor = std::make_unique<AnalogSensor>(
-            esp, AnalogInputWithChannel(input, 0), max, offset, precision,
-            aggregateTime);
+            esp, std::cerr, AnalogInputWithChannel(input, 0), max, offset, 0.0,
+            precision, aggregateTime);
         esp.delay(10);
     }
 

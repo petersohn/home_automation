@@ -16,7 +16,7 @@ void SensorInterface::start() {
     // Afterwards, measurements are shifted by offset.
     const auto now = esp.millis();
     // TODO: this is not really good if we have an offset
-    if (now > offset) {
+    if (now > static_cast<unsigned long>(offset)) {
         nextExecution = now - offset;
     } else {
         nextExecution = 1;
