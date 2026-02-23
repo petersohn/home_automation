@@ -580,6 +580,62 @@ BOOST_FIXTURE_TEST_CASE(DoubleLogicalNot, Fixture) {
     BOOST_TEST(operation->evaluate() == "1");
 }
 
+BOOST_FIXTURE_TEST_CASE(PrecedenceOfDifferentLogicalOperators, Fixture) {
+    addInterface("itf1", {"0", "0", "0", "0"});
+    operation::Parser2 parser{debug, interfaces, interfaces[0].get()};
+    auto operation = parser.parse("%1 && %2 || %3 && %4");
+    BOOST_REQUIRE(operation != nullptr);
+    interfaces[0]->storedValue = {"0", "0", "0", "0"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"1", "0", "0", "0"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"0", "1", "0", "0"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"1", "1", "0", "0"};
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue = {"0", "0", "1", "0"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"1", "0", "1", "0"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"0", "1", "1", "0"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"1", "1", "1", "0"};
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue = {"0", "0", "0", "1"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"1", "0", "0", "1"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"0", "1", "0", "1"};
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue = {"1", "1", "0", "1"};
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue = {"0", "0", "1", "1"};
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue = {"1", "0", "1", "1"};
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue = {"0", "1", "1", "1"};
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue = {"1", "1", "1", "1"};
+    BOOST_TEST(operation->evaluate() == "1");
+}
+
+BOOST_FIXTURE_TEST_CASE(PrecedenceOfLogicalAndComparisonOperations, Fixture) {
+    addInterface("itf1", {"0", "0"});
+    operation::Parser2 parser{debug, interfaces, interfaces[0].get()};
+    auto operation = parser.parse("%1 < -5 || %1 > 10 || %2 <= -5 || %2 >= 10");
+    BOOST_REQUIRE(operation != nullptr);
+    BOOST_TEST(operation->evaluate() == "0");
+    interfaces[0]->storedValue[0] = "-6";
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue[0] = "11";
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue[0] = "0";
+    interfaces[0]->storedValue[1] = "-5";
+    BOOST_TEST(operation->evaluate() == "1");
+    interfaces[0]->storedValue[1] = "10";
+    BOOST_TEST(operation->evaluate() == "1");
+}
+
 BOOST_FIXTURE_TEST_CASE(ConditionalExpression, Fixture) {
     addInterface("itf1", {""});
     operation::Parser2 parser{debug, interfaces, interfaces[0].get()};
