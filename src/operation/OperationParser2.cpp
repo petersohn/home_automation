@@ -2,11 +2,12 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <functional>
 
+#include "../common/InterfaceConfig.hpp"
 #include "Operations.hpp"
 #include "Translator.hpp"
-#include "common/InterfaceConfig.hpp"
 
 namespace operation {
 
@@ -514,9 +515,11 @@ private:
                 debug << "Syntax error: Bad value number" << std::endl;
                 return nullptr;
             }
-            try {
-                index = std::stoul(data.substr(indexStart, pos - indexStart));
-            } catch (...) {
+            std::string indexStr = data.substr(indexStart, pos - indexStart);
+            char* endPtr;
+            errno = 0;
+            index = std::strtoul(indexStr.c_str(), &endPtr, 10);
+            if (errno != 0 || endPtr != indexStr.c_str() + indexStr.size()) {
                 debug << "Syntax error: Bad value number" << std::endl;
                 return nullptr;
             }
@@ -549,18 +552,20 @@ private:
             return nullptr;
         }
 
-        try {
-            std::size_t index = std::stoul(data.substr(start, pos - start));
-            if (!defaultInterface) {
-                debug << "Error: No default interface" << std::endl;
-                return nullptr;
-            }
-            usedInterfaces.insert(defaultInterface);
-            return std::make_unique<Value>(defaultInterface, index);
-        } catch (...) {
+        std::string indexStr = data.substr(start, pos - start);
+        char* endPtr;
+        errno = 0;
+        std::size_t index = std::strtoul(indexStr.c_str(), &endPtr, 10);
+        if (errno != 0 || endPtr != indexStr.c_str() + indexStr.size()) {
             debug << "Syntax error: Bad value number" << std::endl;
             return nullptr;
         }
+        if (!defaultInterface) {
+            debug << "Error: No default interface" << std::endl;
+            return nullptr;
+        }
+        usedInterfaces.insert(defaultInterface);
+        return std::make_unique<Value>(defaultInterface, index);
     }
 };
 

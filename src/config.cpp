@@ -37,6 +37,7 @@
 #include "common/MqttClient.hpp"
 #include "common/SensorInterface.hpp"
 #include "operation/OperationParser.hpp"
+#include "operation/OperationParser2.hpp"
 #include "tools/collection.hpp"
 
 using namespace ArduinoJson;
@@ -523,13 +524,33 @@ private:
         return result;
     }
 
+    std::pair<
+        std::unique_ptr<operation::Operation>,
+        std::unordered_set<InterfaceConfig*>>
+    parseOperation(
+        const std::vector<std::unique_ptr<InterfaceConfig>>& interfaces,
+        InterfaceConfig* defaultInterface, const ArduinoJson::JsonObject& data,
+        const char* fieldName, const char* templateFieldName) {
+        if (data[fieldName].is<std::string>()) {
+            operation::Parser2 parser{debug, interfaces, defaultInterface};
+            auto operation = parser.parse(data.get<std::string>(fieldName));
+            auto usedInterfaces = std::move(parser).getUsedInterfaces();
+            return {std::move(operation), std::move(usedInterfaces)};
+        } else {
+            operation::Parser parser{interfaces, defaultInterface};
+            auto operation = parser.parse(data, fieldName, templateFieldName);
+            auto usedInterfaces = std::move(parser).getUsedInterfaces();
+            return {std::move(operation), std::move(usedInterfaces)};
+        }
+    }
+
     std::pair<std::unique_ptr<Action>, std::unordered_set<InterfaceConfig*>>
     parseAction(
         JsonObject& data, InterfaceConfig* defaultInterface,
         std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
         auto type = data.get<std::string>("type");
-        operation::Parser operationParser{interfaces, defaultInterface};
         std::unique_ptr<Action> result;
+        std::unordered_set<InterfaceConfig*> usedInterfaces;
         bool InterfaceConfig::* actionType = nullptr;
         if (type == "publish") {
             std::string topic = getMandatoryArgument(data, "topic");
@@ -539,9 +560,11 @@ private:
             if (!data["payload"].success() && !data["template"].success()) {
                 data.set("template", "%1");
             }
+            auto [operation, parsedInterfaces] = parseOperation(
+                interfaces, defaultInterface, data, "payload", "template");
+            usedInterfaces = std::move(parsedInterfaces);
             result = std::make_unique<PublishAction>(
-                debug, esp, mqttClient, topic,
-                operationParser.parse(data, "payload", "template"),
+                debug, esp, mqttClient, topic, std::move(operation),
                 data.get<bool>("retain"),
                 data.get<unsigned>("minimumSendInterval"),
                 data.get<double>("sendDiff"));
@@ -554,15 +577,15 @@ private:
                 return {};
             }
 
+            auto [operation, parsedInterfaces] = parseOperation(
+                interfaces, defaultInterface, data, "command", "template");
+            usedInterfaces = std::move(parsedInterfaces);
             result = std::make_unique<CommandAction>(
-                *target->interface,
-                operationParser.parse(data, "command", "template"));
+                *target->interface, std::move(operation));
             actionType = &InterfaceConfig::hasInternalAction;
         } else {
             debug << "Invalid action type: " + type << std::endl;
         }
-
-        auto usedInterfaces = std::move(operationParser).getUsedInterfaces();
 
         if (actionType != nullptr) {
             defaultInterface->*actionType = true;

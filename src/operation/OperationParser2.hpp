@@ -21,7 +21,7 @@ public:
 
     std::unique_ptr<Operation> parse(const std::string& data);
 
-    std::unordered_set<const InterfaceConfig*>&& getUsedInterfaces() && {
+    std::unordered_set<InterfaceConfig*>&& getUsedInterfaces() && {
         return std::move(usedInterfaces);
     }
 
@@ -29,7 +29,7 @@ private:
     std::ostream& debug;
     std::vector<InterfaceConfig*> interfaces;
     InterfaceConfig* defaultInterface;
-    std::unordered_set<const InterfaceConfig*> usedInterfaces;
+    std::unordered_set<InterfaceConfig*> usedInterfaces;
 };
 
 }  // namespace operation

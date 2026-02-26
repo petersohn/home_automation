@@ -1,6 +1,6 @@
-#include "common/InterfaceConfig.hpp"
+#include "InterfaceConfig.hpp"
 
-#include "common/Interface.hpp"  // IWYU pragma: keep
+#include "Interface.hpp"  // IWYU pragma: keep
 
 InterfaceConfig::InterfaceConfig() = default;
 InterfaceConfig::~InterfaceConfig() {}

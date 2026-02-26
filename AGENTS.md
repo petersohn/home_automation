@@ -18,6 +18,7 @@ This is a generic firmware for ESP8266 using the Arduino API. The behavior is de
 - The C++ version used is C++17.
 - Due to device limitations, only header-only standard libraries can be used for code that is built on the device. For tests, there is no such limitation.
 - The device is 32 bits, but the tests are built for the native architecture, which is usually 64 bits, so common code's correctness should not depend on either.
+- Exceptions are not supported on device code. They can be only used in tests.
 
 ## Building
 

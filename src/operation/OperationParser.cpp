@@ -3,9 +3,9 @@
 #include <functional>
 #include <memory>
 
+#include "../common/InterfaceConfig.hpp"
 #include "Operations.hpp"
 #include "Translator.hpp"
-#include "common/InterfaceConfig.hpp"
 
 using namespace ArduinoJson;
 
