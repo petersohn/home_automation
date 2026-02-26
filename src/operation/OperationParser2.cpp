@@ -73,7 +73,7 @@ public:
         return result;
     }
 
-    std::unordered_set<const InterfaceConfig*>&& getUsedInterfaces() && {
+    std::unordered_set<InterfaceConfig*>&& getUsedInterfaces() && {
         return std::move(usedInterfaces);
     }
 
@@ -81,7 +81,7 @@ private:
     std::ostream& debug;
     const std::vector<InterfaceConfig*>& interfaces;
     InterfaceConfig* const defaultInterface;
-    std::unordered_set<const InterfaceConfig*> usedInterfaces;
+    std::unordered_set<InterfaceConfig*> usedInterfaces;
 
     std::string data;
     size_t pos = 0;
@@ -525,7 +525,7 @@ private:
             }
         }
 
-        const InterfaceConfig* interface = nullptr;
+        InterfaceConfig* interface = nullptr;
         for (const auto& itf : interfaces) {
             if (itf && itf->name == name) {
                 interface = itf;
@@ -587,7 +587,9 @@ Parser2::Parser2(
 
 std::unique_ptr<Operation> Parser2::parse(const std::string& data) {
     Impl parser(debug, interfaces, defaultInterface);
-    return parser.parse(data);
+    auto result = parser.parse(data);
+    this->usedInterfaces = std::move(parser).getUsedInterfaces();
+    return result;
 }
 
 }  // namespace operation

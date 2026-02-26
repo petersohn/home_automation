@@ -708,6 +708,21 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_TEST(operation->evaluate() == "d");
 }
 
+BOOST_FIXTURE_TEST_CASE(UsedInterfaces, Fixture) {
+    addInterface("itf1", {"0"});
+    addInterface("itf2", {"0"});
+    addInterface("itf3", {"0"});
+    operation::Parser2 parser{debug, interfaces, interfaces[0].get()};
+    auto operation = parser.parse("%1 + [itf2].1");
+    BOOST_REQUIRE(operation != nullptr);
+    for (const auto* itf : parser.getUsedInterfaces()) {
+        BOOST_TEST_MESSAGE(itf->name);
+    }
+    std::unordered_set<InterfaceConfig*> expectedUsedInterfaces{
+        interfaces[0].get(), interfaces[1].get()};
+    BOOST_TEST(parser.getUsedInterfaces() == expectedUsedInterfaces);
+}
+
 BOOST_FIXTURE_TEST_CASE(SyntaxErrorEmptyExpression, Fixture) {
     operation::Parser2 parser{debug, interfaces, nullptr};
     auto ex = expectLog("Syntax error:");

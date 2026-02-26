@@ -21,6 +21,9 @@ public:
 
     std::unique_ptr<Operation> parse(const std::string& data);
 
+    const std::unordered_set<InterfaceConfig*>& getUsedInterfaces() const& {
+        return usedInterfaces;
+    }
     std::unordered_set<InterfaceConfig*>&& getUsedInterfaces() && {
         return std::move(usedInterfaces);
     }
