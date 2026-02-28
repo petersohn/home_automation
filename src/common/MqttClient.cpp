@@ -1,9 +1,10 @@
+#include "MqttClient.hpp"
+
 #include <algorithm>
 #include <vector>
 
 #include "../tools/string.hpp"
 #include "Interface.hpp"
-#include "MqttClient.hpp"
 
 using namespace ArduinoJson;
 
@@ -285,8 +286,9 @@ void MqttClient::sendStatusMessage(bool restarted) {
     if (config.topics.availabilityTopic.length() != 0) {
         debug << "Sending availability message to topic "
               << config.topics.availabilityTopic << std::endl;
-        if (connection.publish(MqttConnection::Message{
-                config.topics.availabilityTopic.c_str(), "1", 1, true})) {
+        if (connection.publish(
+                MqttConnection::Message{
+                    config.topics.availabilityTopic.c_str(), "1", 1, true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;
@@ -298,9 +300,10 @@ void MqttClient::sendStatusMessage(bool restarted) {
               << std::endl;
         const char* message = getStatusMessage(restarted);
         debug << message << std::endl;
-        if (connection.publish(MqttConnection::Message{
-                config.topics.statusTopic.c_str(), message, 0 /*not used*/,
-                true})) {
+        if (connection.publish(
+                MqttConnection::Message{
+                    config.topics.statusTopic.c_str(), message, 0 /*not used*/,
+                    true})) {
             debug << "Success." << std::endl;
         } else {
             debug << "Failure." << std::endl;
@@ -356,9 +359,13 @@ void MqttClient::connectedLoop() {}
 void MqttClient::subscribe(
     const char* topic,
     std::function<void(const MqttConnection::Message&)> callback) {
-    subscriptions.emplace_back(topic, callback);
+    debug << "Subscribing to " << topic << std::endl;
     if (connection.isConnected()) {
         connection.subscribe(topic);
+        subscriptions.emplace_back(topic, callback);
+        debug << "Subscription successful." << std::endl;
+    } else {
+        debug << "Cannot subscribe, not connected." << std::endl;
     }
 }
 

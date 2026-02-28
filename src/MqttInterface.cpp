@@ -1,4 +1,5 @@
 #include "MqttInterface.hpp"
+
 #include "common/MqttClient.hpp"
 
 MqttInterface::~MqttInterface() {
@@ -8,7 +9,7 @@ MqttInterface::~MqttInterface() {
 void MqttInterface::start() {
     mqttClient.subscribe(
         topic.c_str(), [this](const MqttConnection::Message& message) {
-        std::string payload(message.payload, message.payloadLength);  // FIXME
+        std::string payload(message.payload, message.payloadLength);
         onMessage(payload);
     });
 }
