@@ -12,7 +12,10 @@ SensorInterface::SensorInterface(
     , pulse(std::move(pulse)) {}
 
 void SensorInterface::start() {
+    // When connected to the network, all sensors make a measurement.
+    // Afterwards, measurements are shifted by offset.
     const auto now = this->esp.millis();
+    // TODO: this is not really good if we have an offset
     if (now > static_cast<unsigned long>(this->offset)) {
         this->nextExecution = now - this->offset;
     } else {

@@ -33,6 +33,8 @@ cmake
 make -j <cpu_count>
 ```
 
+**Important:** after every change, build the project and run the tests.
+
 ## Testing
 
 Testing uses the Boost test framework. To run the tests, run:

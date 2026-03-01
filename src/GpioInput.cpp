@@ -46,13 +46,13 @@ int encodeState(const State& state) {
 GpioInput::GpioInput(
     std::ostream& debug, uint8_t pin, CycleType cycleType, unsigned interval)
     : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
-    this->pinMode(this->pin, INPUT);
-    this->lastChanged = this->millis();
-    bool currentState = this->digitalRead(this->pin);
+    pinMode(this->pin, INPUT);
+    this->lastChanged = millis();
+    bool currentState = digitalRead(this->pin);
     this->state = encodeState({currentState, currentState});
     this->debug << "starting value=" << currentState << " state=" << this->state
                 << std::endl;
-    this->attachInterruptArg(this->pin, onChangeStatic, this, CHANGE);
+    attachInterruptArg(this->pin, onChangeStatic, this, CHANGE);
 }
 
 void GpioInput::start() {
@@ -91,46 +91,42 @@ void GpioInput::update(Actions action) {
     {
         ETS_GPIO_INTR_DISABLE();
         auto now = millis();
-        State decodedState = decodeState(this->state);
+        currentState = decodeState(state);
         currentCycles = this->cycles;
-        lastState = decodedState.saved;
+        lastState = currentState.saved;
         if (now - this->lastChanged > this->interval) {
-            decodedState.saved = decodedState.real;
+            currentState.saved = currentState.real;
         }
         this->cycles = 0;
-        this->state = encodeState(decodedState);
+        this->state = encodeState(currentState);
         ETS_GPIO_INTR_ENABLE();
     }
-    this->cycles = 0;
-    this->state = encodeState(decodedState);
-    ETS_GPIO_INTR_ENABLE();
-}
-
-switch (this->cycleType) {
-case CycleType::none:
-    currentCycles = 0;
-    break;
-case CycleType::single:
-    if (currentCycles > 0) {
-        if (currentState.saved == lastState) {
-            currentCycles = 1;
-        } else {
-            currentCycles = 0;
+    switch (this->cycleType) {
+    case CycleType::none:
+        currentCycles = 0;
+        break;
+    case CycleType::single:
+        if (currentCycles > 0) {
+            if (currentState.saved == lastState) {
+                currentCycles = 1;
+            } else {
+                currentCycles = 0;
+            }
         }
+        break;
+    default:
+        break;
     }
-    break;
-default:
-    break;
-}
 
-for (int i = 0; i < currentCycles; ++i) {
-    action.fire({tools::intToString(!lastState)});
-    action.fire({tools::intToString(lastState)});
-}
+    for (int i = 0; i < currentCycles; ++i) {
+        action.fire({tools::intToString(!lastState)});
+        action.fire({tools::intToString(lastState)});
+    }
 
-if ((this->startup && currentCycles == 0) || currentState.saved != lastState) {
-    action.fire({tools::intToString(currentState.saved)});
-}
+    if ((this->startup && currentCycles == 0) ||
+        currentState.saved != lastState) {
+        action.fire({tools::intToString(currentState.saved)});
+    }
 
-this->startup = false;
+    this->startup = false;
 }
