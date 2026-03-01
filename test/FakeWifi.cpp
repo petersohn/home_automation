@@ -4,13 +4,13 @@ void FakeWifi::begin(
     const std::string& /*ssid*/, const std::string& /*password*/) {}
 
 WifiStatus FakeWifi::getStatus() {
-    return status;
+    return this->status;
 }
 
 std::string FakeWifi::getIp() {
-    return ip;
+    return this->ip;
 }
 
 std::string FakeWifi::getMac() {
-    return mac;
+    return this->mac;
 }

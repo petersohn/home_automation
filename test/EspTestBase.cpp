@@ -2,18 +2,18 @@
 
 #include "LogExpectation.hpp"
 
-EspTestBase::EspTestBase() : debug(&debugStreambuf) {
-    debugStreambuf.esp = &esp;
+EspTestBase::EspTestBase() : debug(&this->debugStreambuf) {
+    this->debugStreambuf.esp = &this->esp;
 }
 
 EspTestBase::~EspTestBase() {
-    debugStreambuf.esp = nullptr;
+    this->debugStreambuf.esp = nullptr;
 }
 
 void EspTestBase::delayUntil(
     unsigned long time, unsigned long delay, std::function<void()> func) {
-    while (esp.millis() < time) {
-        esp.delay(std::min(delay, time - esp.millis()));
+    while (this->esp.millis() < time) {
+        this->esp.delay(std::min(delay, time - this->esp.millis()));
         func();
     }
 }
@@ -21,6 +21,6 @@ void EspTestBase::delayUntil(
 std::shared_ptr<LogExpectation> EspTestBase::expectLog(
     std::string log, size_t count) {
     auto expectation = std::make_shared<LogExpectation>(log, count);
-    debugStreambuf.addExpectation(expectation);
+    this->debugStreambuf.addExpectation(expectation);
     return expectation;
 }

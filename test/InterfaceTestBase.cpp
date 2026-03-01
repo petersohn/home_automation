@@ -1,19 +1,20 @@
 #include "InterfaceTestBase.hpp"
+
 #include "boost/test/unit_test.hpp"
 #include "common/Interface.hpp"
 
 void InterfaceTestBase::initInterface(
     std::string name, std::unique_ptr<Interface>&& iface) {
-    interface.name = std::move(name);
-    interface.interface = std::move(iface);
-    interface.interface->start();
+    this->interface.name = std::move(name);
+    this->interface.interface = std::move(iface);
+    this->interface.interface->start();
 }
 
 void InterfaceTestBase::updateInterface() {
-    interface.interface->update(actions);
+    this->interface.interface->update(this->actions);
 }
 
 std::string InterfaceTestBase::getValue(size_t index) {
-    BOOST_REQUIRE(index < interface.storedValue.size());
-    return interface.storedValue[index];
+    BOOST_REQUIRE(index < this->interface.storedValue.size());
+    return this->interface.storedValue[index];
 }

@@ -44,10 +44,10 @@ public:
     void init(
         double max, double offset, int precision, unsigned aggregateTime,
         double cutoff) {
-        sensor = std::make_unique<AnalogSensor>(
-            esp, debug, AnalogInputWithChannel(input, 0), max, offset, cutoff,
-            precision, aggregateTime);
-        esp.delay(10);
+        this->sensor = std::make_unique<AnalogSensor>(
+            this->esp, this->debug, AnalogInputWithChannel(this->input, 0), max,
+            offset, cutoff, precision, aggregateTime);
+        this->esp.delay(10);
     }
 
     std::optional<std::vector<std::string>> none() { return std::nullopt; }
@@ -64,75 +64,75 @@ public:
 };
 
 BOOST_FIXTURE_TEST_CASE(Basic, Fixture) {
-    init(0.0, 0.0, 0, 0, 0.0);
-    input->values = {12};
-    BOOST_TEST(sensor->measure() == expected("12"));
-    input->values = {232};
-    BOOST_TEST(sensor->measure() == expected("232"));
+    this->init(0.0, 0.0, 0, 0, 0.0);
+    this->input->values = {12};
+    BOOST_TEST(this->sensor->measure() == this->expected("12"));
+    this->input->values = {232};
+    BOOST_TEST(this->sensor->measure() == this->expected("232"));
 }
 
 BOOST_FIXTURE_TEST_CASE(Divide, Fixture) {
-    init(16.0, 0.0, 2, 0, 0.0);
-    input->values = {1024};
-    BOOST_TEST(sensor->measure() == expected("16"));
-    input->values = {512};
-    BOOST_TEST(sensor->measure() == expected("8"));
-    input->values = {0};
-    BOOST_TEST(sensor->measure() == expected("0"));
-    input->values = {32};
-    BOOST_TEST(sensor->measure() == expected("0.5"));
+    this->init(16.0, 0.0, 2, 0, 0.0);
+    this->input->values = {1024};
+    BOOST_TEST(this->sensor->measure() == this->expected("16"));
+    this->input->values = {512};
+    BOOST_TEST(this->sensor->measure() == this->expected("8"));
+    this->input->values = {0};
+    BOOST_TEST(this->sensor->measure() == this->expected("0"));
+    this->input->values = {32};
+    BOOST_TEST(this->sensor->measure() == this->expected("0.5"));
 }
 
 BOOST_FIXTURE_TEST_CASE(Offset, Fixture) {
-    init(16.0, 8.0, 2, 0, 0.0);
-    input->values = {1024};
-    BOOST_TEST(sensor->measure() == expected("8"));
-    input->values = {512};
-    BOOST_TEST(sensor->measure() == expected("0"));
-    input->values = {0};
-    BOOST_TEST(sensor->measure() == expected("-8"));
-    input->values = {544};
-    BOOST_TEST(sensor->measure() == expected("0.5"));
-    input->values = {480};
-    BOOST_TEST(sensor->measure() == expected("-0.5"));
+    this->init(16.0, 8.0, 2, 0, 0.0);
+    this->input->values = {1024};
+    BOOST_TEST(this->sensor->measure() == this->expected("8"));
+    this->input->values = {512};
+    BOOST_TEST(this->sensor->measure() == this->expected("0"));
+    this->input->values = {0};
+    BOOST_TEST(this->sensor->measure() == this->expected("-8"));
+    this->input->values = {544};
+    BOOST_TEST(this->sensor->measure() == this->expected("0.5"));
+    this->input->values = {480};
+    BOOST_TEST(this->sensor->measure() == this->expected("-0.5"));
 }
 
 BOOST_FIXTURE_TEST_CASE(Cutoff, Fixture) {
-    init(16.0, 8.0, 2, 0, 1.0);
-    input->values = {1024};
-    BOOST_TEST(sensor->measure() == expected("8"));
-    input->values = {512};
-    BOOST_TEST(sensor->measure() == expected("0"));
-    input->values = {0};
-    BOOST_TEST(sensor->measure() == expected("-8"));
-    input->values = {449};
-    BOOST_TEST(sensor->measure() == expected("0"));
-    input->values = {448};
-    BOOST_TEST(sensor->measure() == expected("-1"));
-    input->values = {575};
-    BOOST_TEST(sensor->measure() == expected("0"));
-    input->values = {576};
-    BOOST_TEST(sensor->measure() == expected("1"));
+    this->init(16.0, 8.0, 2, 0, 1.0);
+    this->input->values = {1024};
+    BOOST_TEST(this->sensor->measure() == this->expected("8"));
+    this->input->values = {512};
+    BOOST_TEST(this->sensor->measure() == this->expected("0"));
+    this->input->values = {0};
+    BOOST_TEST(this->sensor->measure() == this->expected("-8"));
+    this->input->values = {449};
+    BOOST_TEST(this->sensor->measure() == this->expected("0"));
+    this->input->values = {448};
+    BOOST_TEST(this->sensor->measure() == this->expected("-1"));
+    this->input->values = {575};
+    BOOST_TEST(this->sensor->measure() == this->expected("0"));
+    this->input->values = {576};
+    BOOST_TEST(this->sensor->measure() == this->expected("1"));
 }
 
 BOOST_FIXTURE_TEST_CASE(AggregateSameValue, Fixture) {
-    init(0, 0, 2, 10, 0.0);
+    this->init(0, 0, 2, 10, 0.0);
 
-    input->values = {123};
+    this->input->values = {123};
     for (std::size_t i = 0; i < 10; ++i) {
-        BOOST_TEST(sensor->measure() == none());
-        esp.delay(1);
+        BOOST_TEST(this->sensor->measure() == this->none());
+        this->esp.delay(1);
     }
-    BOOST_TEST(sensor->measure() == expected2("123", "123"));
+    BOOST_TEST(this->sensor->measure() == this->expected2("123", "123"));
 
-    esp.delay(10);
+    this->esp.delay(10);
 
-    input->values = {54};
+    this->input->values = {54};
     for (std::size_t i = 0; i < 5; ++i) {
-        BOOST_TEST(sensor->measure() == none());
-        esp.delay(2);
+        BOOST_TEST(this->sensor->measure() == this->none());
+        this->esp.delay(2);
     }
-    BOOST_TEST(sensor->measure() == expected2("54", "54"));
+    BOOST_TEST(this->sensor->measure() == this->expected2("54", "54"));
 }
 
 namespace {
@@ -140,19 +140,19 @@ const auto delays = boost::unit_test::data::make({1, 2});
 }
 
 BOOST_DATA_TEST_CASE_F(Fixture, Aggregate50HzSine, delays, delay) {
-    init(0, 0, 0, 20, 0.0);
+    this->init(0, 0, 0, 20, 0.0);
 
     const double pi = std::acos(-1);
     const double effective = 10000.0;
     const double peak = effective * std::sqrt(2);
 
     for (std::size_t i = 0; i < 20; i += delay) {
-        input->values = {
+        this->input->values = {
             std::abs(static_cast<int>(peak * std::sin(i * pi / 10.0)))};
-        BOOST_TEST(sensor->measure() == none());
-        esp.delay(delay);
+        BOOST_TEST(this->sensor->measure() == this->none());
+        this->esp.delay(delay);
     }
-    auto result = sensor->measure();
+    auto result = this->sensor->measure();
     BOOST_REQUIRE(result);
     BOOST_REQUIRE(result->size() == 2);
     auto avg = std::stoi((*result)[0]);
@@ -171,17 +171,17 @@ BOOST_DATA_TEST_CASE_F(Fixture, Aggregate50HzSineWithScaling, delays, delay) {
     const double effective = realPeakOut / std::sqrt(2);
     const double pi = std::acos(-1);
 
-    init(peakOut, peakOut / 2.0, 0, 20, 0.0);
+    this->init(peakOut, peakOut / 2.0, 0, 20, 0.0);
 
-    input->maxValue = peakIn;
+    this->input->maxValue = peakIn;
 
     for (std::size_t i = 0; i < 20; i += delay) {
-        input->values = {std::abs(
+        this->input->values = {std::abs(
             static_cast<int>(peakIn / 2.0 * (std::sin(i * pi / 10.0) + 1)))};
-        BOOST_TEST(sensor->measure() == none());
-        esp.delay(delay);
+        BOOST_TEST(this->sensor->measure() == this->none());
+        this->esp.delay(delay);
     }
-    auto result = sensor->measure();
+    auto result = this->sensor->measure();
     BOOST_REQUIRE(result);
     BOOST_REQUIRE(result->size() == 2);
     auto avg = std::stoi((*result)[0]);

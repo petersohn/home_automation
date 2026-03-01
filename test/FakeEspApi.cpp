@@ -6,35 +6,35 @@ void FakeEspApi::pinMode(uint8_t /* pin */, GpioMode /* mode */) {}
 
 void FakeEspApi::digitalWrite(uint8_t pin, uint8_t val) {
     const bool value = val != 0;
-    if (value != pinValues[pin]) {
+    if (value != this->pinValues[pin]) {
         BOOST_TEST_MESSAGE(
             "Pin " << static_cast<int>(pin)
                    << " value=" << static_cast<int>(val));
-        pinValues[pin] = value;
+        this->pinValues[pin] = value;
     }
 }
 
 int FakeEspApi::digitalRead(uint8_t pin) {
-    auto it = pinValues.find(pin);
-    return it != pinValues.end() ? it->second : 0;
+    auto it = this->pinValues.find(pin);
+    return it != this->pinValues.end() ? it->second : 0;
 }
 
 unsigned long FakeEspApi::millis() {
-    return time;
+    return this->time;
 }
 
 unsigned long FakeEspApi::micros() {
-    return time * 1000;
+    return this->time * 1000;
 }
 
 void FakeEspApi::delay(unsigned long ms) {
-    time += ms;
+    this->time += ms;
 }
 
 void FakeEspApi::restart(bool /*hard*/) {
     BOOST_TEST_MESSAGE("REBOOT");
-    restarted = true;
-    time = 0;
+    this->restarted = true;
+    this->time = 0;
 }
 
 uint32_t FakeEspApi::getFreeHeap() {

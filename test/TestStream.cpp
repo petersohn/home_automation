@@ -10,17 +10,17 @@ int TestStreambuf::sync() {
     if (s.back() == '\n') {
         s.resize(s.size() - 1);
     }
-    if (esp) {
-        BOOST_TEST_MESSAGE(esp->millis() << " " << s);
+    if (this->esp) {
+        BOOST_TEST_MESSAGE(this->esp->millis() << " " << s);
     } else {
         BOOST_TEST_MESSAGE(s);
     }
-    expectations.erase(
+    this->expectations.erase(
         std::remove_if(
-            expectations.begin(), expectations.end(),
+            this->expectations.begin(), this->expectations.end(),
             [](const auto& p) { return p.expired(); }),
-        expectations.end());
-    for (auto& exp : expectations) {
+        this->expectations.end());
+    for (auto& exp : this->expectations) {
         exp.lock()->addLog(s);
     }
     this->str("");
@@ -29,5 +29,5 @@ int TestStreambuf::sync() {
 
 void TestStreambuf::addExpectation(
     std::shared_ptr<LogExpectation> expectation) {
-    expectations.push_back(std::move(expectation));
+    this->expectations.push_back(std::move(expectation));
 }

@@ -37,14 +37,14 @@ struct Fixture {
     std::unique_ptr<operation::Operation> parse(
         const std::string& json, const char* fieldName = "result",
         const char* templateName = "template") {
-        auto& content = buffer.parseObject(json);
-        return parser.parse(content, fieldName, templateName);
+        auto& content = this->buffer.parseObject(json);
+        return this->parser.parse(content, fieldName, templateName);
     }
 
     DynamicJsonBuffer buffer{512};
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces =
         createInterfaces();
-    operation::Parser parser{interfaces, interfaces[1].get()};
+    operation::Parser parser{this->interfaces, this->interfaces[1].get()};
 };
 
 BOOST_FIXTURE_TEST_CASE(ParseConstantString, Fixture) {
