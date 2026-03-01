@@ -13,7 +13,8 @@ public:
         Interface& target, std::unique_ptr<operation::Operation>&& command)
         : target(target), command(std::move(command)) {}
 
-    void fire(const InterfaceConfig& interface);
+    void fire(const InterfaceConfig& interface) override;
+    void reset() override;
 
 private:
     Interface& target;

@@ -31,6 +31,7 @@ private:
     unsigned long nextRetry = 0;
     std::vector<std::string> pulse;
     bool pulseSent = true;
+    bool needToReset = false;
 };
 
 #endif  // SENSORINTERFACE_HPP

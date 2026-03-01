@@ -16,7 +16,8 @@ public:
         std::unique_ptr<operation::Operation>&& operation, bool retain,
         unsigned minimumSendInterval, double sendDiff);
 
-    void fire(const InterfaceConfig& interface);
+    void fire(const InterfaceConfig& interface) override;
+    void reset() override;
 
 private:
     std::ostream& debug;

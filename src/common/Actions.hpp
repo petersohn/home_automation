@@ -7,15 +7,8 @@ class Actions {
 public:
     Actions(InterfaceConfig& interface) : interface(interface) {}
 
-    void fire(const std::vector<std::string>& values) {
-        interface.storedValue = values;
-        if (values.empty()) {
-            return;
-        }
-        for (const auto& action : interface.actions) {
-            action->fire(interface);
-        }
-    }
+    void fire(const std::vector<std::string>& values);
+    void reset();
 
 private:
     InterfaceConfig& interface;

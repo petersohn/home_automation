@@ -17,6 +17,10 @@ PublishAction::PublishAction(
     , sendDiff(sendDiff)
     , lastSend(0) {}
 
+void PublishAction::reset() {
+    lastSend = 0;
+}
+
 void PublishAction::fire(const InterfaceConfig& /*interface*/) {
     auto now = esp.millis();
     std::string value;

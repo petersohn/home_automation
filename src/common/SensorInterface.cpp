@@ -21,6 +21,7 @@ void SensorInterface::start() {
     } else {
         nextExecution = 1;
     }
+    needToReset = true;
 }
 
 void SensorInterface::execute(const std::string& /*command*/) {}
@@ -47,6 +48,12 @@ void SensorInterface::update(Actions action) {
             }
             debug << std::endl;
             nextRetry = 0;
+
+            if (needToReset) {
+                action.reset();
+                needToReset = false;
+            }
+
             action.fire(*values);
             pulseSent = false;
         }
