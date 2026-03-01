@@ -1,17 +1,17 @@
 #include "Actions.hpp"
 
 void Actions::fire(const std::vector<std::string>& values) {
-    interface.storedValue = values;
+    this->interface.storedValue = values;
     if (values.empty()) {
         return;
     }
-    for (const auto& action : interface.actions) {
-        action->fire(interface);
+    for (const auto& action : this->interface.actions) {
+        action->fire(this->interface);
     }
 }
 
 void Actions::reset() {
-    for (const auto& action : interface.actions) {
+    for (const auto& action : this->interface.actions) {
         action->reset();
     }
 }

@@ -56,6 +56,7 @@ Note that this is not formatted in the style of a `compile_commands.json`, but i
 # Coding conventions
 
 - When modifying a source file, format it using `clang-format`.
+- Instance members should always be prefixed with `this->`.
 
 ## Coding considerations
 

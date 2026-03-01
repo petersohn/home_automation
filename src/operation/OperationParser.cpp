@@ -36,13 +36,14 @@ std::unique_ptr<Operation> Parser::parse(
     const char* templateFieldName) {
     std::string template_ =
         templateFieldName ? data.get<std::string>(templateFieldName) : "";
-    auto operation = template_.length() != 0 ? std::make_unique<Template>(
-                                                   defaultInterface, template_)
-                                             : doParse(data[fieldName]);
+    auto operation =
+        template_.length() != 0
+            ? std::make_unique<Template>(this->defaultInterface, template_)
+            : doParse(data[fieldName]);
     std::string value = data["value"];
     if (!value.empty()) {
         std::vector<std::unique_ptr<Operation>> operands;
-        operands.push_back(std::make_unique<Value>(defaultInterface, 1));
+        operands.push_back(std::make_unique<Value>(this->defaultInterface, 1));
         operands.push_back(std::make_unique<Constant>(value));
         return std::make_unique<Conditional>(
             std::make_unique<
@@ -64,11 +65,11 @@ std::unique_ptr<Operation> Parser::doParse(const JsonVariant& data) {
         auto name = object.get<std::string>("interface");
         auto template_ = object.get<std::string>("template");
         auto interface = name.empty() ? this->defaultInterface
-                                      : findInterface(interfaces, name);
+                                      : findInterface(this->interfaces, name);
         if (!interface) {
             return getEmptyOperation();
         }
-        usedInterfaces.insert(interface);
+        this->usedInterfaces.insert(interface);
         if (template_.length() != 0) {
             return std::make_unique<Template>(interface, template_);
         } else {

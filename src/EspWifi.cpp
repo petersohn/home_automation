@@ -1,8 +1,9 @@
+#include "EspWifi.hpp"
+
 #include <ESP8266WiFi.h>
 
 #include <cstring>
 
-#include "EspWifi.hpp"
 #include "tools/string.hpp"
 
 extern "C" {

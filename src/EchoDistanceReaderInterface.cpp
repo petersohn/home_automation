@@ -1,6 +1,7 @@
+#include "EchoDistanceReaderInterface.hpp"
+
 #include <Arduino.h>
 
-#include "EchoDistanceReaderInterface.hpp"
 #include "tools/string.hpp"
 
 extern "C" {
@@ -23,45 +24,45 @@ void EchoDistanceReaderInterface::execute(const std::string& /*command*/) {}
 
 void EchoDistanceReaderInterface::update(Actions action) {
     auto now = micros();
-    if (now < riseTime) {
-        debug << "Microseconds overflow." << std::endl;
+    if (now < this->riseTime) {
+        this->debug << "Microseconds overflow." << std::endl;
         reset();
         return;
     }
 
-    if (riseTime == 0) {
+    if (this->riseTime == 0) {
         return;
     }
 
-    if (fallTime == 0) {
-        if (now > riseTime + timeout) {
-            debug << "Measurement timeout." << std::endl;
+    if (this->fallTime == 0) {
+        if (now > this->riseTime + timeout) {
+            this->debug << "Measurement timeout." << std::endl;
             reset();
         }
         return;
     }
 
-    double distance = (fallTime - riseTime) * speedOfSound / 2.0;
+    double distance = (this->fallTime - this->riseTime) * speedOfSound / 2.0;
     action.fire(std::vector<std::string>{tools::floatToString(distance, 3)});
     reset();
 }
 
 void EchoDistanceReaderInterface::reset() {
-    riseTime = 0;
-    fallTime = 0;
+    this->riseTime = 0;
+    this->fallTime = 0;
 }
 
 void IRAM_ATTR EchoDistanceReaderInterface::onChange() {
     auto now = micros();
-    auto value = esp.digitalRead(echoPin);
+    auto value = this->esp.digitalRead(this->echoPin);
 
     if (value) {
-        if (riseTime == 0) {
-            riseTime = now;
+        if (this->riseTime == 0) {
+            this->riseTime = now;
         }
     } else {
-        if (riseTime != 0 && fallTime == 0) {
-            fallTime = now;
+        if (this->riseTime != 0 && this->fallTime == 0) {
+            this->fallTime = now;
         }
     }
 }

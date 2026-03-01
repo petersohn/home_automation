@@ -12,11 +12,11 @@ constexpr int rtcValueMask = 1;
 }  // unnamed namespace
 
 void GpioOutput::start() {
-    changed = true;
+    this->changed = true;
 }
 
 bool GpioOutput::getOutput() {
-    return invert ? !value : value;
+    return this->invert ? !this->value : this->value;
 }
 
 GpioOutput::GpioOutput(
@@ -28,31 +28,31 @@ GpioOutput::GpioOutput(
     , pin(pin)
     , rtcId(rtc.next())
     , invert(invert) {
-    esp.pinMode(pin, GpioMode::output);
-    Rtc::Data rtcData = rtc.get(rtcId);
-    debug << "Pin " << static_cast<int>(pin) << ": ";
+    this->esp.pinMode(this->pin, GpioMode::output);
+    Rtc::Data rtcData = this->rtc.get(this->rtcId);
+    this->debug << "Pin " << static_cast<int>(this->pin) << ": ";
     if ((rtcData & rtcSetMask) == 0) {
-        value = defaultValue;
-        debug << "default value ";
+        this->value = defaultValue;
+        this->debug << "default value ";
     } else {
-        value = rtcData & rtcValueMask;
-        debug << "from RTC ";
+        this->value = rtcData & rtcValueMask;
+        this->debug << "from RTC ";
     }
-    debug << std::endl;
+    this->debug << std::endl;
     setValue();
 }
 
 void GpioOutput::execute(const std::string& command) {
-    bool newValue = value;
-    debug << "Pin " << static_cast<int>(pin)
-          << " executing command: " << command << std::endl;
+    bool newValue = this->value;
+    this->debug << "Pin " << static_cast<int>(this->pin)
+                << " executing command: " << command << std::endl;
 
     std::size_t position = 0;
     std::string commandName = tools::nextToken(command, ' ', position);
 
     if (commandName == "toggle") {
-        if (nextBlink != 0) {
-            debug << "Cannot toggle while blinking." << std::endl;
+        if (this->nextBlink != 0) {
+            this->debug << "Cannot toggle while blinking." << std::endl;
         } else {
             toggle();
         }
@@ -60,67 +60,70 @@ void GpioOutput::execute(const std::string& command) {
     }
 
     if (commandName == "blink") {
-        blinkOn = std::atoi(tools::nextToken(command, ' ', position).c_str());
-        blinkOff = std::atoi(tools::nextToken(command, ' ', position).c_str());
-        if (blinkOn == 0 || blinkOff == 0) {
+        this->blinkOn =
+            std::atoi(tools::nextToken(command, ' ', position).c_str());
+        this->blinkOff =
+            std::atoi(tools::nextToken(command, ' ', position).c_str());
+        if (this->blinkOn == 0 || this->blinkOff == 0) {
             clearBlink();
         } else {
-            nextBlink = esp.millis();
+            this->nextBlink = this->esp.millis();
         }
         return;
     }
 
     if (!tools::getBoolValue(
             commandName.c_str(), newValue, commandName.size())) {
-        debug << "Invalid command." << std::endl;
+        this->debug << "Invalid command." << std::endl;
         return;
     }
 
     clearBlink();
 
-    if (value != newValue) {
+    if (this->value != newValue) {
         toggle();
     }
 }
 
 void GpioOutput::update(Actions action) {
-    if (nextBlink != 0 && nextBlink <= esp.millis()) {
+    if (this->nextBlink != 0 && this->nextBlink <= this->esp.millis()) {
         toggle();
-        nextBlink += value ? blinkOn : blinkOff;
+        this->nextBlink += this->value ? this->blinkOn : this->blinkOff;
     }
 
-    if (changed) {
-        bool localValue = esp.digitalRead(pin);
+    if (this->changed) {
+        bool localValue = this->esp.digitalRead(this->pin);
         action.fire(
-            {tools::intToString(invert ? !localValue : localValue),
-             tools::intToString(blinkOn), tools::intToString(blinkOff)});
-        changed = false;
+            {tools::intToString(this->invert ? !localValue : localValue),
+             tools::intToString(this->blinkOn),
+             tools::intToString(this->blinkOff)});
+        this->changed = false;
     }
 }
 
 void GpioOutput::toggle() {
-    value = !value;
+    this->value = !this->value;
     setValue();
-    changed = true;
+    this->changed = true;
 }
 
 void GpioOutput::clearBlink() {
-    if (nextBlink != 0) {
-        nextBlink = 0;
-        blinkOn = 0;
-        blinkOff = 0;
-        changed = true;
+    if (this->nextBlink != 0) {
+        this->nextBlink = 0;
+        this->blinkOn = 0;
+        this->blinkOff = 0;
+        this->changed = true;
     }
 }
 
 void GpioOutput::setValue() {
     bool output = getOutput();
-    debug << "Pin " << static_cast<int>(pin) << ": value=" << output
-          << std::endl;
-    esp.digitalWrite(pin, output);
+    this->debug << "Pin " << static_cast<int>(this->pin) << ": value=" << output
+                << std::endl;
+    this->esp.digitalWrite(this->pin, output);
     Rtc::Data rtcData = rtcSetMask;
-    if (value) {
+    if (this->value) {
         rtcData |= rtcValueMask;
     }
-    rtc.set(rtcId, rtcData);
+    this->rtc.set(this->rtcId, rtcData);
 }

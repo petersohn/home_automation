@@ -13,15 +13,15 @@ void KeepaliveInterface::start() {
 void KeepaliveInterface::execute(const std::string& /*command*/) {}
 
 void KeepaliveInterface::update(Actions /*action*/) {
-    if (esp.millis() > this->nextReset) {
+    if (this->esp.millis() > this->nextReset) {
         this->reset();
     }
 }
 
 void KeepaliveInterface::reset() {
-    esp.pinMode(this->pin, GpioMode::output);
-    esp.digitalWrite(this->pin, 0);
-    esp.delay(this->resetInterval);
-    esp.pinMode(this->pin, GpioMode::input);
-    this->nextReset = esp.millis() + this->interval;
+    this->esp.pinMode(this->pin, GpioMode::output);
+    this->esp.digitalWrite(this->pin, 0);
+    this->esp.delay(this->resetInterval);
+    this->esp.pinMode(this->pin, GpioMode::input);
+    this->nextReset = this->esp.millis() + this->interval;
 }

@@ -8,22 +8,22 @@ DallasTemperatureSensor::DallasTemperatureSensor(
     , oneWire(pin)
     , sensors(&oneWire)
     , expectedNumberOfDevices(expectedNumberOfDevices) {
-    initialize();
+    this->initialize();
 }
 
 std::optional<std::vector<std::string>> DallasTemperatureSensor::measure() {
-    if (!initialized) {
-        if (!initialize()) {
+    if (!this->initialized) {
+        if (!this->initialize()) {
             return {};
         }
     }
-    sensors.requestTemperatures();
+    this->sensors.requestTemperatures();
     std::vector<std::string> result;
-    for (const auto& address : addresses) {
-        float temperature = sensors.getTempC(address.data());
+    for (const auto& address : this->addresses) {
+        float temperature = this->sensors.getTempC(address.data());
         if (temperature == DEVICE_DISCONNECTED_C) {
-            debug << "Failed to read temperature." << std::endl;
-            initialized = false;
+            this->debug << "Failed to read temperature." << std::endl;
+            this->initialized = false;
             return std::vector<std::string>{};
         }
         auto value = tools::floatToString(temperature, 1);
@@ -33,22 +33,22 @@ std::optional<std::vector<std::string>> DallasTemperatureSensor::measure() {
 }
 
 bool DallasTemperatureSensor::initialize() {
-    sensors.begin();
-    int count = sensors.getDeviceCount();
-    debug << "Number of devices: " << count
-          << ", expected: " << expectedNumberOfDevices << std::endl;
-    addresses.clear();
-    addresses.reserve(count);
+    this->sensors.begin();
+    int count = this->sensors.getDeviceCount();
+    this->debug << "Number of devices: " << count
+                << ", expected: " << this->expectedNumberOfDevices << std::endl;
+    this->addresses.clear();
+    this->addresses.reserve(count);
     for (int i = 0; i < count; ++i) {
-        addresses.emplace_back();
-        if (!sensors.getAddress(addresses.back().data(), i)) {
-            addresses.pop_back();
-            debug << "Failed to initialize temperature sensor at index " << i
-                  << std::endl;
+        this->addresses.emplace_back();
+        if (!this->sensors.getAddress(this->addresses.back().data(), i)) {
+            this->addresses.pop_back();
+            this->debug << "Failed to initialize temperature sensor at index "
+                        << i << std::endl;
             continue;
         }
-        sensors.setResolution(addresses.back().data(), 9);
+        this->sensors.setResolution(this->addresses.back().data(), 9);
     }
-    initialized = addresses.size() == expectedNumberOfDevices;
-    return initialized;
+    this->initialized = this->addresses.size() == this->expectedNumberOfDevices;
+    return this->initialized;
 }

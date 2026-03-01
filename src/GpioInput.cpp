@@ -1,6 +1,7 @@
+#include "GpioInput.hpp"
+
 #include <Arduino.h>
 
-#include "GpioInput.hpp"
 #include "tools/string.hpp"
 
 extern "C" {
@@ -45,17 +46,17 @@ int encodeState(const State& state) {
 GpioInput::GpioInput(
     std::ostream& debug, uint8_t pin, CycleType cycleType, unsigned interval)
     : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
-    pinMode(pin, INPUT);
-    lastChanged = millis();
-    bool currentState = digitalRead(pin);
-    state = encodeState({currentState, currentState});
-    debug << "starting value=" << currentState << " state=" << state
-          << std::endl;
-    attachInterruptArg(pin, onChangeStatic, this, CHANGE);
+    this->pinMode(this->pin, INPUT);
+    this->lastChanged = this->millis();
+    bool currentState = this->digitalRead(this->pin);
+    this->state = encodeState({currentState, currentState});
+    this->debug << "starting value=" << currentState << " state=" << this->state
+                << std::endl;
+    this->attachInterruptArg(this->pin, onChangeStatic, this, CHANGE);
 }
 
 void GpioInput::start() {
-    startup = true;
+    this->startup = true;
 }
 
 void GpioInput::execute(const std::string& /*command*/) {}
@@ -90,42 +91,46 @@ void GpioInput::update(Actions action) {
     {
         ETS_GPIO_INTR_DISABLE();
         auto now = millis();
-        currentState = decodeState(state);
-        currentCycles = cycles;
-        lastState = currentState.saved;
-        if (now - lastChanged > interval) {
-            currentState.saved = currentState.real;
+        State decodedState = decodeState(this->state);
+        currentCycles = this->cycles;
+        lastState = decodedState.saved;
+        if (now - this->lastChanged > this->interval) {
+            decodedState.saved = decodedState.real;
         }
-        cycles = 0;
-        state = encodeState(currentState);
+        this->cycles = 0;
+        this->state = encodeState(decodedState);
         ETS_GPIO_INTR_ENABLE();
     }
+    this->cycles = 0;
+    this->state = encodeState(decodedState);
+    ETS_GPIO_INTR_ENABLE();
+}
 
-    switch (cycleType) {
-    case CycleType::none:
-        currentCycles = 0;
-        break;
-    case CycleType::single:
-        if (currentCycles > 0) {
-            if (currentState.saved == lastState) {
-                currentCycles = 1;
-            } else {
-                currentCycles = 0;
-            }
+switch (this->cycleType) {
+case CycleType::none:
+    currentCycles = 0;
+    break;
+case CycleType::single:
+    if (currentCycles > 0) {
+        if (currentState.saved == lastState) {
+            currentCycles = 1;
+        } else {
+            currentCycles = 0;
         }
-        break;
-    default:
-        break;
     }
+    break;
+default:
+    break;
+}
 
-    for (int i = 0; i < currentCycles; ++i) {
-        action.fire({tools::intToString(!lastState)});
-        action.fire({tools::intToString(lastState)});
-    }
+for (int i = 0; i < currentCycles; ++i) {
+    action.fire({tools::intToString(!lastState)});
+    action.fire({tools::intToString(lastState)});
+}
 
-    if ((startup && currentCycles == 0) || currentState.saved != lastState) {
-        action.fire({tools::intToString(currentState.saved)});
-    }
+if ((this->startup && currentCycles == 0) || currentState.saved != lastState) {
+    action.fire({tools::intToString(currentState.saved)});
+}
 
-    startup = false;
+this->startup = false;
 }

@@ -1,6 +1,7 @@
+#include "EchoDistanceSensor.hpp"
+
 #include <Arduino.h>
 
-#include "EchoDistanceSensor.hpp"
 #include "tools/string.hpp"
 
 extern "C" {
@@ -25,27 +26,27 @@ EchoDistanceSensor::EchoDistanceSensor(
 }
 
 std::optional<std::vector<std::string>> EchoDistanceSensor::measure() {
-    if (measurementStartTime == 0) {
-        measurementStartTime = esp.millis();
-        esp.digitalWrite(triggerPin, 1);
+    if (this->measurementStartTime == 0) {
+        this->measurementStartTime = this->esp.millis();
+        this->esp.digitalWrite(this->triggerPin, 1);
         delayMicroseconds(triggerTime);
-        esp.digitalWrite(triggerPin, 0);
+        this->esp.digitalWrite(this->triggerPin, 0);
         return std::nullopt;
     }
 
     bool error = false;
 
-    if (esp.millis() - measurementStartTime > timeout) {
-        debug << "Measurement timeout." << std::endl;
+    if (this->esp.millis() - this->measurementStartTime > timeout) {
+        this->debug << "Measurement timeout." << std::endl;
         reset();
         return std::vector<std::string>{};
     }
 
-    if (echoTime == 0) {
-        if (riseTime != 0) {
+    if (this->echoTime == 0) {
+        if (this->riseTime != 0) {
             auto now = micros();
-            if (now < riseTime) {
-                debug << "Microseconds overflow." << std::endl;
+            if (now < this->riseTime) {
+                this->debug << "Microseconds overflow." << std::endl;
                 reset();
                 return std::vector<std::string>{};
             }
@@ -53,7 +54,7 @@ std::optional<std::vector<std::string>> EchoDistanceSensor::measure() {
         return std::nullopt;
     }
 
-    auto measuredTime = echoTime;
+    auto measuredTime = this->echoTime;
     reset();
 
     double distance = measuredTime * speedOfSound / 2.0;
@@ -61,27 +62,27 @@ std::optional<std::vector<std::string>> EchoDistanceSensor::measure() {
 }
 
 void EchoDistanceSensor::reset() {
-    measurementStartTime = 0;
-    riseTime = 0;
-    echoTime = 0;
+    this->measurementStartTime = 0;
+    this->riseTime = 0;
+    this->echoTime = 0;
 }
 
 void IRAM_ATTR EchoDistanceSensor::onChange() {
-    auto value = esp.digitalRead(echoPin);
+    auto value = this->esp.digitalRead(this->echoPin);
 
     if (value) {
-        if (measurementStartTime == 0) {
+        if (this->measurementStartTime == 0) {
             return;
         }
 
-        riseTime = micros();
+        this->riseTime = micros();
     } else {
-        if (riseTime == 0) {
+        if (this->riseTime == 0) {
             return;
         }
 
-        echoTime = micros() - riseTime;
-        riseTime = 0;
+        this->echoTime = micros() - this->riseTime;
+        this->riseTime = 0;
     }
 }
 

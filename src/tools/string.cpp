@@ -1,7 +1,7 @@
+#include "string.hpp"
+
 #include <algorithm>
 #include <cctype>
-
-#include "string.hpp"
 
 namespace tools {
 

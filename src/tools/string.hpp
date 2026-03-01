@@ -19,15 +19,15 @@ public:
     Join(const char* separator) : separator(separator) {}
 
     void add(const std::string& value) {
-        if (first) {
-            first = false;
+        if (this->first) {
+            this->first = false;
         } else {
-            result += separator;
+            this->result += this->separator;
         }
-        result += value;
+        this->result += value;
     }
 
-    const std::string& get() const { return result; }
+    const std::string& get() const { return this->result; }
 
 private:
     const char* separator;

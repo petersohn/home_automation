@@ -42,8 +42,8 @@ private:
         void stop();
         bool isMoving() const;
         bool isStarted() const;
-        unsigned getDidNotStartCount() const { return didNotStartCount; }
-        void resetDidNotStartCount() { didNotStartCount = 0; }
+        unsigned getDidNotStartCount() const { return this->didNotStartCount; }
+        void resetDidNotStartCount() { this->didNotStartCount = 0; }
         bool shouldResetStop() const;
         void resetStop();
         void resetStarted();

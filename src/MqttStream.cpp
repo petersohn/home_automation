@@ -1,9 +1,9 @@
 #include "MqttStream.hpp"
 
 int MqttStreambuf::overflow(int ch) {
-    if (lock.isFree()) {
-        msg[length++] = static_cast<char>(ch);
-        if (length == maxLength) {
+    if (this->lock.isFree()) {
+        this->msg[this->length++] = static_cast<char>(ch);
+        if (this->length == maxLength) {
             pubsync();
         }
     }
@@ -11,20 +11,20 @@ int MqttStreambuf::overflow(int ch) {
 }
 
 int MqttStreambuf::sync() {
-    if (length == 0) {
+    if (this->length == 0) {
         return 0;
     }
 
-    if (lock.isFree()) {
-        lock.lock();
-        if (msg[length - 1] == '\n') {
-            --length;
+    if (this->lock.isFree()) {
+        this->lock.lock();
+        if (this->msg[this->length - 1] == '\n') {
+            --this->length;
         }
-        msg[length] = '\0';
-        mqttClient.publish(topic.c_str(), msg, false);
-        lock.unlock();
+        this->msg[this->length] = '\0';
+        this->mqttClient.publish(this->topic.c_str(), this->msg, false);
+        this->lock.unlock();
     }
 
-    length = 0;
+    this->length = 0;
     return 0;
 }

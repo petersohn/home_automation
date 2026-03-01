@@ -11,13 +11,13 @@ void EncoderInterface::start() {}
 void EncoderInterface::execute(const std::string& /*command*/) {}
 
 void EncoderInterface::update(Actions action) {
-    const int value = encoder->read();
+    const int value = this->encoder->read();
     if (value == 0) {
         return;
     }
 
     action.fire({tools::intToString(value)});
-    if (pulse) {
+    if (this->pulse) {
         action.fire({"0"});
     }
 }

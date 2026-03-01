@@ -6,54 +6,55 @@ bool MqttConnectionImpl::connect(
     const char* host, uint16_t port, const char* username, const char* password,
     const char* clientId, const std::optional<Message>& will,
     ReceiveHandler receiveFunc) {
-    receiveHandler = std::move(receiveFunc);
-    mqttClient.setServer(host, port)
-        .setClient(wifiClient)
+    this->receiveHandler = std::move(receiveFunc);
+    this->mqttClient.setServer(host, port)
+        .setClient(this->wifiClient)
         .setCallback([this](
                          const char* topic, const unsigned char* payload,
                          unsigned length) {
-        onMessageReceived(topic, payload, length);
+        this->onMessageReceived(topic, payload, length);
     });
     if (will) {
-        return mqttClient.connect(
+        return this->mqttClient.connect(
             clientId, username, password, will->topic, 0, will->retain,
             will->payload);
     } else {
-        return mqttClient.connect(clientId, username, password);
+        return this->mqttClient.connect(clientId, username, password);
     }
 }
 
 void MqttConnectionImpl::disconnect() {
-    mqttClient.disconnect();
+    this->mqttClient.disconnect();
 }
 
 bool MqttConnectionImpl::isConnected() {
-    return mqttClient.connected();
+    return this->mqttClient.connected();
 }
 
 bool MqttConnectionImpl::subscribe(const char* topic) {
-    return mqttClient.subscribe(topic);
+    return this->mqttClient.subscribe(topic);
 }
 
 bool MqttConnectionImpl::unsubscribe(const char* topic) {
-    return mqttClient.unsubscribe(topic);
+    return this->mqttClient.unsubscribe(topic);
 }
 
 bool MqttConnectionImpl::publish(const Message& message) {
-    return mqttClient.publish(message.topic, message.payload, message.retain);
+    return this->mqttClient.publish(
+        message.topic, message.payload, message.retain);
 }
 
 void MqttConnectionImpl::loop() {
-    mqttClient.loop();
+    this->mqttClient.loop();
 }
 
 void MqttConnectionImpl::onMessageReceived(
     const char* topic, const unsigned char* payload, unsigned length) {
-    if (receiveHandler) {
-        lock.lock();
+    if (this->receiveHandler) {
+        this->lock.lock();
         Message msg{
             topic, reinterpret_cast<const char*>(payload), length, false};
-        receiveHandler(msg);
-        lock.unlock();
+        this->receiveHandler(msg);
+        this->lock.unlock();
     }
 }

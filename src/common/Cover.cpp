@@ -28,116 +28,119 @@ Cover::Movement::Movement(
     , endPosition(endPosition)
     , direction(direction)
     , debugPrefix(parent.debugPrefix + directionName + ": ") {
-    parent.esp.pinMode(inputPin, GpioMode::input);
-    parent.esp.pinMode(outputPin, GpioMode::output);
+    this->parent.esp.pinMode(inputPin, GpioMode::input);
+    this->parent.esp.pinMode(outputPin, GpioMode::output);
     size_t timeCount = 1;
-    if (parent.hasPositionSensors()) {
-        timeCount = parent.positionSensors.size() - 1;
+    if (this->parent.hasPositionSensors()) {
+        timeCount = this->parent.positionSensors.size() - 1;
     }
 
     if (timeCount == 1) {
-        moveTimeIndex = 0;
+        this->moveTimeIndex = 0;
     }
 
-    moveTimes.reserve(timeCount);
+    this->moveTimes.reserve(timeCount);
     for (size_t i = 0; i < timeCount; ++i) {
-        const auto id = parent.rtc.next();
-        moveTimes.emplace_back(MoveTime{id, parent.rtc.get(id)});
+        const auto id = this->parent.rtc.next();
+        this->moveTimes.emplace_back(MoveTime{id, this->parent.rtc.get(id)});
     }
 }
 
 void Cover::Movement::start() {
-    parent.resetStop();
-    log("Start");
-    parent.setOutput(outputPin, true);
-    startTriggered = true;
-    if (!isStarted()) {
-        startedTime = parent.esp.millis();
+    this->parent.resetStop();
+    this->log("Start");
+    this->parent.setOutput(this->outputPin, true);
+    this->startTriggered = true;
+    if (!this->isStarted()) {
+        this->startedTime = this->parent.esp.millis();
     }
 }
 
 void Cover::Movement::stop() {
-    log("stop");
-    resetStart();
-    if (parent.isLatching()) {
-        stopTriggered = true;
-        parent.setOutput(parent.stopPin, true);
+    this->log("stop");
+    this->resetStart();
+    if (this->parent.isLatching()) {
+        this->stopTriggered = true;
+        this->parent.setOutput(this->parent.stopPin, true);
     }
-    resetStarted();
+    this->resetStarted();
 }
 
 void Cover::Movement::resetStarted() {
-    if (startedTime != 0) {
-        startedTime = 0;
-        parent.stateChanged = true;
+    if (this->startedTime != 0) {
+        this->startedTime = 0;
+        this->parent.stateChanged = true;
     }
 }
 
 void Cover::Movement::resetStart() {
-    parent.setOutput(outputPin, false);
-    startTriggered = false;
+    this->parent.setOutput(this->outputPin, false);
+    this->startTriggered = false;
 }
 
 void Cover::Movement::handleStopped() {
-    if (!parent.isLatching() || startTriggered) {
-        stop();
+    if (!this->parent.isLatching() || this->startTriggered) {
+        this->stop();
     } else {
-        resetStarted();
+        this->resetStarted();
     }
 }
 
 void Cover::Movement::log(const std::string& msg) {
-    parent.debug << debugPrefix << msg << std::endl;
+    this->parent.debug << this->debugPrefix << msg << std::endl;
 }
 
 bool Cover::Movement::isMoving() const {
-    return getActualValue(parent.esp.digitalRead(inputPin), parent.invertInput);
+    return getActualValue(
+        this->parent.esp.digitalRead(this->inputPin), this->parent.invertInput);
 }
 
 bool Cover::Movement::isStarted() const {
-    return startedTime != 0;
+    return this->startedTime != 0;
 }
 
 bool Cover::Movement::isReallyMoving() const {
-    return moveStartPosition != mspNotMoving;
+    return this->moveStartPosition != mspNotMoving;
 }
 
 bool Cover::Movement::shouldResetStop() const {
-    return stopTriggered && !isMoving();
+    return this->stopTriggered && !this->isMoving();
 }
 
 void Cover::Movement::resetStop() {
-    stopTriggered = false;
+    this->stopTriggered = false;
 }
 
 int Cover::Movement::update() {
-    int newPosition = parent.position;
-    auto now = parent.esp.millis();
-    bool moving = isMoving();
+    int newPosition = this->parent.position;
+    auto now = this->parent.esp.millis();
+    bool moving = this->isMoving();
 
-    if (parent.isLatching()) {
-        if (moving && startTriggered) {
-            log("Reset start");
-            resetStart();
+    if (this->parent.isLatching()) {
+        if (moving && this->startTriggered) {
+            this->log("Reset start");
+            this->resetStart();
         }
     }
 
-    const auto paps = parent.previouslyActivePositionSensor;
-    const bool hasActivePositionSensor = parent.activePositionSensor >= 0;
+    const auto paps = this->parent.previouslyActivePositionSensor;
+    const bool hasActivePositionSensor = this->parent.activePositionSensor >= 0;
     if (hasActivePositionSensor) {
         if (paps == noPositionSensor) {
-            calculateMoveTimeIfNeeded();
+            this->calculateMoveTimeIfNeeded();
         }
-        moveStartTime = 0;
+        this->moveStartTime = 0;
     } else {
-        if (parent.position != noPosition && moveTimeIndex < 0) {
-            for (size_t i = 0; i < parent.positionSensors.size(); ++i) {
-                size_t j = parent.positionSensors.size() - 1 - i;
-                if (parent.position >= parent.positionSensors[j].position) {
-                    if (j < parent.positionSensors.size() - 1) {
-                        log("Found position index: " + tools::intToString(j));
-                        moveTimeIndex = j;
-                        calculateBeginAndEndPosition();
+        if (this->parent.position != noPosition && this->moveTimeIndex < 0) {
+            for (size_t i = 0; i < this->parent.positionSensors.size(); ++i) {
+                size_t j = this->parent.positionSensors.size() - 1 - i;
+                if (this->parent.position >=
+                    this->parent.positionSensors[j].position) {
+                    if (j < this->parent.positionSensors.size() - 1) {
+                        this->log(
+                            "Found position index: " + tools::intToString(j));
+                        this->moveTimeIndex = j;
+                        this->calculateBeginAndEndPosition();
                     }
                     break;
                 }
@@ -145,108 +148,118 @@ int Cover::Movement::update() {
         }
 
         if (moving) {
-            didNotStartCount = 0;
+            this->didNotStartCount = 0;
 
             if (paps >= 0) {
-                log("Just left position sensor " + tools::intToString(paps));
-                moveTimeIndex = direction > 0 ? paps : paps - 1;
-                if (moveTimeIndex >= static_cast<int>(moveTimes.size())) {
-                    moveTimeIndex = noPositionSensor;
+                this->log(
+                    "Just left position sensor " + tools::intToString(paps));
+                this->moveTimeIndex = this->direction > 0 ? paps : paps - 1;
+                if (this->moveTimeIndex >=
+                    static_cast<int>(this->moveTimes.size())) {
+                    this->moveTimeIndex = noPositionSensor;
                 }
-                if (moveTimeIndex >= 0) {
-                    moveStartTime = now;
-                    calculateBeginAndEndPosition();
-                    newPosition = beginPosition + direction;
-                    moveStartPosition = beginPosition;
+                if (this->moveTimeIndex >= 0) {
+                    this->moveStartTime = now;
+                    this->calculateBeginAndEndPosition();
+                    newPosition = this->beginPosition + this->direction;
+                    this->moveStartPosition = this->beginPosition;
                 }
             } else {
-                if (moveStartTime == 0) {
-                    moveStartTime = now;
+                if (this->moveStartTime == 0) {
+                    this->moveStartTime = now;
                 } else if (
-                    !isReallyMoving() && now - moveStartTime >= debounceTime) {
-                    moveStartPosition = parent.position;
-                    log("Started moving");
+                    !this->isReallyMoving() &&
+                    now - this->moveStartTime >= debounceTime) {
+                    this->moveStartPosition = this->parent.position;
+                    this->log("Started moving");
                 }
 
-                if (parent.position == endPosition) {
-                    newPosition = endPosition - direction;
+                if (this->parent.position == this->endPosition) {
+                    newPosition = this->endPosition - this->direction;
                 }
             }
         }
     }
 
-    if (isReallyMoving()) {
+    if (this->isReallyMoving()) {
         if (moving) {
-            if (!hasActivePositionSensor && moveTimeIndex >= 0) {
-                const auto& moveTime = moveTimes[moveTimeIndex].time;
-                if (parent.position != noPosition && moveTime != 0) {
-                    const int a =
-                        (endPosition - beginPosition) * (now - moveStartTime);
+            if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
+                const auto& moveTime =
+                    this->moveTimes[this->moveTimeIndex].time;
+                if (this->parent.position != noPosition && moveTime != 0) {
+                    const int a = (this->endPosition - this->beginPosition) *
+                                  (now - this->moveStartTime);
                     const auto d =
                         static_cast<int>(static_cast<double>(a) / moveTime);
-                    newPosition = moveStartPosition + d;
-                    if (direction * newPosition >= endPosition) {
-                        newPosition = endPosition - direction;
+                    newPosition = this->moveStartPosition + d;
+                    if (this->direction * newPosition >= this->endPosition) {
+                        newPosition = this->endPosition - this->direction;
                     }
                 } else {
-                    newPosition = beginPosition + direction;
+                    newPosition = this->beginPosition + this->direction;
                 }
             }
-        } else if (isStarted()) {
-            if (!parent.hasPositionSensors()) {
-                log("End position reached.");
-                newPosition = endPosition;
-                calculateMoveTimeIfNeeded();
+        } else if (this->isStarted()) {
+            if (!this->parent.hasPositionSensors()) {
+                this->log("End position reached.");
+                newPosition = this->endPosition;
+                this->calculateMoveTimeIfNeeded();
             }
-            handleStopped();
+            this->handleStopped();
         }
-    } else if (!moving && isStarted() && now - startedTime > startTimeout) {
-        ++didNotStartCount;
-        if (parent.hasPositionSensors()) {
-            log("Did not start.");
+    } else if (
+        !moving && this->isStarted() &&
+        now - this->startedTime > startTimeout) {
+        ++this->didNotStartCount;
+        if (this->parent.hasPositionSensors()) {
+            this->log("Did not start.");
         } else {
-            log("Was at end position.");
-            newPosition = endPosition;
+            this->log("Was at end position.");
+            newPosition = this->endPosition;
         }
-        handleStopped();
+        this->handleStopped();
     }
 
     if (!moving) {
-        if (isReallyMoving()) {
-            log("Stopped moving");
+        if (this->isReallyMoving()) {
+            this->log("Stopped moving");
         }
 
-        moveStartTime = 0;
-        moveStartPosition = mspNotMoving;
+        this->moveStartTime = 0;
+        this->moveStartPosition = mspNotMoving;
     }
 
     return newPosition;
 }
 
 void Cover::Movement::calculateBeginAndEndPosition() {
-    if (moveTimeIndex < 0) {
+    if (this->moveTimeIndex < 0) {
         return;
     }
 
-    if (direction > 0) {
-        beginPosition = parent.positionSensors[moveTimeIndex].position;
-        endPosition = parent.positionSensors[moveTimeIndex + 1].position;
+    if (this->direction > 0) {
+        this->beginPosition =
+            this->parent.positionSensors[this->moveTimeIndex].position;
+        this->endPosition =
+            this->parent.positionSensors[this->moveTimeIndex + 1].position;
     } else {
-        beginPosition = parent.positionSensors[moveTimeIndex + 1].position;
-        endPosition = parent.positionSensors[moveTimeIndex].position;
+        this->beginPosition =
+            this->parent.positionSensors[this->moveTimeIndex + 1].position;
+        this->endPosition =
+            this->parent.positionSensors[this->moveTimeIndex].position;
     }
 }
 
 void Cover::Movement::calculateMoveTimeIfNeeded() {
-    if (moveTimeIndex < 0) {
+    if (this->moveTimeIndex < 0) {
         return;
     }
 
-    auto& moveTime = moveTimes[moveTimeIndex];
-    if (moveStartPosition == beginPosition) {
-        moveTime.time = parent.esp.millis() - moveStartTime;
-        parent.rtc.set(moveTime.rtcId, moveTime.time);
-        log("Move time: " + tools::intToString(moveTime.time));
+    auto& moveTime = this->moveTimes[this->moveTimeIndex];
+    if (this->moveStartPosition == this->beginPosition) {
+        moveTime.time = this->parent.esp.millis() - this->moveStartTime;
+        this->parent.rtc.set(moveTime.rtcId, moveTime.time);
+        this->log("Move time: " + tools::intToString(moveTime.time));
     }
 }
 
@@ -290,195 +303,199 @@ Cover::Cover(
         this->positionSensors.clear();
     }
 
-    position = rtc.get(positionId) - 1;
-    log("Initial position: " + tools::intToString(position));
-    stop();
+    this->position = this->rtc.get(this->positionId) - 1;
+    this->log("Initial position: " + tools::intToString(this->position));
+    this->stop();
 }
 
 bool Cover::isLatching() const {
-    return stopPin != 0;
+    return this->stopPin != 0;
 }
 
 bool Cover::hasPositionSensors() const {
-    return !positionSensors.empty();
+    return !this->positionSensors.empty();
 }
 
 void Cover::start() {
-    stateChanged = true;
+    this->stateChanged = true;
 }
 
 void Cover::execute(const std::string& command) {
     if (command == "STOP") {
-        targetPosition = noPosition;
-        stop();
+        this->targetPosition = noPosition;
+        this->stop();
     } else if (command == "OPEN") {
-        targetPosition = noPosition;
-        beginOpening();
+        this->targetPosition = noPosition;
+        this->beginOpening();
     } else if (command == "CLOSE") {
-        targetPosition = noPosition;
-        beginClosing();
+        this->targetPosition = noPosition;
+        this->beginClosing();
     } else {
         auto pos = tools::fromString<int>(command);
         if (!pos.has_value()) {
-            log("Invalid command: " + command);
+            this->log("Invalid command: " + command);
             return;
         }
-        setPosition(*pos);
+        this->setPosition(*pos);
     }
 }
 
 void Cover::setPosition(int value) {
     if (value < 0 || value > 100) {
-        log("Position out of range: " + tools::intToString(value));
+        this->log("Position out of range: " + tools::intToString(value));
         return;
     }
 
-    if (position == noPosition) {
-        log("Position is not known, calibrating.");
+    if (this->position == noPosition) {
+        this->log("Position is not known, calibrating.");
     }
 
-    targetPosition = value;
+    this->targetPosition = value;
 
-    if (value == 0 || value < position) {
-        beginClosing();
-    } else if (value == 100 || value > position) {
-        beginOpening();
+    if (value == 0 || value < this->position) {
+        this->beginClosing();
+    } else if (value == 100 || value > this->position) {
+        this->beginOpening();
     } else {
-        stop();
+        this->stop();
     }
 }
 
 void Cover::beginMoving(Movement& direction, Movement& reverse) {
     if (!direction.isStarted()) {
-        if (isLatching()) {
+        if (this->isLatching()) {
             reverse.resetStarted();
         } else {
             reverse.stop();
         }
         direction.start();
-        stateChanged = true;
+        this->stateChanged = true;
     }
 }
 
 void Cover::beginOpening() {
-    beginMoving(up, down);
+    this->beginMoving(this->up, this->down);
 }
 
 void Cover::beginClosing() {
-    beginMoving(down, up);
+    this->beginMoving(this->down, this->up);
 }
 
 void Cover::resetStop() {
-    if (!isLatching()) {
+    if (!this->isLatching()) {
         return;
     }
 
-    setOutput(stopPin, false);
-    up.resetStop();
-    down.resetStop();
+    this->setOutput(this->stopPin, false);
+    this->up.resetStop();
+    this->down.resetStop();
 }
 
 void Cover::update(Actions action) {
     int newPositionSensor = noPositionSensor;
-    for (size_t i = 0; i < positionSensors.size(); ++i) {
+    for (size_t i = 0; i < this->positionSensors.size(); ++i) {
         if (getActualValue(
                 getActualValue(
-                    esp.digitalRead(positionSensors[i].pin),
-                    positionSensors[i].invert) != 0,
-                invertPositionSensors)) {
+                    this->esp.digitalRead(this->positionSensors[i].pin),
+                    this->positionSensors[i].invert) != 0,
+                this->invertPositionSensors)) {
             newPositionSensor = i;
             break;
         }
     }
 
-    if (newPositionSensor != activePositionSensor) {
-        previouslyActivePositionSensor = activePositionSensor;
+    if (newPositionSensor != this->activePositionSensor) {
+        this->previouslyActivePositionSensor = this->activePositionSensor;
         if (newPositionSensor >= 0) {
-            log("Position sensor activated: " +
+            this->log(
+                "Position sensor activated: " +
                 tools::intToString(
-                    positionSensors[newPositionSensor].position));
+                    this->positionSensors[newPositionSensor].position));
         } else {
-            log("Position sensor deactivated");
+            this->log("Position sensor deactivated");
         }
-        activePositionSensor = newPositionSensor;
+        this->activePositionSensor = newPositionSensor;
     } else {
-        previouslyActivePositionSensor = papsNoChange;
+        this->previouslyActivePositionSensor = papsNoChange;
     }
 
-    int newPositionUp = up.update();
-    int newPositionDown = down.update();
-    int newPosition = position;
-    if (newPositionUp != position && newPositionDown != position) {
-        log("Inconsistent moving state.");
+    int newPositionUp = this->up.update();
+    int newPositionDown = this->down.update();
+    int newPosition = this->position;
+    if (newPositionUp != this->position && newPositionDown != this->position) {
+        this->log("Inconsistent moving state.");
         newPosition = noPosition;
-        stop();
-    } else if (newPositionUp != position) {
+        this->stop();
+    } else if (newPositionUp != this->position) {
         newPosition = newPositionUp;
     } else {
         newPosition = newPositionDown;
     }
 
-    if (activePositionSensor != noPositionSensor) {
-        newPosition = positionSensors[activePositionSensor].position;
+    if (this->activePositionSensor != noPositionSensor) {
+        newPosition =
+            this->positionSensors[this->activePositionSensor].position;
     }
 
-    if (up.shouldResetStop() && down.shouldResetStop()) {
-        log("Reset stop");
-        resetStop();
+    if (this->up.shouldResetStop() && this->down.shouldResetStop()) {
+        this->log("Reset stop");
+        this->resetStop();
     }
 
-    if (newPosition != position || stateChanged) {
-        position = newPosition;
-        rtc.set(positionId, position + 1);
+    if (newPosition != this->position || this->stateChanged) {
+        this->position = newPosition;
+        this->rtc.set(this->positionId, this->position + 1);
         std::string stateName;
 
-        if (up.isStarted()) {
+        if (this->up.isStarted()) {
             stateName = "OPENING";
-        } else if (down.isStarted()) {
+        } else if (this->down.isStarted()) {
             stateName = "CLOSING";
-        } else if (position <= closedPosition) {
+        } else if (this->position <= this->closedPosition) {
             stateName = "CLOSED";
         } else {
             stateName = "OPEN";
         }
 
-        log("state=" + stateName + " position=" + tools::intToString(position));
+        this->log(
+            "state=" + stateName +
+            " position=" + tools::intToString(this->position));
 
         std::vector<std::string> values{std::move(stateName)};
-        if (position != noPosition) {
-            values.push_back(tools::intToString(position));
+        if (this->position != noPosition) {
+            values.push_back(tools::intToString(this->position));
         }
         action.fire(values);
 
-        stateChanged = false;
+        this->stateChanged = false;
     }
 
-    if (targetPosition != noPosition) {
-        if (position == targetPosition) {
-            targetPosition = noPosition;
-            stop();
-        } else if (!up.isStarted() && !down.isStarted()) {
-            if (up.getDidNotStartCount() < 2 &&
-                down.getDidNotStartCount() < 2) {
-                setPosition(targetPosition);
+    if (this->targetPosition != noPosition) {
+        if (this->position == this->targetPosition) {
+            this->targetPosition = noPosition;
+            this->stop();
+        } else if (!this->up.isStarted() && !this->down.isStarted()) {
+            if (this->up.getDidNotStartCount() < 2 &&
+                this->down.getDidNotStartCount() < 2) {
+                this->setPosition(this->targetPosition);
             } else {
-                targetPosition = noPosition;
-                up.resetDidNotStartCount();
-                down.resetDidNotStartCount();
+                this->targetPosition = noPosition;
+                this->up.resetDidNotStartCount();
+                this->down.resetDidNotStartCount();
             }
         }
     }
 }
 
 void Cover::setOutput(uint8_t pin, bool value) {
-    esp.digitalWrite(pin, getActualValue(value, invertOutput));
+    this->esp.digitalWrite(pin, getActualValue(value, this->invertOutput));
 }
 
 void Cover::stop() {
-    up.stop();
-    down.stop();
+    this->up.stop();
+    this->down.stop();
 }
 
 void Cover::log(const std::string& msg) {
-    debug << debugPrefix << msg << std::endl;
+    this->debug << this->debugPrefix << msg << std::endl;
 }

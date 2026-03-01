@@ -12,55 +12,54 @@ SensorInterface::SensorInterface(
     , pulse(std::move(pulse)) {}
 
 void SensorInterface::start() {
-    // When connected to the network, all sensors make a measurement.
-    // Afterwards, measurements are shifted by offset.
-    const auto now = esp.millis();
-    // TODO: this is not really good if we have an offset
-    if (now > static_cast<unsigned long>(offset)) {
-        nextExecution = now - offset;
+    const auto now = this->esp.millis();
+    if (now > static_cast<unsigned long>(this->offset)) {
+        this->nextExecution = now - this->offset;
     } else {
-        nextExecution = 1;
+        this->nextExecution = 1;
     }
-    needToReset = true;
+    this->needToReset = true;
 }
 
 void SensorInterface::execute(const std::string& /*command*/) {}
 
 void SensorInterface::update(Actions action) {
-    auto now = esp.millis();
-    if ((nextExecution != 0 && now >= nextExecution) ||
-        (nextRetry != 0 && now >= nextRetry)) {
-        auto values = sensor->measure();
+    auto now = this->esp.millis();
+    if ((this->nextExecution != 0 && now >= this->nextExecution) ||
+        (this->nextRetry != 0 && now >= this->nextRetry)) {
+        auto values = this->sensor->measure();
         if (!values) {
             return;
         }
-        if (now >= nextExecution) {
-            nextExecution += ((now - nextExecution) / interval + 1) * interval;
+        if (now >= this->nextExecution) {
+            this->nextExecution +=
+                ((now - this->nextExecution) / this->interval + 1) *
+                this->interval;
         }
-        debug << name;
+        this->debug << this->name;
         if (values->empty()) {
-            debug << ": Measurement failed. Trying again." << std::endl;
-            nextRetry = now + 1000;
+            this->debug << ": Measurement failed. Trying again." << std::endl;
+            this->nextRetry = now + 1000;
         } else {
-            debug << ": Measurement successful:";
+            this->debug << ": Measurement successful:";
             for (const std::string& value : *values) {
-                debug << " " << value;
+                this->debug << " " << value;
             }
-            debug << std::endl;
-            nextRetry = 0;
+            this->debug << std::endl;
+            this->nextRetry = 0;
 
-            if (needToReset) {
+            if (this->needToReset) {
                 action.reset();
-                needToReset = false;
+                this->needToReset = false;
             }
 
             action.fire(*values);
-            pulseSent = false;
+            this->pulseSent = false;
         }
-    } else if (!pulse.empty()) {
-        if (!pulseSent) {
-            action.fire(pulse);
-            pulseSent = true;
+    } else if (!this->pulse.empty()) {
+        if (!this->pulseSent) {
+            action.fire(this->pulse);
+            this->pulseSent = true;
         }
     }
 }

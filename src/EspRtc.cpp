@@ -1,8 +1,8 @@
+#include "EspRtc.hpp"
+
 #include <Arduino.h>
 
 #include <cstring>
-
-#include "EspRtc.hpp"
 
 namespace {
 
@@ -33,5 +33,5 @@ void EspRtc::set(unsigned id, Data value) {
 }
 
 unsigned EspRtc::next() {
-    return ++currentId;
+    return ++this->currentId;
 }

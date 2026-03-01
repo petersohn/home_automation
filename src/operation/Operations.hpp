@@ -77,10 +77,11 @@ public:
         if (operands.empty()) {
             return translator.toString(Type{});
         }
-        return translator.toString(std::accumulate(
-            operands.begin() + 1, operands.end(),
-            translator.fromString(operands.front()->evaluate()),
-            [this](const Type& lhs, const std::unique_ptr<Operation>& rhs) {
+        return translator.toString(
+            std::accumulate(
+                operands.begin() + 1, operands.end(),
+                translator.fromString(operands.front()->evaluate()),
+                [this](const Type& lhs, const std::unique_ptr<Operation>& rhs) {
             std::string value = rhs->evaluate();
             auto translated = translator.fromString(value);
             auto result = operator_(lhs, translated);

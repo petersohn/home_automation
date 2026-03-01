@@ -17,38 +17,38 @@ void IRAM_ATTR EspEncoder::onChangeStatic(void* arg) {
 }
 
 void IRAM_ATTR EspEncoder::onChange() {
-    const auto newPinValue =
-        static_cast<PinValue>(digitalRead(downPin) + digitalRead(upPin) * 2);
-    if (pinValue == newPinValue) {
+    const auto newPinValue = static_cast<PinValue>(
+        digitalRead(this->downPin) + digitalRead(this->upPin) * 2);
+    if (this->pinValue == newPinValue) {
         return;
     }
 
     Serial.println(static_cast<int>(newPinValue));
 
     if (newPinValue == PinValue::None) {
-        state = State::Idle;
+        this->state = State::Idle;
     } else if (newPinValue == PinValue::Both) {
-        if (state == State::Up) {
-            ++value;
-        } else if (state == State::Down) {
-            --value;
+        if (this->state == State::Up) {
+            ++this->value;
+        } else if (this->state == State::Down) {
+            --this->value;
         }
-        state = State::Done;
-    } else if (state == State::Idle) {
+        this->state = State::Done;
+    } else if (this->state == State::Idle) {
         if (newPinValue == PinValue::Up) {
-            state = State::Up;
+            this->state = State::Up;
         } else if (newPinValue == PinValue::Down) {
-            state = State::Down;
+            this->state = State::Down;
         }
     } else {
-        state = State::Done;
+        this->state = State::Done;
     }
 
-    pinValue = newPinValue;
+    this->pinValue = newPinValue;
 }
 
 int EspEncoder::read() {
-    const int v = value;
-    value = 0;
+    const int v = this->value;
+    this->value = 0;
     return v;
 }

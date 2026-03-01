@@ -1,23 +1,23 @@
-#include <Arduino.h>
-
 #include "WifiStream.hpp"
 
+#include <Arduino.h>
+
 void WifiStreambuf::initClientIfNeeded() {
-    if (client && client.connected()) {
+    if (this->client && this->client.connected()) {
         return;
     }
     const auto now = millis();
-    if (lastChecked + 100 > now) {
+    if (this->lastChecked + 100 > now) {
         return;
     }
-    lastChecked = now;
-    client = server.available();
+    this->lastChecked = now;
+    this->client = this->server.available();
 }
 
 int WifiStreambuf::overflow(int ch) {
     initClientIfNeeded();
-    if (client && client.connected()) {
-        client.print(traits_type::to_char_type(ch));
+    if (this->client && this->client.connected()) {
+        this->client.print(traits_type::to_char_type(ch));
     }
     return ch;
 }

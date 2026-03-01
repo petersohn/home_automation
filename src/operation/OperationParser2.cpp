@@ -55,18 +55,19 @@ public:
         , defaultInterface(defaultInterface) {}
 
     std::unique_ptr<Operation> parse(const std::string& data) {
-        pos = 0;
+        this->pos = 0;
         this->data = data;
-        skipWhitespace();
-        if (pos >= data.size()) {
-            debug << "Syntax error: Empty expression" << std::endl;
+        this->skipWhitespace();
+        if (this->pos >= data.size()) {
+            this->debug << "Syntax error: Empty expression" << std::endl;
             return nullptr;
         }
-        auto result = parseExpression();
+        auto result = this->parseExpression();
         if (result) {
-            skipWhitespace();
-            if (pos != data.size()) {
-                debug << "Syntax error: Unfinished expression" << std::endl;
+            this->skipWhitespace();
+            if (this->pos != data.size()) {
+                this->debug << "Syntax error: Unfinished expression"
+                            << std::endl;
                 return nullptr;
             }
         }
@@ -74,7 +75,7 @@ public:
     }
 
     std::unordered_set<InterfaceConfig*>&& getUsedInterfaces() && {
-        return std::move(usedInterfaces);
+        return std::move(this->usedInterfaces);
     }
 
 private:
@@ -87,46 +88,49 @@ private:
     size_t pos = 0;
 
     void skipWhitespace() {
-        while (pos < data.size() && std::isspace(data[pos])) {
-            ++pos;
+        while (this->pos < this->data.size() &&
+               std::isspace(this->data[this->pos])) {
+            ++this->pos;
         }
     }
 
     bool match(char c) {
-        skipWhitespace();
-        if (pos < data.size() && data[pos] == c) {
-            ++pos;
+        this->skipWhitespace();
+        if (this->pos < this->data.size() && this->data[this->pos] == c) {
+            ++this->pos;
             return true;
         }
         return false;
     }
 
     bool match(const std::string& s) {
-        skipWhitespace();
-        if (pos + s.size() <= data.size() && data.substr(pos, s.size()) == s) {
-            pos += s.size();
+        this->skipWhitespace();
+        if (this->pos + s.size() <= this->data.size() &&
+            this->data.substr(this->pos, s.size()) == s) {
+            this->pos += s.size();
             return true;
         }
         return false;
     }
 
     std::unique_ptr<Operation> parseExpression() {
-        auto condition = parseOr();
+        auto condition = this->parseOr();
         if (!condition) {
             return nullptr;
         }
-        skipWhitespace();
-        if (match('?')) {
-            auto then = parseExpression();
+        this->skipWhitespace();
+        if (this->match('?')) {
+            auto then = this->parseExpression();
             if (!then) {
                 return nullptr;
             }
-            if (!match(':')) {
-                debug << "Syntax error: Expected ':' in conditional expression"
-                      << std::endl;
+            if (!this->match(':')) {
+                this->debug
+                    << "Syntax error: Expected ':' in conditional expression"
+                    << std::endl;
                 return nullptr;
             }
-            auto else_ = parseExpression();
+            auto else_ = this->parseExpression();
             if (!else_) {
                 return nullptr;
             }
@@ -137,14 +141,14 @@ private:
     }
 
     std::unique_ptr<Operation> parseOr() {
-        auto left = parseAnd();
+        auto left = this->parseAnd();
         if (!left) {
             return nullptr;
         }
         while (true) {
-            skipWhitespace();
-            if (match("||")) {
-                auto right = parseAnd();
+            this->skipWhitespace();
+            if (this->match("||")) {
+                auto right = this->parseAnd();
                 if (!right) {
                     return nullptr;
                 }
@@ -159,14 +163,14 @@ private:
     }
 
     std::unique_ptr<Operation> parseAnd() {
-        auto left = parseEquality();
+        auto left = this->parseEquality();
         if (!left) {
             return nullptr;
         }
         while (true) {
-            skipWhitespace();
-            if (match("&&")) {
-                auto right = parseEquality();
+            this->skipWhitespace();
+            if (this->match("&&")) {
+                auto right = this->parseEquality();
                 if (!right) {
                     return nullptr;
                 }
@@ -181,39 +185,39 @@ private:
     }
 
     std::unique_ptr<Operation> parseEquality() {
-        auto left = parseComparison();
+        auto left = this->parseComparison();
         if (!left) {
             return nullptr;
         }
         while (true) {
-            skipWhitespace();
+            this->skipWhitespace();
             std::unique_ptr<Operation> right;
-            if (match("==")) {
-                right = parseComparison();
+            if (this->match("==")) {
+                right = this->parseComparison();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::equal_to<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("!=")) {
-                right = parseComparison();
+            } else if (this->match("!=")) {
+                right = this->parseComparison();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::not_equal_to<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("s==")) {
-                right = parseComparison();
+            } else if (this->match("s==")) {
+                right = this->parseComparison();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::equal_to<std::string>, translator::Str>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("s!=")) {
-                right = parseComparison();
+            } else if (this->match("s!=")) {
+                right = this->parseComparison();
                 if (!right) {
                     return nullptr;
                 }
@@ -228,71 +232,71 @@ private:
     }
 
     std::unique_ptr<Operation> parseComparison() {
-        auto left = parseTerm();
+        auto left = this->parseTerm();
         if (!left) {
             return nullptr;
         }
         while (true) {
-            skipWhitespace();
+            this->skipWhitespace();
             std::unique_ptr<Operation> right;
-            if (match("s<=")) {
-                right = parseTerm();
+            if (this->match("s<=")) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::less_equal<std::string>, translator::Str>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("s>=")) {
-                right = parseTerm();
+            } else if (this->match("s>=")) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<Comparison<
                     std::greater_equal<std::string>, translator::Str>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("s<")) {
-                right = parseTerm();
+            } else if (this->match("s<")) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::less<std::string>, translator::Str>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("s>")) {
-                right = parseTerm();
+            } else if (this->match("s>")) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::greater<std::string>, translator::Str>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("<=")) {
-                right = parseTerm();
+            } else if (this->match("<=")) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::less_equal<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match(">=")) {
-                right = parseTerm();
+            } else if (this->match(">=")) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::greater_equal<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match('<')) {
-                right = parseTerm();
+            } else if (this->match('<')) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     Comparison<std::less<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match('>')) {
-                right = parseTerm();
+            } else if (this->match('>')) {
+                right = this->parseTerm();
                 if (!right) {
                     return nullptr;
                 }
@@ -307,31 +311,31 @@ private:
     }
 
     std::unique_ptr<Operation> parseTerm() {
-        auto left = parseFactor();
+        auto left = this->parseFactor();
         if (!left) {
             return nullptr;
         }
         while (true) {
-            skipWhitespace();
+            this->skipWhitespace();
             std::unique_ptr<Operation> right;
-            if (match('+')) {
-                right = parseFactor();
+            if (this->match('+')) {
+                right = this->parseFactor();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     FoldingOperation<std::plus<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match('-')) {
-                right = parseFactor();
+            } else if (this->match('-')) {
+                right = this->parseFactor();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<
                     FoldingOperation<std::minus<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match("s+")) {
-                right = parseFactor();
+            } else if (this->match("s+")) {
+                right = this->parseFactor();
                 if (!right) {
                     return nullptr;
                 }
@@ -346,23 +350,23 @@ private:
     }
 
     std::unique_ptr<Operation> parseFactor() {
-        auto left = parseUnary();
+        auto left = this->parseUnary();
         if (!left) {
             return nullptr;
         }
         while (true) {
-            skipWhitespace();
+            this->skipWhitespace();
             std::unique_ptr<Operation> right;
-            if (match('*')) {
-                right = parseUnary();
+            if (this->match('*')) {
+                right = this->parseUnary();
                 if (!right) {
                     return nullptr;
                 }
                 left = std::make_unique<FoldingOperation<
                     std::multiplies<float>, translator::Float>>(
                     makeOperands(std::move(left), std::move(right)));
-            } else if (match('/')) {
-                right = parseUnary();
+            } else if (this->match('/')) {
+                right = this->parseUnary();
                 if (!right) {
                     return nullptr;
                 }
@@ -377,9 +381,9 @@ private:
     }
 
     std::unique_ptr<Operation> parseUnary() {
-        skipWhitespace();
-        if (match('!')) {
-            auto operand = parseUnary();
+        this->skipWhitespace();
+        if (this->match('!')) {
+            auto operand = this->parseUnary();
             if (!operand) {
                 return nullptr;
             }
@@ -387,8 +391,8 @@ private:
                 UnaryOperation<std::logical_not<bool>, translator::Bool>>(
                 std::move(operand));
         }
-        if (match('-')) {
-            auto operand = parseUnary();
+        if (this->match('-')) {
+            auto operand = this->parseUnary();
             if (!operand) {
                 return nullptr;
             }
@@ -399,134 +403,142 @@ private:
                 FoldingOperation<std::minus<float>, translator::Float>>(
                 std::move(operands));
         }
-        return parsePrimary();
+        return this->parsePrimary();
     }
 
     std::unique_ptr<Operation> parsePrimary() {
-        skipWhitespace();
-        if (match('(')) {
-            auto expr = parseExpression();
+        this->skipWhitespace();
+        if (this->match('(')) {
+            auto expr = this->parseExpression();
             if (!expr) {
                 return nullptr;
             }
-            skipWhitespace();
-            if (!match(')')) {
-                debug << "Syntax error: Unmatched closing parenthesis"
-                      << std::endl;
+            this->skipWhitespace();
+            if (!this->match(')')) {
+                this->debug << "Syntax error: Unmatched closing parenthesis"
+                            << std::endl;
                 return nullptr;
             }
             return expr;
         }
 
-        if (match('\'')) {
-            return parseStringLiteral();
+        if (this->match('\'')) {
+            return this->parseStringLiteral();
         }
 
-        if (match("true") || match("on")) {
+        if (this->match("true") || this->match("on")) {
             return std::make_unique<Constant>("1");
         }
 
-        if (match("false") || match("off")) {
+        if (this->match("false") || this->match("off")) {
             return std::make_unique<Constant>("0");
         }
 
-        if (match('[')) {
-            return parseInterfaceValue();
+        if (this->match('[')) {
+            return this->parseInterfaceValue();
         }
 
-        if (match('%')) {
-            return parseDefaultInterfaceValue();
+        if (this->match('%')) {
+            return this->parseDefaultInterfaceValue();
         }
 
-        return parseNumber();
+        return this->parseNumber();
     }
 
     std::unique_ptr<Operation> parseStringLiteral() {
         std::string value;
-        while (pos < data.size()) {
-            if (data[pos] == '\\' && pos + 1 < data.size()) {
-                value += data[pos];
-                ++pos;
-                if (pos < data.size()) {
-                    value += data[pos];
-                    ++pos;
+        while (this->pos < this->data.size()) {
+            if (this->data[this->pos] == '\\' &&
+                this->pos + 1 < this->data.size()) {
+                value += this->data[this->pos];
+                ++this->pos;
+                if (this->pos < this->data.size()) {
+                    value += this->data[this->pos];
+                    ++this->pos;
                 }
-            } else if (data[pos] == '\'') {
-                ++pos;
+            } else if (this->data[this->pos] == '\'') {
+                ++this->pos;
                 return std::make_unique<Constant>(unescapeString(value));
             } else {
-                value += data[pos];
-                ++pos;
+                value += this->data[this->pos];
+                ++this->pos;
             }
         }
-        debug << "Syntax error: Unmatched quote" << std::endl;
+        this->debug << "Syntax error: Unmatched quote" << std::endl;
         return nullptr;
     }
 
     std::unique_ptr<Operation> parseNumber() {
-        skipWhitespace();
-        size_t start = pos;
-        if (pos < data.size() && (data[pos] == '-' || data[pos] == '+')) {
-            ++pos;
+        this->skipWhitespace();
+        size_t start = this->pos;
+        if (this->pos < this->data.size() &&
+            (this->data[this->pos] == '-' || this->data[this->pos] == '+')) {
+            ++this->pos;
         }
         bool hasDigit = false;
-        while (pos < data.size() &&
-               (std::isdigit(data[pos]) || data[pos] == '.')) {
-            if (std::isdigit(data[pos])) {
+        while (this->pos < this->data.size() &&
+               (std::isdigit(this->data[this->pos]) ||
+                this->data[this->pos] == '.')) {
+            if (std::isdigit(this->data[this->pos])) {
                 hasDigit = true;
             }
-            ++pos;
+            ++this->pos;
         }
         if (!hasDigit) {
-            debug << "Syntax error: Expected number" << std::endl;
+            this->debug << "Syntax error: Expected number" << std::endl;
             return nullptr;
         }
-        return std::make_unique<Constant>(data.substr(start, pos - start));
+        return std::make_unique<Constant>(
+            this->data.substr(start, this->pos - start));
     }
 
     std::unique_ptr<Operation> parseInterfaceValue() {
         std::string name;
-        while (pos < data.size() && data[pos] != ']') {
-            if (data[pos] == '\\' && pos + 1 < data.size()) {
-                ++pos;
-                if (pos < data.size()) {
-                    name += data[pos];
-                    ++pos;
+        while (this->pos < this->data.size() && this->data[this->pos] != ']') {
+            if (this->data[this->pos] == '\\' &&
+                this->pos + 1 < this->data.size()) {
+                ++this->pos;
+                if (this->pos < this->data.size()) {
+                    name += this->data[this->pos];
+                    ++this->pos;
                 }
             } else {
-                name += data[pos];
-                ++pos;
+                name += this->data[this->pos];
+                ++this->pos;
             }
         }
 
-        if (!match(']')) {
-            debug << "Syntax error: Unmatched closing bracket" << std::endl;
+        if (!this->match(']')) {
+            this->debug << "Syntax error: Unmatched closing bracket"
+                        << std::endl;
             return nullptr;
         }
 
         std::size_t index = 1;
-        if (match('.')) {
-            skipWhitespace();
-            size_t indexStart = pos;
-            while (pos < data.size() && std::isdigit(data[pos])) {
-                ++pos;
+        if (this->match('.')) {
+            this->skipWhitespace();
+            size_t indexStart = this->pos;
+            while (this->pos < this->data.size() &&
+                   std::isdigit(this->data[this->pos])) {
+                ++this->pos;
             }
-            if (indexStart == pos) {
-                debug << "Syntax error: Bad value number" << std::endl;
+            if (indexStart == this->pos) {
+                this->debug << "Syntax error: Bad value number" << std::endl;
                 return nullptr;
             }
-            std::string indexStr = data.substr(indexStart, pos - indexStart);
+            std::string indexStr =
+                this->data.substr(indexStart, this->pos - indexStart);
             char* endPtr;
             errno = 0;
             index = std::strtoul(indexStr.c_str(), &endPtr, 10);
             if (errno != 0 || endPtr != indexStr.c_str() + indexStr.size()) {
-                debug << "Syntax error: Bad value number" << std::endl;
+                this->debug << "Syntax error: Bad value number" << std::endl;
                 return nullptr;
             }
         }
 
         InterfaceConfig* interface = nullptr;
-        for (const auto& itf : interfaces) {
+        for (const auto& itf : this->interfaces) {
             if (itf && itf->name == name) {
                 interface = itf;
                 break;
@@ -534,38 +546,40 @@ private:
         }
 
         if (!interface) {
-            debug << "Error: Interface not found: " << name << std::endl;
+            this->debug << "Error: Interface not found: " << name << std::endl;
             return nullptr;
         }
 
-        usedInterfaces.insert(interface);
+        this->usedInterfaces.insert(interface);
         return std::make_unique<Value>(interface, index);
     }
 
     std::unique_ptr<Operation> parseDefaultInterfaceValue() {
-        size_t start = pos;
-        while (pos < data.size() && std::isdigit(data[pos])) {
-            ++pos;
+        size_t start = this->pos;
+        while (this->pos < this->data.size() &&
+               std::isdigit(this->data[this->pos])) {
+            ++this->pos;
         }
-        if (start == pos) {
-            debug << "Syntax error: Expected digit after '%'" << std::endl;
+        if (start == this->pos) {
+            this->debug << "Syntax error: Expected digit after '%'"
+                        << std::endl;
             return nullptr;
         }
 
-        std::string indexStr = data.substr(start, pos - start);
+        std::string indexStr = this->data.substr(start, this->pos - start);
         char* endPtr;
         errno = 0;
         std::size_t index = std::strtoul(indexStr.c_str(), &endPtr, 10);
         if (errno != 0 || endPtr != indexStr.c_str() + indexStr.size()) {
-            debug << "Syntax error: Bad value number" << std::endl;
+            this->debug << "Syntax error: Bad value number" << std::endl;
             return nullptr;
         }
-        if (!defaultInterface) {
-            debug << "Error: No default interface" << std::endl;
+        if (!this->defaultInterface) {
+            this->debug << "Error: No default interface" << std::endl;
             return nullptr;
         }
-        usedInterfaces.insert(defaultInterface);
-        return std::make_unique<Value>(defaultInterface, index);
+        this->usedInterfaces.insert(this->defaultInterface);
+        return std::make_unique<Value>(this->defaultInterface, index);
     }
 };
 
@@ -586,7 +600,7 @@ Parser2::Parser2(
 }
 
 std::unique_ptr<Operation> Parser2::parse(const std::string& data) {
-    Impl parser(debug, interfaces, defaultInterface);
+    Impl parser(this->debug, this->interfaces, this->defaultInterface);
     auto result = parser.parse(data);
     this->usedInterfaces = std::move(parser).getUsedInterfaces();
     return result;

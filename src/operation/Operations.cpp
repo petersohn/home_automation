@@ -1,34 +1,35 @@
-#include "../tools/string.hpp"
 #include "Operations.hpp"
+
+#include "../tools/string.hpp"
 
 namespace operation {
 
 std::string Constant::evaluate() {
-    return value;
+    return this->value;
 }
 
 std::string Value::evaluate() {
-    if (!interface) {
+    if (!this->interface) {
         return {};
     }
-    if (index > interface->storedValue.size()) {
+    if (this->index > this->interface->storedValue.size()) {
         return {};
     }
-    return interface->storedValue[index - 1];
+    return this->interface->storedValue[this->index - 1];
 }
 
 std::string Template::evaluate() {
-    if (!interface) {
-        return template_;
+    if (!this->interface) {
+        return this->template_;
     }
-    return tools::substitute(template_, interface->storedValue);
+    return tools::substitute(this->template_, this->interface->storedValue);
 }
 
 std::string Conditional::evaluate() {
     bool value = false;
-    auto valueStr = condition->evaluate();
+    auto valueStr = this->condition->evaluate();
     tools::getBoolValue(valueStr.c_str(), value, valueStr.size());
-    return value ? then->evaluate() : else_->evaluate();
+    return value ? this->then->evaluate() : this->else_->evaluate();
 }
 
 }  // namespace operation

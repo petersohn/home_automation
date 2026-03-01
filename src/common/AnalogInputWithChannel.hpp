@@ -13,8 +13,8 @@ public:
     AnalogInputWithChannel(std::shared_ptr<AnalogInput> input, uint8_t channel)
         : input(std::move(input)), channel(channel) {}
 
-    int read() { return input->read(channel); }
-    int getMaxValue() { return input->getMaxValue(); }
+    int read() { return this->input->read(this->channel); }
+    int getMaxValue() { return this->input->getMaxValue(); }
 
 private:
     std::shared_ptr<AnalogInput> input;

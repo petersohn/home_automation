@@ -9,38 +9,38 @@ constexpr unsigned long connectionTimeout = 60000;
 }  // unnamed namespace
 
 void WifiConnection::connectionFailed() {
-    backoff.bad();
-    connecting = false;
-    nextAttempt += retryInterval;
+    this->backoff.bad();
+    this->connecting = false;
+    this->nextAttempt += retryInterval;
 }
 
 bool WifiConnection::connectIfNeeded(
     const std::string& ssid, const std::string& password) {
-    auto status = wifi.getStatus();
+    auto status = this->wifi.getStatus();
     if (status == WifiStatus::Connected) {
-        if (!connected) {
-            debug << "\nConnection to wifi successful. IP address = "
-                  << wifi.getIp() << std::endl;
-            connected = true;
-            backoff.good();
+        if (!this->connected) {
+            this->debug << "\nConnection to wifi successful. IP address = "
+                        << this->wifi.getIp() << std::endl;
+            this->connected = true;
+            this->backoff.good();
         }
-        connecting = false;
+        this->connecting = false;
         return true;
     }
 
-    connected = false;
+    this->connected = false;
 
-    auto now = esp.millis();
-    if (now < nextAttempt) {
+    auto now = this->esp.millis();
+    if (now < this->nextAttempt) {
         return false;
     }
 
-    if (!connecting) {
-        debug << "Connecting to SSID " << ssid << "..." << std::endl;
-        wifi.begin(ssid, password);
-        connecting = true;
-        nextAttempt = now;
-        connectionStarted = now;
+    if (!this->connecting) {
+        this->debug << "Connecting to SSID " << ssid << "..." << std::endl;
+        this->wifi.begin(ssid, password);
+        this->connecting = true;
+        this->nextAttempt = now;
+        this->connectionStarted = now;
         return false;
     }
 
@@ -48,32 +48,32 @@ bool WifiConnection::connectIfNeeded(
     case WifiStatus::Connected:
         break;
     case WifiStatus::Connecting:
-        debug << "Waiting for wifi connection ("
-              << connectionStarted + connectionTimeout - now << " remaining)..."
-              << std::endl;
-        if (now > connectionStarted + connectionTimeout) {
+        this->debug << "Waiting for wifi connection ("
+                    << this->connectionStarted + connectionTimeout - now
+                    << " remaining)..." << std::endl;
+        if (now > this->connectionStarted + connectionTimeout) {
             connectionFailed();
         } else {
-            nextAttempt += checkInterval;
+            this->nextAttempt += checkInterval;
         }
         break;
     case WifiStatus::Disconnected:
-        debug << "Not connected. This should not happen." << std::endl;
+        this->debug << "Not connected. This should not happen." << std::endl;
         connectionFailed();
         break;
     case WifiStatus::ConnectionFailed:
         connectionFailed();
         break;
     case WifiStatus::ApNotFound:
-        debug << "SSID not found." << std::endl;
+        this->debug << "SSID not found." << std::endl;
         connectionFailed();
         break;
     case WifiStatus::WrongPassword:
-        debug << "Wrong password." << std::endl;
+        this->debug << "Wrong password." << std::endl;
         connectionFailed();
         break;
     default:
-        debug << "This should not happen." << std::endl;
+        this->debug << "This should not happen." << std::endl;
         connectionFailed();
         break;
     }

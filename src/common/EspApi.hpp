@@ -13,8 +13,10 @@ class EspApi {
 public:
     class InterruptGuard {
     public:
-        InterruptGuard(EspApi& esp) : esp(esp) { esp.doDisableInterrupt(); }
-        ~InterruptGuard() { esp.doEnableInterrupt(); }
+        InterruptGuard(EspApi& esp) : esp(esp) {
+            this->esp.doDisableInterrupt();
+        }
+        ~InterruptGuard() { this->esp.doEnableInterrupt(); }
 
         InterruptGuard(const InterruptGuard&) = delete;
         InterruptGuard& operator=(const InterruptGuard&) = delete;

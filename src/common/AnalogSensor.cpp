@@ -18,45 +18,47 @@ AnalogSensor::AnalogSensor(
     , aggregateTime(aggregateTime * 1000UL) {}
 
 std::optional<std::vector<std::string>> AnalogSensor::measure() {
-    auto value = doMeasure();
+    auto value = this->doMeasure();
 
-    if (aggregateTime == 0) {
-        return std::vector<std::string>{tools::floatToString(value, precision)};
+    if (this->aggregateTime == 0) {
+        return std::vector<std::string>{
+            tools::floatToString(value, this->precision)};
     }
 
-    auto now = esp.micros();
+    auto now = this->esp.micros();
 
-    if (aggregateBegin == 0 || now < previousTime) {
-        aggregateBegin = now;
-        sum = 0.0;
-        maxValue = std::abs(value);
+    if (this->aggregateBegin == 0 || now < this->previousTime) {
+        this->aggregateBegin = now;
+        this->sum = 0.0;
+        this->maxValue = std::abs(value);
     } else {
-        auto avgValue = (value + previousValue) / 2.0;
-        sum += avgValue * avgValue * (now - previousTime);
-        maxValue = std::max(maxValue, std::abs(value));
-        auto timeDiff = now - aggregateBegin;
-        if (timeDiff >= aggregateTime) {
-            aggregateBegin = 0;
+        auto avgValue = (value + this->previousValue) / 2.0;
+        this->sum += avgValue * avgValue * (now - this->previousTime);
+        this->maxValue = std::max(this->maxValue, std::abs(value));
+        auto timeDiff = now - this->aggregateBegin;
+        if (timeDiff >= this->aggregateTime) {
+            this->aggregateBegin = 0;
             return std::vector<std::string>{
-                tools::floatToString(std::sqrt(sum / timeDiff), precision),
-                tools::floatToString(maxValue, precision),
+                tools::floatToString(
+                    std::sqrt(this->sum / timeDiff), this->precision),
+                tools::floatToString(this->maxValue, this->precision),
             };
         }
     }
 
-    previousValue = value;
-    previousTime = now;
+    this->previousValue = value;
+    this->previousTime = now;
     return std::nullopt;
 }
 
 double AnalogSensor::doMeasure() {
-    double value = input.read();
-    if (max != 0.0) {
+    double value = this->input.read();
+    if (this->max != 0.0) {
         const double inputMax = this->input.getMaxValue();
-        value = value * max / inputMax - offset;
+        value = value * this->max / inputMax - this->offset;
     }
 
-    if (std::abs(value) < cutoff) {
+    if (std::abs(value) < this->cutoff) {
         return 0.0;
     }
 

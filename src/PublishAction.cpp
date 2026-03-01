@@ -18,42 +18,44 @@ PublishAction::PublishAction(
     , lastSend(0) {}
 
 void PublishAction::reset() {
-    lastSend = 0;
+    this->lastSend = 0;
 }
 
 void PublishAction::fire(const InterfaceConfig& /*interface*/) {
-    auto now = esp.millis();
+    auto now = this->esp.millis();
     std::string value;
     std::optional<double> valueNum;
-    if (sendDiff != 0.0) {
-        value = operation->evaluate();
+    if (this->sendDiff != 0.0) {
+        value = this->operation->evaluate();
         if (value.empty()) {
-            debug << "No value for " + topic << std::endl;
+            this->debug << "No value for " + this->topic << std::endl;
             return;
         }
         valueNum = tools::fromString<double>(value);
         if (!valueNum.has_value()) {
-            debug << "Failed to parse numerical value: " << value << std::endl;
+            this->debug << "Failed to parse numerical value: " << value
+                        << std::endl;
         }
     }
 
-    if (lastSend != 0 && now - lastSend < minimumSendInterval &&
+    if (this->lastSend != 0 &&
+        now - this->lastSend < this->minimumSendInterval &&
         (!valueNum.has_value() ||
-         (lastSentValue.has_value() &&
-          std::abs(*lastSentValue - *valueNum) < sendDiff))) {
-        debug << "Too soon, not sending." << std::endl;
+         (this->lastSentValue.has_value() &&
+          std::abs(*this->lastSentValue - *valueNum) < this->sendDiff))) {
+        this->debug << "Too soon, not sending." << std::endl;
         return;
     }
 
     if (value.empty()) {
-        value = operation->evaluate();
+        value = this->operation->evaluate();
         if (value.empty()) {
-            debug << "No value for " + topic << std::endl;
+            this->debug << "No value for " + this->topic << std::endl;
             return;
         }
     }
 
-    mqttClient.publish(topic.c_str(), value.c_str(), retain);
-    lastSend = now;
-    lastSentValue = valueNum;
+    this->mqttClient.publish(this->topic.c_str(), value.c_str(), this->retain);
+    this->lastSend = now;
+    this->lastSentValue = valueNum;
 }

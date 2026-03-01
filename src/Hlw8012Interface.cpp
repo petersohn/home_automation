@@ -1,6 +1,7 @@
 #if 0
 
 #include "Hlw8012Interface.hpp"
+
 #include "common/ArduinoJson.hpp"
 #include "tools/string.hpp"
 
@@ -52,11 +53,11 @@ Hlw8012Interface::Hlw8012Interface(std::ostream& debug, EspApi& esp,
 }
 
 void Hlw8012Interface::start() {
-    sensor->start();
+    this->sensor->start();
 }
 
 void Hlw8012Interface::update(Actions actions) {
-    sensor->update(std::move(actions));
+    this->sensor->update(std::move(actions));
 }
 
 void Hlw8012Interface::execute(const std::string& command) {
@@ -67,16 +68,16 @@ void Hlw8012Interface::execute(const std::string& command) {
         StaticJsonBuffer<10> buf;
         auto power = buf.parse(value);
         if (!power.is<unsigned long>()) {
-            debug << "Invalid power value: " << value << "\n";
+            this->debug << "Invalid power value: " << value << "\n";
             return;
         }
 
-        hlw.expectedActivePower(power);
-        debug << name << ": new power multiplier=" << hlw.getPowerMultiplier()
+        this->hlw.expectedActivePower(power);
+        this->debug << this->name << ": new power multiplier=" << this->hlw.getPowerMultiplier()
             << "\n";
         saveConfig();
     } else {
-        debug << "Invalid command: " << command << "\n";
+        this->debug << "Invalid command: " << command << "\n";
     }
 }
 
@@ -87,32 +88,32 @@ constexpr const char* configFileName = "/hlw8012.json";
 }
 
 void Hlw8012Interface::loadConfig() {
-    auto config = jsonParser.parseFile("/hlw8012.json");
+    auto config = this->jsonParser.parseFile("/hlw8012.json");
     if (config.root == nullptr) {
         return;
     }
 
-    auto& device = (*config.root)[name].as<JsonObject>();
+    auto& device = (*config.root)[this->name].as<JsonObject>();
     if (device == JsonObject::invalid()) {
-        debug << name << ": no config for this device." << std::endl;
+        this->debug << this->name << ": no config for this device." << std::endl;
         return;
     }
 
     double powerMultiplier = 1.0;
-    jsonParser.parseTo(device, powerMultiplier, "powerMultiplier");
-    hlw.setPowerMultiplier(powerMultiplier);
-    debug << name << ": power multiplier=" << powerMultiplier << "\n";
+    this->jsonParser.parseTo(device, powerMultiplier, "powerMultiplier");
+    this->hlw.setPowerMultiplier(powerMultiplier);
+    this->debug << this->name << ": power multiplier=" << powerMultiplier << "\n";
 }
 
 void Hlw8012Interface::saveConfig() {
     DynamicJsonBuffer buffer{100};
     auto& device = buffer.createObject();
-    device["powerMultiplier"] = hlw.getPowerMultiplier();
+    device["powerMultiplier"] = this->hlw.getPowerMultiplier();
 
     auto& root = buffer.createObject();
-    root[name] = device;
+    root[this->name] = device;
 
-    jsonParser.saveToFile(configFileName, root);
+    this->jsonParser.saveToFile(configFileName, root);
 }
 
 #endif

@@ -5,15 +5,15 @@
 
 class Lock {
 public:
-    void lock() { ++lockCount; }
+    void lock() { ++this->lockCount; }
 
     void unlock() {
-        if (lockCount != 0) {
-            --lockCount;
+        if (this->lockCount != 0) {
+            --this->lockCount;
         }
     }
 
-    bool isFree() const { return lockCount == 0; }
+    bool isFree() const { return this->lockCount == 0; }
 
 private:
     uint32_t lockCount = 0;

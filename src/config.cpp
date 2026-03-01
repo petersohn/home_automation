@@ -76,10 +76,10 @@ private:
 
     ServerConfig parseServerConfig(const JsonObject& data) {
         ServerConfig result;
-        PARSE(jsonParser, data, result, address);
-        PARSE(jsonParser, data, result, port);
-        PARSE(jsonParser, data, result, username);
-        PARSE(jsonParser, data, result, password);
+        PARSE(this->jsonParser, data, result, address);
+        PARSE(this->jsonParser, data, result, port);
+        PARSE(this->jsonParser, data, result, username);
+        PARSE(this->jsonParser, data, result, password);
         return result;
     }
 
@@ -94,13 +94,13 @@ private:
 
     GlobalConfig readGlobalConfig(const char* filename) {
         GlobalConfig result;
-        ParsedData data = jsonParser.parseFile(filename);
+        ParsedData data = this->jsonParser.parseFile(filename);
         if (!data.root) {
             return result;
         }
 
-        PARSE(jsonParser, *data.root, result, wifiSSID);
-        PARSE(jsonParser, *data.root, result, wifiPassword);
+        PARSE(this->jsonParser, *data.root, result, wifiSSID);
+        PARSE(this->jsonParser, *data.root, result, wifiPassword);
 
         JsonArray& servers = data.root->get<JsonVariant>("servers");
         if (servers == JsonArray::invalid()) {
@@ -155,9 +155,10 @@ private:
     }
 
     AnalogInputWithChannel getEspAnalogInput() {
-        auto it = analogInputs.find("");
-        if (it == analogInputs.end()) {
-            it = analogInputs.emplace("", std::make_shared<EspAnalogInput>())
+        auto it = this->analogInputs.find("");
+        if (it == this->analogInputs.end()) {
+            it = this->analogInputs
+                     .emplace("", std::make_shared<EspAnalogInput>())
                      .first;
         }
         return AnalogInputWithChannel(it->second, A0);
@@ -176,8 +177,8 @@ private:
         }
 
         auto name = value.substr(0, dotLocation);
-        auto it = analogInputs.find(name);
-        if (it == analogInputs.end()) {
+        auto it = this->analogInputs.find(name);
+        if (it == this->analogInputs.end()) {
             debug << "Input not found: " << name << std::endl;
             return std::nullopt;
         }
@@ -450,7 +451,7 @@ private:
             return;
         }
 
-        analogInputs.reserve(inputs.size());
+        this->analogInputs.reserve(inputs.size());
         for (const JsonObject& input : inputs) {
             if (input == JsonObject::invalid()) {
                 debug << "Input configuration must be an object." << std::endl;
@@ -469,7 +470,7 @@ private:
                 continue;
             }
 
-            analogInputs.emplace(std::move(name), std::move(inputConfig));
+            this->analogInputs.emplace(std::move(name), std::move(inputConfig));
         }
     }
 
@@ -630,17 +631,17 @@ private:
 
     DeviceConfig readDeviceConfig(const char* filename) {
         DeviceConfig result;
-        ParsedData data = jsonParser.parseFile(filename);
+        ParsedData data = this->jsonParser.parseFile(filename);
         if (!data.root) {
             return result;
         }
 
         bool isDebug = false;
-        jsonParser.parseTo(*data.root, isDebug, "debug");
+        this->jsonParser.parseTo(*data.root, isDebug, "debug");
         if (isDebug) {
             Serial.begin(115200);
             result.debug = std::make_unique<PrintStreambuf>(Serial);
-            debugStream.add(result.debug.get());
+            this->debugStream.add(result.debug.get());
         }
 
         PARSE(jsonParser, *data.root, result, debugPort);
