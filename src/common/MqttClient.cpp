@@ -366,12 +366,9 @@ void MqttClient::subscribe(
     const char* topic,
     std::function<void(const MqttConnection::Message&)> callback) {
     this->debug << "Subscribing to " << topic << std::endl;
+    this->subscriptions.emplace_back(topic, callback);
     if (this->connection.isConnected()) {
         this->connection.subscribe(topic);
-        this->subscriptions.emplace_back(topic, callback);
-        this->debug << "Subscription successful." << std::endl;
-    } else {
-        this->debug << "Cannot subscribe, not connected." << std::endl;
     }
 }
 
