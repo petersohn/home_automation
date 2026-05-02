@@ -17,7 +17,7 @@ struct PositionSensor {
  * Controls a cover (gate, window shutter, etc.).
  *
  * Output:
- * 1. state: OPENING, CLOSING, OPEN, CLOSE
+ * 1. state: OPENING, CLOSING, OPEN, CLOSED
  * 2. position
  *
  * Position calculation: The time between known positions is measured, and once
