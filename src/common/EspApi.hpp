@@ -43,6 +43,8 @@ public:
     virtual void doDisableInterrupt() = 0;
     virtual void doEnableInterrupt() = 0;
 
+    virtual void setRush(unsigned long microseconds) = 0;
+
     std::unique_ptr<InterruptGuard> disableInterrupt() {
         return std::make_unique<InterruptGuard>(*this);
     }

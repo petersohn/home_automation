@@ -66,3 +66,13 @@ void EspApiImpl::doDisableInterrupt() {
 void EspApiImpl::doEnableInterrupt() {
     ETS_GPIO_INTR_ENABLE();
 }
+
+void EspApiImpl::setRush(unsigned long microseconds) {
+    if (microseconds == 0) {
+        return;
+    }
+
+    if (this->rush == 0 || microseconds < this->rush) {
+        this->rush = microseconds;
+    }
+}

@@ -44,3 +44,5 @@ uint32_t FakeEspApi::getFreeHeap() {
 void FakeEspApi::doDisableInterrupt() {}
 
 void FakeEspApi::doEnableInterrupt() {}
+
+void FakeEspApi::setRush(unsigned long /*microseconds*/) {}

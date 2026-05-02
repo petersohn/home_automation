@@ -7,7 +7,8 @@
 
 AnalogSensor::AnalogSensor(
     EspApi& esp, std::ostream& debug, AnalogInputWithChannel input, double max,
-    double offset, double cutoff, int precision, unsigned aggregateTime)
+    double offset, double cutoff, int precision, unsigned aggregateTime,
+    unsigned long aggregateDelay)
     : esp(esp)
     , debug(debug)
     , input(std::move(input))
@@ -15,7 +16,8 @@ AnalogSensor::AnalogSensor(
     , offset(offset)
     , cutoff(cutoff)
     , precision(precision)
-    , aggregateTime(aggregateTime * 1000UL) {}
+    , aggregateTime(aggregateTime * 1000UL)
+    , aggregateDelay(aggregateDelay) {}
 
 std::optional<std::vector<std::string>> AnalogSensor::measure() {
     auto value = this->doMeasure();
@@ -48,6 +50,7 @@ std::optional<std::vector<std::string>> AnalogSensor::measure() {
 
     this->previousValue = value;
     this->previousTime = now;
+    esp.setRush(this->aggregateDelay);
     return std::nullopt;
 }
 

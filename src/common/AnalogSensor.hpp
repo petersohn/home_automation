@@ -12,7 +12,7 @@ public:
     AnalogSensor(
         EspApi& esp, std::ostream& debug, AnalogInputWithChannel input,
         double max, double offset, double cutoff, int precision,
-        unsigned aggregateTime);
+        unsigned aggregateTime, unsigned long aggregateDelay);
 
     std::optional<std::vector<std::string>> measure() override;
 
@@ -26,6 +26,7 @@ private:
     const double cutoff;
     const int precision;
     const unsigned long aggregateTime;
+    const unsigned long aggregateDelay;
 
     unsigned long aggregateBegin = 0;
     double sum = 0.0;

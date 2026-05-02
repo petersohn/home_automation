@@ -116,5 +116,11 @@ void loop() {
         interface->interface->update(Actions{*interface});
     }
 
-    delay(1);
+    const auto rush = esp.getRush();
+    if (rush != 0) {
+        delayMicroseconds(rush);
+        esp.resetRush();
+    } else {
+        delay(1);
+    }
 }

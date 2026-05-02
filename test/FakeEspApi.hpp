@@ -21,6 +21,8 @@ public:
     virtual void doDisableInterrupt() override;
     virtual void doEnableInterrupt() override;
 
+    virtual void setRush(unsigned long microseconds) override;
+
     bool restarted = false;
 
 private:

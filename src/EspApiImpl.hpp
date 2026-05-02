@@ -20,6 +20,14 @@ public:
 
     virtual void doDisableInterrupt() override;
     virtual void doEnableInterrupt() override;
+
+    virtual void setRush(unsigned long microseconds) override;
+
+    unsigned long getRush() const { return this->rush; }
+    void resetRush() { this->rush = 0; }
+
+private:
+    unsigned long rush = 0;
 };
 
 #endif  // ESPAPIIMPL_HPP

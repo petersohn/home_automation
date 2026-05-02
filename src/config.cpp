@@ -267,7 +267,8 @@ private:
                           getJsonWithDefault(data["valueOffset"], 0.0),
                           getJsonWithDefault(data["cutoff"], 0.0),
                           getJsonWithDefault(data["precision"], 0),
-                          getJsonWithDefault(data["aggregateTime"], 0U)));
+                          getJsonWithDefault(data["aggregateTime"], 0U),
+                          getJsonWithDefault(data["aggregateDelay"], 0U)));
         } else if (type == "encoder") {
             uint8_t downPin = 0;
             uint8_t upPin = 0;
