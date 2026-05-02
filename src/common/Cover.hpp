@@ -13,8 +13,52 @@ struct PositionSensor {
     bool invert = false;
 };
 
+/**
+ * Controls a cover (gate, window shutter, etc.).
+ *
+ * Output:
+ * 1. state: OPENING, CLOSING, OPEN, CLOSE
+ * 2. position
+ *
+ * Position calculation: The time between known positions is measured, and once
+ * it is known, the position is interpolated by the time the cover moves between
+ * known positions.
+ * - If there are position sensors, then these are used as fixed points.
+ * - If there are no position sensors, then the cover stopping is
+ *   interpreted as reaching the end position, which is then used as a fixed
+ *   point.
+ *
+ * Output:
+ * - If there is a stop pin configured, then the device works in latching mode.
+ *   The up or down pin is activated, then once it begins moving, the pin is
+ *   released. It is stopped by activating the stop pin.
+ * - If there is no stop pin configured, then the device works in continuous
+ *   mode. The up or down pin is held active while the cover should be moving.
+ *
+ * Positive/negative logic: Invert parameters decide how inputs and outputs are
+ * treated. If inversion is true, outputs work in negative logic (1=false,
+ * 0=true). If it is false, outputs work in posirtive logic (0=false, 1=true).
+ */
 class Cover : public Interface {
 public:
+    /**
+     * @param upMovementPin Input for detecting that the cover is opening.
+     * @param downMovementPin Input for detecting that the cover is closing.
+     * @param upPin Output for controlling opening movement.
+     * @param downPin Output for controlling closing movement.
+     * @param stopPin Output for stopping movement. 0 means there is no stop
+     * pin.
+     * @param invertInput Controls inversion of upMovementPin and
+     * downMovementPin.
+     * @param invertOutput Controls inversion of upPin and downPin.
+     * @param closedPosition Controls the reported state when the cover is not
+     * moving. If the position is above this value, report as open. Otherwise,
+     * report as closed.
+     * @param invertPositionSensors Controls inversion of position sensors. This
+     * inverts all position sensors, while each position sensor can be inverted
+     * individually. The two are cumulative: if this parameter is true and the
+     * position sensor is inverted, then that sensor will use positive logic.
+     */
     Cover(
         std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
