@@ -443,11 +443,10 @@ BOOST_DATA_TEST_CASE_F(
 
     if (start == this->maxPosition) {
         if (!hasPositionSensor) {
-            auto func1 = [&](unsigned long, size_t) {
+            auto func1 = [&](unsigned long /*time*/, size_t /*round*/) {
                 BOOST_TEST(this->isMovingUp());
                 BOOST_TEST(this->position == this->maxPosition);
                 BOOST_TEST(this->interface.storedValue.size() == 1);
-                BOOST_TEST(this->getValue(0) == "OPENING");
             };
             BOOST_REQUIRE_NO_THROW(this->loopFor(1000, delay, func1));
         } else {

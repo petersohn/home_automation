@@ -447,9 +447,9 @@ void Cover::update(Actions action) {
         this->rtc.set(this->positionId, this->position + 1);
         std::string stateName;
 
-        if (this->up.isStarted()) {
+        if (this->up.isMoving()) {
             stateName = "OPENING";
-        } else if (this->down.isStarted()) {
+        } else if (this->down.isMoving()) {
             stateName = "CLOSING";
         } else if (this->position <= this->closedPosition) {
             stateName = "CLOSED";
