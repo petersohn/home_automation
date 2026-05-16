@@ -46,7 +46,7 @@ public:
         double cutoff) {
         this->sensor = std::make_unique<AnalogSensor>(
             this->esp, this->debug, AnalogInputWithChannel(this->input, 0), max,
-            offset, cutoff, precision, aggregateTime);
+            offset, cutoff, precision, aggregateTime, 0 /*aggregateDelay*/);
         this->esp.delay(10);
     }
 
