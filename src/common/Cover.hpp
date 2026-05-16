@@ -137,6 +137,7 @@ private:
     int previouslyActivePositionSensor = -1;
     int targetPosition = -1;
     bool stateChanged = false;
+    int previousMovementDirection = 0;
 
     bool isLatching() const;
     bool hasPositionSensors() const;

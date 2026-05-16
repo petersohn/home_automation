@@ -16,6 +16,9 @@ constexpr int papsNoChange = -2;
 constexpr int noPosition = -1;
 constexpr int noPositionSensor = -1;
 constexpr int mspNotMoving = -2;
+
+constexpr int upDirection = 1;
+constexpr int downDirection = -1;
 }  // namespace
 
 Cover::Movement::Movement(
@@ -275,8 +278,8 @@ Cover::Cover(
           "Cover " + tools::intToString(upPin) + "." +
           tools::intToString(downPin) + ": ")
     , positionSensors(std::move(positionSensors))
-    , up(*this, upMovementPin, upPin, 100, 1, "up")
-    , down(*this, downMovementPin, downPin, 0, -1, "down")
+    , up(*this, upMovementPin, upPin, 100, upDirection, "up")
+    , down(*this, downMovementPin, downPin, 0, downDirection, "down")
     , stopPin(stopPin)
     , invertInput(invertInput)
     , invertOutput(invertOutput)
@@ -432,6 +435,18 @@ void Cover::update(Actions action) {
         newPosition = newPositionDown;
     }
 
+    int movementDirection = 0;
+    if (this->up.isMoving()) {
+        movementDirection = upDirection;
+    } else if (this->down.isMoving()) {
+        movementDirection = downDirection;
+    }
+
+    if (this->previousMovementDirection != movementDirection) {
+        this->previousMovementDirection = movementDirection;
+        this->stateChanged = true;
+    }
+
     if (this->activePositionSensor != noPositionSensor) {
         newPosition =
             this->positionSensors[this->activePositionSensor].position;
@@ -447,9 +462,9 @@ void Cover::update(Actions action) {
         this->rtc.set(this->positionId, this->position + 1);
         std::string stateName;
 
-        if (this->up.isMoving()) {
+        if (movementDirection == upDirection) {
             stateName = "OPENING";
-        } else if (this->down.isMoving()) {
+        } else if (movementDirection == downDirection) {
             stateName = "CLOSING";
         } else if (this->position <= this->closedPosition) {
             stateName = "CLOSED";
