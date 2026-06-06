@@ -255,7 +255,8 @@ void Cover::Movement::calculateMoveTimeIfNeeded() {
     }
 }
 
-Cover::Stop::Stop(Cover& parent, uint8_t pin) : parent(parent), pin(pin) {
+Cover::Stop::Stop(Cover& parent, uint8_t pin, bool latching)
+    : parent(parent), pin(pin), latching(latching) {
     if (this->isLatching()) {
         this->parent.esp.pinMode(this->pin, GpioMode::output);
         this->stop();
@@ -287,13 +288,13 @@ bool Cover::Stop::isTriggered() const {
 }
 
 bool Cover::Stop::isLatching() const {
-    return this->pin != 0;
+    return this->latching;
 }
 
 Cover::Cover(
     std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
     uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
-    bool invertInput, bool invertOutput, int closedPosition,
+    bool latching, bool invertInput, bool invertOutput, int closedPosition,
     std::vector<PositionSensor> positionSensors, bool invertPositionSensors)
     : debug(debug)
     , esp(esp)
@@ -302,7 +303,7 @@ Cover::Cover(
           "Cover " + tools::intToString(upPin) + "." +
           tools::intToString(downPin) + ": ")
     , positionSensors(std::move(positionSensors))
-    , stopper(*this, stopPin)
+    , stopper(*this, stopPin, latching)
     , up(*this, upMovementPin, upPin, 100, upDirection, "up")
     , down(*this, downMovementPin, downPin, 0, downDirection, "down")
     , invertInput(invertInput)

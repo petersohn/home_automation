@@ -398,6 +398,7 @@ private:
                              debug, esp, rtc, upMovementPin, downMovementPin,
                              upPin, downPin,
                              getJsonWithDefault(data["stopPin"], 0),
+                             getJsonWithDefault(data["latching"], false),
                              getJsonWithDefault(data["invertInput"], false),
                              getJsonWithDefault(data["invertOutput"], false),
                              getJsonWithDefault(data["closedPosition"], 0),

@@ -29,11 +29,10 @@ struct PositionSensor {
  *   point.
  *
  * Output:
- * - If there is a stop pin configured, then the device works in latching mode.
- *   The up or down pin is activated, then once it begins moving, the pin is
- *   released. It is stopped by activating the stop pin.
- * - If there is no stop pin configured, then the device works in continuous
- *   mode. The up or down pin is held active while the cover should be moving.
+ * - In latching mode, the up or down pin is activated, then once it begins
+ *   moving, the pin is released. It is stopped by activating the stop pin.
+ * - In continuous mode, the up or down pin is held active while the cover
+ *   should be moving.
  *
  * Positive/negative logic: Invert parameters decide how inputs and outputs are
  * treated. If inversion is true, outputs work in negative logic (1=false,
@@ -46,8 +45,11 @@ public:
      * @param downMovementPin Input for detecting that the cover is closing.
      * @param upPin Output for controlling opening movement.
      * @param downPin Output for controlling closing movement.
-     * @param stopPin Output for stopping movement. 0 means there is no stop
-     * pin.
+     * @param stopPin Output for stopping movement. Only used if latching is
+     * true.
+     * @param latching If true, the device works in latching mode and uses
+     * stopPin. If false, the device works in continuous mode and stopPin is
+     * ignored.
      * @param invertInput Controls inversion of upMovementPin and
      * downMovementPin.
      * @param invertOutput Controls inversion of upPin and downPin.
@@ -62,7 +64,7 @@ public:
     Cover(
         std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        uint8_t stopPin, bool invertInput, bool invertOutput,
+        uint8_t stopPin, bool latching, bool invertInput, bool invertOutput,
         int closedPosition, std::vector<PositionSensor> positionSensors,
         bool invertPositionSensors);
 
@@ -116,7 +118,7 @@ private:
 
     class Stop {
     public:
-        Stop(Cover& parent, uint8_t pin);
+        Stop(Cover& parent, uint8_t pin, bool latching);
         void stop();
         void reset();
         bool isTriggered() const;
@@ -124,7 +126,8 @@ private:
 
     private:
         Cover& parent;
-        uint8_t pin;
+        const uint8_t pin;
+        const bool latching;
         bool triggered = false;
     };
 

@@ -55,11 +55,10 @@ public:
         this->positionSensors = std::move(positionSensors_);
 
         this->initInterface(
-            "cover",
-            std::make_unique<Cover>(
-                this->debug, this->esp, this->rtc, UpInput, DownInput, UpOutput,
-                DownOutput, isLatching ? StopOutput : 0, false, false, 10,
-                std::move(positionSensorInput), false));
+            "cover", std::make_unique<Cover>(
+                         this->debug, this->esp, this->rtc, UpInput, DownInput,
+                         UpOutput, DownOutput, StopOutput, isLatching, false,
+                         false, 10, std::move(positionSensorInput), false));
         this->esp.delay(10);
     }
 
