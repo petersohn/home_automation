@@ -263,10 +263,13 @@ Cover::Stop::Stop(Cover& parent, uint8_t pin) : parent(parent), pin(pin) {
 }
 
 void Cover::Stop::stop() {
-    if (this->isLatching()) {
-        this->triggered = true;
-        this->parent.setOutput(this->pin, true);
+    if (!this->isLatching()) {
+        return;
     }
+
+    this->parent.log("stop");
+    this->triggered = true;
+    this->parent.setOutput(this->pin, true);
 }
 
 void Cover::Stop::reset() {
