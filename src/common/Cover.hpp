@@ -114,15 +114,29 @@ private:
         void calculateBeginAndEndPosition();
     };
 
+    class Stop {
+    public:
+        Stop(Cover& parent, uint8_t pin);
+        void stop();
+        void reset();
+        bool isTriggered() const;
+        bool isLatching() const;
+
+    private:
+        Cover& parent;
+        uint8_t pin;
+        bool triggered = false;
+    };
+
     std::ostream& debug;
     EspApi& esp;
     Rtc& rtc;
 
     const std::string debugPrefix;
     std::vector<PositionSensor> positionSensors;
+    Stop stopper;
     Movement up;
     Movement down;
-    uint8_t stopPin;
     const bool invertInput;
     const bool invertOutput;
     const int closedPosition;
@@ -135,14 +149,11 @@ private:
     int targetPosition = -1;
     bool stateChanged = false;
     int previousMovementDirection = 0;
-    bool stopTriggered = false;
 
-    bool isLatching() const;
     bool hasPositionSensors() const;
     bool isMovingUp() const;
     bool isMovingDown() const;
     void stop();
-    void resetStop();
     void setOutput(uint8_t pin, bool value);
 
     void log(const std::string& msg);

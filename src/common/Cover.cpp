@@ -33,6 +33,7 @@ Cover::Movement::Movement(
     , debugPrefix(parent.debugPrefix + directionName + ": ") {
     this->parent.esp.pinMode(inputPin, GpioMode::input);
     this->parent.esp.pinMode(outputPin, GpioMode::output);
+    this->parent.setOutput(this->outputPin, false);
     size_t timeCount = 1;
     if (this->parent.hasPositionSensors()) {
         timeCount = this->parent.positionSensors.size() - 1;
@@ -50,7 +51,7 @@ Cover::Movement::Movement(
 }
 
 void Cover::Movement::start() {
-    this->parent.resetStop();
+    this->parent.stopper.reset();
     this->log("Start");
     this->parent.setOutput(this->outputPin, true);
     this->startTriggered = true;
@@ -78,7 +79,7 @@ void Cover::Movement::resetStart() {
 }
 
 void Cover::Movement::handleStopped() {
-    if (!this->parent.isLatching() || this->startTriggered) {
+    if (!this->parent.stopper.isLatching() || this->startTriggered) {
         this->stop();
     } else {
         this->resetStarted();
@@ -107,7 +108,7 @@ int Cover::Movement::update() {
     auto now = this->parent.esp.millis();
     bool moving = this->isMoving();
 
-    if (this->parent.isLatching()) {
+    if (this->parent.stopper.isLatching()) {
         if (moving && this->startTriggered) {
             this->log("Reset start");
             this->resetStart();
@@ -254,6 +255,38 @@ void Cover::Movement::calculateMoveTimeIfNeeded() {
     }
 }
 
+Cover::Stop::Stop(Cover& parent, uint8_t pin) : parent(parent), pin(pin) {
+    if (this->isLatching()) {
+        this->parent.esp.pinMode(this->pin, GpioMode::output);
+        this->stop();
+    }
+}
+
+void Cover::Stop::stop() {
+    if (this->isLatching()) {
+        this->triggered = true;
+        this->parent.setOutput(this->pin, true);
+    }
+}
+
+void Cover::Stop::reset() {
+    if (!this->isLatching()) {
+        return;
+    }
+
+    this->parent.log("Reset stop");
+    this->parent.setOutput(this->pin, false);
+    this->triggered = false;
+}
+
+bool Cover::Stop::isTriggered() const {
+    return this->triggered;
+}
+
+bool Cover::Stop::isLatching() const {
+    return this->pin != 0;
+}
+
 Cover::Cover(
     std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
     uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
@@ -266,9 +299,9 @@ Cover::Cover(
           "Cover " + tools::intToString(upPin) + "." +
           tools::intToString(downPin) + ": ")
     , positionSensors(std::move(positionSensors))
+    , stopper(*this, stopPin)
     , up(*this, upMovementPin, upPin, 100, upDirection, "up")
     , down(*this, downMovementPin, downPin, 0, downDirection, "down")
-    , stopPin(stopPin)
     , invertInput(invertInput)
     , invertOutput(invertOutput)
     , closedPosition(closedPosition)
@@ -294,17 +327,9 @@ Cover::Cover(
         this->positionSensors.clear();
     }
 
-    if (this->isLatching()) {
-        this->esp.pinMode(this->stopPin, GpioMode::output);
-    }
-
     this->position = this->rtc.get(this->positionId) - 1;
     this->log("Initial position: " + tools::intToString(this->position));
     this->stop();
-}
-
-bool Cover::isLatching() const {
-    return this->stopPin != 0;
 }
 
 bool Cover::hasPositionSensors() const {
@@ -372,16 +397,6 @@ void Cover::beginClosing() {
     this->beginMoving(this->down, this->up);
 }
 
-void Cover::resetStop() {
-    if (!this->isLatching()) {
-        return;
-    }
-
-    this->log("Reset stop");
-    this->setOutput(this->stopPin, false);
-    this->stopTriggered = false;
-}
-
 void Cover::update(Actions action) {
     int newPositionSensor = noPositionSensor;
     for (size_t i = 0; i < this->positionSensors.size(); ++i) {
@@ -440,8 +455,9 @@ void Cover::update(Actions action) {
             this->positionSensors[this->activePositionSensor].position;
     }
 
-    if (this->stopTriggered && !this->up.isMoving() && !this->down.isMoving()) {
-        this->resetStop();
+    if (this->stopper.isTriggered() && !this->up.isMoving() &&
+        !this->down.isMoving()) {
+        this->stopper.reset();
     }
 
     if (newPosition != this->position || this->stateChanged) {
@@ -496,10 +512,7 @@ void Cover::setOutput(uint8_t pin, bool value) {
 void Cover::stop() {
     this->up.stop();
     this->down.stop();
-    if (this->isLatching()) {
-        this->stopTriggered = true;
-        this->setOutput(this->stopPin, true);
-    }
+    this->stopper.stop();
 }
 
 void Cover::log(const std::string& msg) {
