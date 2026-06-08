@@ -103,7 +103,6 @@ private:
         std::vector<MoveTime> moveTimes;
         int moveTimeIndex = -1;
         unsigned long moveStartTime = 0;
-        unsigned long moveStopTime = 0;
         unsigned long startedTime = 0;
         int moveStartPosition = -2;
         unsigned didNotStartCount = 0;
