@@ -175,6 +175,7 @@ int Cover::Movement::update() {
 
     if (this->isReallyMoving()) {
         if (moving) {
+            this->moveStopTime = 0;
             if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
                 const auto& moveTime =
                     this->moveTimes[this->moveTimeIndex].time;
@@ -191,34 +192,46 @@ int Cover::Movement::update() {
                     newPosition = this->beginPosition + this->direction;
                 }
             }
-        } else if (this->isStarted()) {
-            if (!this->parent.hasPositionSensors()) {
-                this->log("End position reached.");
+        } else {
+            if (this->moveStopTime == 0) {
+                this->moveStopTime = now;
+            }
+
+            if (this->isStarted() && this->moveStopTime != 0 &&
+                now - this->moveStopTime >= debounceTime) {
+                if (!this->parent.hasPositionSensors()) {
+                    this->log("End position reached.");
+                    newPosition = this->endPosition;
+                    this->calculateMoveTimeIfNeeded();
+                }
+                this->handleStopped();
+            }
+
+            if (this->moveStopTime != 0 &&
+                now - this->moveStopTime >= debounceTime) {
+                this->log("Stopped moving");
+                this->moveStartTime = 0;
+                this->moveStartPosition = mspNotMoving;
+            }
+        }
+    } else {
+        this->moveStopTime = 0;
+        if (!moving && this->isStarted() &&
+            now - this->startedTime > startTimeout) {
+            ++this->didNotStartCount;
+            if (this->parent.hasPositionSensors()) {
+                this->log("Did not start.");
+            } else {
+                this->log("Was at end position.");
                 newPosition = this->endPosition;
-                this->calculateMoveTimeIfNeeded();
             }
             this->handleStopped();
         }
-    } else if (
-        !moving && this->isStarted() &&
-        now - this->startedTime > startTimeout) {
-        ++this->didNotStartCount;
-        if (this->parent.hasPositionSensors()) {
-            this->log("Did not start.");
-        } else {
-            this->log("Was at end position.");
-            newPosition = this->endPosition;
-        }
-        this->handleStopped();
-    }
 
-    if (!moving) {
-        if (this->isReallyMoving()) {
-            this->log("Stopped moving");
+        if (!moving) {
+            this->moveStartTime = 0;
+            this->moveStartPosition = mspNotMoving;
         }
-
-        this->moveStartTime = 0;
-        this->moveStartPosition = mspNotMoving;
     }
 
     return newPosition;

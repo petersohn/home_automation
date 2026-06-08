@@ -30,6 +30,7 @@ struct TestPositionSensor {
 
 class Fixture : public InterfaceTestBase {
 public:
+    static constexpr int debounceTime = 20;
     const int maxPosition = 10000;
     bool latching = false;
     int position = 0;
@@ -346,13 +347,22 @@ BOOST_DATA_TEST_CASE_F(
             } else {
                 BOOST_TEST(this->getValue(1) == "1");
             }
+        } else if (time < 10000 + delay + this->debounceTime) {
+            BOOST_TEST(this->isMovingUp());
+            BOOST_TEST(this->getValue(0) == "OPENING");
+            if (hasPositionSensor) {
+                BOOST_TEST(this->getValue(1) == "100");
+            } else {
+                BOOST_TEST(this->getValue(1) == "1");
+            }
         } else {
             BOOST_TEST(!this->isMovingUp());
             BOOST_TEST(this->getValue(0) == "OPEN");
             BOOST_TEST(this->getValue(1) == "100");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10100, delay, func));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(10100 + this->debounceTime, delay, func));
 }
 
 BOOST_DATA_TEST_CASE_F(
@@ -375,13 +385,22 @@ BOOST_DATA_TEST_CASE_F(
             } else {
                 BOOST_TEST(this->getValue(1) == "99");
             }
+        } else if (time < 10000 + delay + this->debounceTime) {
+            BOOST_TEST(this->isMovingDown());
+            BOOST_TEST(this->getValue(0) == "CLOSING");
+            if (hasPositionSensor) {
+                BOOST_TEST(this->getValue(1) == "0");
+            } else {
+                BOOST_TEST(this->getValue(1) == "99");
+            }
         } else {
             BOOST_TEST(!this->isMovingDown());
             BOOST_TEST(this->getValue(0) == "CLOSED");
             BOOST_TEST(this->getValue(1) == "0");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10100, delay, func));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(10100 + this->debounceTime, delay, func));
 }
 
 BOOST_DATA_TEST_CASE_F(
@@ -472,13 +491,14 @@ BOOST_DATA_TEST_CASE_F(
     }
 
     if (!(hasPositionSensor && start == this->maxPosition)) {
-        auto funcOpen = [&](unsigned long, size_t) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
-        };
-
-        BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcOpen));
+        BOOST_REQUIRE_NO_THROW(this->loopFor(
+            delay + this->debounceTime, delay, [&](unsigned long time, size_t) {
+            if (time >= this->debounceTime + delay) {
+                BOOST_TEST(this->isMovingDown());
+                BOOST_TEST(this->getValue(0) == "OPEN");
+                BOOST_TEST(this->getValue(1) == "100");
+            }
+        }));
     }
 
     auto func2 = [&](unsigned long time, size_t round) {
@@ -496,11 +516,13 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func2));
 
-    BOOST_REQUIRE_NO_THROW(
-        this->loopFor(delay, delay, [&](unsigned long, size_t) {
-        BOOST_TEST(this->isMovingUp());
-        BOOST_TEST(this->getValue(0) == "CLOSED");
-        BOOST_TEST(this->getValue(1) == "0");
+    BOOST_REQUIRE_NO_THROW(this->loopFor(
+        delay + this->debounceTime, delay, [&](unsigned long time, size_t) {
+        if (time >= this->debounceTime + delay) {
+            BOOST_TEST(this->isMovingUp());
+            BOOST_TEST(this->getValue(0) == "CLOSED");
+            BOOST_TEST(this->getValue(1) == "0");
+        }
     }));
 
     if (hasPositionSensor && start == 0) {
@@ -538,11 +560,13 @@ BOOST_DATA_TEST_CASE_F(
         };
         BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func3));
 
-        BOOST_REQUIRE_NO_THROW(
-            this->loopFor(delay, delay, [&](unsigned long, size_t) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
+        BOOST_REQUIRE_NO_THROW(this->loopFor(
+            delay + this->debounceTime, delay, [&](unsigned long time, size_t) {
+            if (time >= this->debounceTime + delay) {
+                BOOST_TEST(this->isMovingDown());
+                BOOST_TEST(this->getValue(0) == "OPEN");
+                BOOST_TEST(this->getValue(1) == "100");
+            }
         }));
 
         auto func4 = [&](unsigned long time, size_t round) {
@@ -602,13 +626,20 @@ BOOST_DATA_TEST_CASE_F(
             } else {
                 BOOST_TEST(this->getValue(1) == "99");
             }
+        } else if (
+            time <=
+            static_cast<unsigned long>(4000 + delay + this->debounceTime)) {
+            BOOST_TEST(this->isMovingUp());
+            BOOST_TEST(this->getValue(0) == "OPENING");
+            BOOST_TEST(this->getValue(1) == "100");
         } else {
             BOOST_TEST(!this->isMovingUp());
             BOOST_TEST(this->getValue(0) == "OPEN");
             BOOST_TEST(this->getValue(1) == "100");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(4200, delay, func));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(4200 + this->debounceTime, delay, func));
 }
 
 BOOST_DATA_TEST_CASE_F(
@@ -634,13 +665,19 @@ BOOST_DATA_TEST_CASE_F(
                     std::to_string(
                         60 - (time - delay) * 100 / this->maxPosition));
             }
+        } else if (
+            time <= static_cast<unsigned long>(6000 + this->debounceTime)) {
+            BOOST_TEST(this->isMovingDown());
+            BOOST_TEST(this->getValue(0) == "CLOSING");
+            BOOST_TEST(this->getValue(1) == "0");
         } else {
             BOOST_TEST(!this->isMovingDown());
             BOOST_TEST(this->getValue(0) == "CLOSED");
             BOOST_TEST(this->getValue(1) == "0");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(6200, delay, func));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(6200 + this->debounceTime, delay, func));
 }
 
 BOOST_DATA_TEST_CASE_F(
@@ -724,14 +761,18 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func1));
 
-    auto funcOpen = [&](unsigned long /*time*/, size_t /*round*/) {
+    auto funcOpen = [&](unsigned long time, size_t /*round*/) {
+        if (time < this->debounceTime + delay) {
+            return;
+        }
         BOOST_TEST(!this->isMovingUp());
         BOOST_TEST(!this->isMovingDown());
         BOOST_TEST(this->getValue(0) == "OPEN");
         BOOST_TEST(this->getValue(1) == "100");
         BOOST_TEST(this->position == 10000);
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcOpen));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(delay + this->debounceTime, delay, funcOpen));
 
     this->close();
 
@@ -752,14 +793,18 @@ BOOST_DATA_TEST_CASE_F(
     };
     BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func2));
 
-    auto funcClosed = [&](unsigned long /*time*/, size_t /*round*/) {
+    auto funcClosed = [&](unsigned long time, size_t /*round*/) {
+        if (time < this->debounceTime + delay) {
+            return;
+        }
         BOOST_TEST(!this->isMovingUp());
         BOOST_TEST(!this->isMovingDown());
         BOOST_TEST(this->getValue(0) == "CLOSED");
         BOOST_TEST(this->getValue(1) == "0");
         BOOST_TEST(this->position == 0);
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcClosed));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(delay + this->debounceTime, delay, funcClosed));
 
     this->open();
 
@@ -784,7 +829,8 @@ BOOST_DATA_TEST_CASE_F(
         }
     };
     BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func3));
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcOpen));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(delay + this->debounceTime, delay, funcOpen));
 
     this->close();
 
@@ -810,7 +856,8 @@ BOOST_DATA_TEST_CASE_F(
         }
     };
     BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func4));
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcClosed));
+    BOOST_REQUIRE_NO_THROW(
+        this->loopFor(delay + this->debounceTime, delay, funcClosed));
 }
 
 BOOST_AUTO_TEST_SUITE_END();
