@@ -131,9 +131,13 @@ name.
 - `boost::unit_test::data::make({false, true})` → `testing::Bool()`.
 - `a * b` (Cartesian product) → `testing::Combine(testing::ValuesIn(a),
   testing::ValuesIn(b), …)`.
-- `a + b` (concatenation) → two `INSTANTIATE_TEST_SUITE_P` invocations on
-  the same fixture with the same instance-name prefix; gtest combines the
-  parameter sets.
+- `a + b` (concatenation) → concatenate the two datasets into a single
+  parameter vector and use a **single** `INSTANTIATE_TEST_SUITE_P` with
+  that vector. Two `INSTANTIATE_TEST_SUITE_P` calls with the same
+  instance-name prefix on the same fixture cause redefinition errors
+  because gtest uses the prefix in the generated internal symbol names.
+  Use one `INSTANTIATE_TEST_SUITE_P` per `TEST_P`, each with a unique
+  prefix that names the test it parameterizes.
 - Datasets declared as `const auto foo = ...;` in an anonymous namespace at
   file scope stay in the same anonymous namespace.
 - Where the default test-suffix `/0`, `/1`, … is too terse, a custom
@@ -164,8 +168,19 @@ INSTANTIATE_TEST_SUITE_P(
 ```
 boost::unit_test::data::make(stringOperations) + comparisons
 ```
-becomes two `INSTANTIATE_TEST_SUITE_P` calls against `Fixture` with the
-same instance prefix and different `testing::ValuesIn(...)` arguments.
+becomes a single `INSTANTIATE_TEST_SUITE_P` against the concatenated
+vector:
+
+```cpp
+std::vector<OperationParserTestParam> params = toParamVector(stringOperations);
+auto more = toParamVector(comparisons);
+params.insert(params.end(), more.begin(), more.end());
+INSTANTIATE_TEST_SUITE_P(String, OperationParserTest,
+                         testing::ValuesIn(params));
+```
+
+Multiple `INSTANTIATE_TEST_SUITE_P` calls against the same fixture must
+each have a **unique** instance-name prefix.
 
 ## Assertion translation
 
@@ -256,11 +271,13 @@ with the gtest filter form in any places it appears.
    reviewed during the rewrite; if the relative semantics are required,
    switch to `EXPECT_DOUBLE_EQ` or a custom `EXPECT_PRED_FORMAT2`
    predicate. If the absolute tolerance is sufficient, keep `EXPECT_NEAR`.
-2. **`INSTANTIATE_TEST_SUITE_P` test-name numbering restarts at 0** when
-   invoked multiple times on the same fixture (for the `+` concatenation
-   pattern). Test name uniqueness is preserved by the index suffix; this
-   is acceptable because gtest's `--gtest_filter` matches by substring and
-   the parameters themselves are still distinguishable.
+2. **Removed.** (Earlier drafts described a multi-`INSTANTIATE_TEST_SUITE_P`
+   pattern for `+` concatenation, but that is not viable: gtest generates
+   internal symbol names from `<prefix><fixture>`, so two
+   `INSTANTIATE_TEST_SUITE_P` calls with the same prefix on the same
+   fixture cause redefinition errors. The correct pattern is to
+   concatenate the parameter sets into a single vector and use a single
+   `INSTANTIATE_TEST_SUITE_P` with a unique prefix.)
 3. **`ASSERT_*` inside loops** (`CoverTest.cpp:219`–`224`) is permitted
    in gtest and aborts the current function (and therefore the current
    parameterized test instance) — matches Boost behavior.
