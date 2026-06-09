@@ -23,10 +23,7 @@ struct TestPositionSensor {
         : sensor{value, 0, invert}, min(min), max(max) {}
 };
 
-using CoverTestParam = std::tuple<int, bool, bool, int, bool, bool>;
-
-class CoverTest : public InterfaceTestBase,
-                  public ::testing::WithParamInterface<CoverTestParam> {
+class CoverTest : public InterfaceTestBase {
 public:
     const int maxPosition = 10000;
     bool latching = false;
@@ -223,6 +220,51 @@ public:
     }
 };
 
+class NormalModeFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<bool>> {};
+
+class LatchingModeFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<bool>> {};
+
+class OpenFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class CloseFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class StopWhileOpeningFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class StopWhileClosingFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class CalibrateFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool, int>> {};
+
+class OpenAfterCalibrateFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class CloseAfterCalibrateFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class RestartAfterCalibrateFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+class MultiplePositionSensorsFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<
+          std::tuple<int, bool, bool, bool, bool>> {};
+
 namespace {
 const bool hasPositionSensorValues[] = {false, true};
 const int delays1[] = {10, 50, 100, 500};
@@ -232,9 +274,8 @@ const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
 constexpr int debounceTime = 20;
 }  // namespace
 
-TEST_P(CoverTest, NormalMode) {
-    const auto& params = GetParam();
-    bool hasPositionSensor = std::get<2>(params);
+TEST_P(NormalModeFixture, NormalMode) {
+    bool hasPositionSensor = std::get<0>(GetParam());
     auto check = [this](const std::string& name, int upValue, int downValue) {
         SCOPED_TRACE(name);
         EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
@@ -275,15 +316,11 @@ TEST_P(CoverTest, NormalMode) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    NormalMode, CoverTest,
-    testing::Combine(
-        testing::Values(1), testing::Values(false),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+    NormalMode, NormalModeFixture,
+    testing::Combine(testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, LatchingMode) {
-    const auto& params = GetParam();
-    bool hasPositionSensor = std::get<2>(params);
+TEST_P(LatchingModeFixture, LatchingMode) {
+    bool hasPositionSensor = std::get<0>(GetParam());
     auto check = [this](
                      const std::string& name, int upValue, int downValue,
                      int stopValue) {
@@ -328,13 +365,10 @@ TEST_P(CoverTest, LatchingMode) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    LatchingMode, CoverTest,
-    testing::Combine(
-        testing::Values(1), testing::Values(false),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+    LatchingMode, LatchingModeFixture,
+    testing::Combine(testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, Open) {
+TEST_P(OpenFixture, Open) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -369,13 +403,12 @@ TEST_P(CoverTest, Open) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Open, CoverTest,
+    Open, OpenFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, Close) {
+TEST_P(CloseFixture, Close) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -411,13 +444,12 @@ TEST_P(CoverTest, Close) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Close, CoverTest,
+    Close, CloseFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, StopWhileOpening) {
+TEST_P(StopWhileOpeningFixture, StopWhileOpening) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -439,13 +471,12 @@ TEST_P(CoverTest, StopWhileOpening) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    StopWhileOpening, CoverTest,
+    StopWhileOpening, StopWhileOpeningFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, StopWhileClosing) {
+TEST_P(StopWhileClosingFixture, StopWhileClosing) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -468,13 +499,12 @@ TEST_P(CoverTest, StopWhileClosing) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    StopWhileClosing, CoverTest,
+    StopWhileClosing, StopWhileClosingFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, Calibrate) {
+TEST_P(CalibrateFixture, Calibrate) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -626,14 +656,13 @@ TEST_P(CoverTest, Calibrate) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Calibrate, CoverTest,
+    Calibrate, CalibrateFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
         testing::ValuesIn(hasPositionSensorValues),
-        testing::ValuesIn(calibrateStartPositions), testing::Values(false),
-        testing::Values(false)));
+        testing::ValuesIn(calibrateStartPositions)));
 
-TEST_P(CoverTest, OpenAfterCalibrate) {
+TEST_P(OpenAfterCalibrateFixture, OpenAfterCalibrate) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -671,13 +700,12 @@ TEST_P(CoverTest, OpenAfterCalibrate) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    OpenAfterCalibrate, CoverTest,
+    OpenAfterCalibrate, OpenAfterCalibrateFixture,
     testing::Combine(
         testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, CloseAfterCalibrate) {
+TEST_P(CloseAfterCalibrateFixture, CloseAfterCalibrate) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -713,13 +741,12 @@ TEST_P(CoverTest, CloseAfterCalibrate) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    CloseAfterCalibrate, CoverTest,
+    CloseAfterCalibrate, CloseAfterCalibrateFixture,
     testing::Combine(
         testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, RestartAfterCalibrate) {
+TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
     const auto& params = GetParam();
     auto delay = std::get<0>(params);
     auto isLatching = std::get<1>(params);
@@ -761,19 +788,17 @@ TEST_P(CoverTest, RestartAfterCalibrate) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    RestartAfterCalibrate, CoverTest,
+    RestartAfterCalibrate, RestartAfterCalibrateFixture,
     testing::Combine(
         testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
-        testing::Values(false), testing::Values(false)));
+        testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(CoverTest, MultiplePositionSensors) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto invertClosed = std::get<2>(params);
-    auto invertMiddle = std::get<4>(params);
-    auto invertOpen = std::get<5>(params);
+TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
+    auto delay = std::get<0>(GetParam());
+    auto isLatching = std::get<1>(GetParam());
+    auto invertClosed = std::get<2>(GetParam());
+    auto invertMiddle = std::get<3>(GetParam());
+    auto invertOpen = std::get<4>(GetParam());
 
     this->init(
         isLatching, {
@@ -901,8 +926,8 @@ TEST_P(CoverTest, MultiplePositionSensors) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    MultiplePositionSensors, CoverTest,
+    MultiplePositionSensors, MultiplePositionSensorsFixture,
     testing::Combine(
         testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::Values(false, true), testing::Values(0),
-        testing::Values(false, true), testing::Values(false, true)));
+        testing::Values(false, true), testing::Values(false, true),
+        testing::Values(false, true)));
