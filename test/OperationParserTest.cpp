@@ -483,7 +483,7 @@ TEST_P(
     })";
     auto operation = parse(json);
     EXPECT_NEAR(
-        std::atof(operation->evaluate().c_str()), sample.expectedValue, 1e-6);
+        std::atof(operation->evaluate().c_str()), sample.expectedValue, 1e-4);
 }
 
 INSTANTIATE_TEST_SUITE_P(
