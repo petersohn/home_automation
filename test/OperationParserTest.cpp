@@ -1,123 +1,16 @@
-#include <boost/test/data/monomorphic.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
+
+#include <cstdlib>
 #include <iostream>
 #include <string>
+#include <variant>
 
+#include "EspTestBase.hpp"
 #include "common/ArduinoJson.hpp"
 #include "common/Interface.hpp"
 #include "operation/OperationParser.hpp"
 
 using namespace ArduinoJson;
-
-BOOST_AUTO_TEST_SUITE(OperationParserTest)
-
-struct Fixture {
-    static std::vector<std::unique_ptr<InterfaceConfig>> createInterfaces() {
-        std::vector<std::unique_ptr<InterfaceConfig>> result;
-        result.emplace_back(std::make_unique<InterfaceConfig>());
-        result.back()->name = "str1";
-        result.back()->storedValue = {"foo", "bar", "foobar"};
-
-        result.emplace_back(std::make_unique<InterfaceConfig>());
-        result.back()->name = "str2";
-        result.back()->storedValue = {"asd", "fgh", "jkl"};
-
-        result.emplace_back(std::make_unique<InterfaceConfig>());
-        result.back()->name = "int";
-        result.back()->storedValue = {"123", "63", "0", "-110"};
-
-        result.emplace_back(std::make_unique<InterfaceConfig>());
-        result.back()->name = "float";
-        result.back()->storedValue = {"1.2", "0.0", "-11.55"};
-
-        return result;
-    }
-
-    std::unique_ptr<operation::Operation> parse(
-        const std::string& json, const char* fieldName = "result",
-        const char* templateName = "template") {
-        auto& content = this->buffer.parseObject(json);
-        return this->parser.parse(content, fieldName, templateName);
-    }
-
-    DynamicJsonBuffer buffer{512};
-    std::vector<std::unique_ptr<InterfaceConfig>> interfaces =
-        createInterfaces();
-    operation::Parser parser{this->interfaces, this->interfaces[1].get()};
-};
-
-BOOST_FIXTURE_TEST_CASE(ParseConstantString, Fixture) {
-    std::string json = R"({"result": "test value"})";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "test value");
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseConstantInt, Fixture) {
-    std::string json = R"({"result": 42})";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "42");
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseConstantFloat, Fixture) {
-    std::string json = R"({"result": 2.4})";
-    auto operation = parse(json);
-    BOOST_TEST(
-        std::atof(operation->evaluate().c_str()) == 2.4,
-        boost::test_tools::tolerance(1e-6));
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseTemplate, Fixture) {
-    std::string json = R"({"template": "%1 %2 %3"})";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "asd fgh jkl");
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseValue, Fixture) {
-    std::string json = R"({
-        "result": {
-            "type": "value",
-            "interface": "str1",
-            "index": 2
-        }
-    })";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "bar");
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseValueDefaultIndex, Fixture) {
-    std::string json = R"({
-        "result": {
-            "type": "value",
-            "interface": "str1"
-        }
-    })";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "foo");
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseValueTemplate, Fixture) {
-    std::string json = R"({
-        "result": {
-            "type": "value",
-            "interface": "str1",
-            "template": "%1 %2 %3"
-        }
-    })";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "foo bar foobar");
-}
-
-BOOST_FIXTURE_TEST_CASE(ParseValueDefaultInterface, Fixture) {
-    std::string json = R"({
-        "result": {
-            "type": "value",
-            "index": 3
-        }
-    })";
-    auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "jkl");
-}
 
 struct OperationTestSampleString {
     std::string operation;
@@ -179,12 +72,12 @@ OperationTestSampleString stringOperations[] = {
 OperationTestSampleNumber numericalOperations[] = {
     {"+", R"({ "type": "value", "interface": "int" }, 111)", 234},
     {"+", R"({ "type": "value", "interface": "int", "index": 1 },
-             { "type": "value", "interface": "int", "index": 4 },
-             { "type": "value", "interface": "float", "index": 3 })",
+              { "type": "value", "interface": "int", "index": 4 },
+              { "type": "value", "interface": "float", "index": 3 })",
      1.45},
 
     {"-", R"({ "type": "value", "interface": "float", "index": 1 },
-             { "type": "value", "interface": "int", "index": 2 })",
+              { "type": "value", "interface": "int", "index": 2 })",
      -61.8},
     {"-", R"(50, 44, -3.2)", 9.2},
 
@@ -424,9 +317,129 @@ OperationTestSampleConditional conditionalOperations[] = {
      R"({"type": "value", "index": 2})", "fgh"},
 };
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, OperationTestWithStringResult,
-    boost::unit_test::data::make(stringOperations) + comparisons) {
+using OperationParserTestParam = std::variant<
+    OperationTestSampleString, OperationTestSampleNumber,
+    OperationTestSampleConditional, OperationTestSampleMapping>;
+
+template <typename T, std::size_t N>
+std::vector<OperationParserTestParam> toParamVector(const T (&arr)[N]) {
+    std::vector<OperationParserTestParam> result;
+    result.reserve(N);
+    for (const auto& item : arr) {
+        result.emplace_back(item);
+    }
+    return result;
+}
+
+struct OperationParserTest
+    : public EspTestBase,
+      public testing::WithParamInterface<OperationParserTestParam> {
+    static std::vector<std::unique_ptr<InterfaceConfig>> createInterfaces() {
+        std::vector<std::unique_ptr<InterfaceConfig>> result;
+        result.emplace_back(std::make_unique<InterfaceConfig>());
+        result.back()->name = "str1";
+        result.back()->storedValue = {"foo", "bar", "foobar"};
+
+        result.emplace_back(std::make_unique<InterfaceConfig>());
+        result.back()->name = "str2";
+        result.back()->storedValue = {"asd", "fgh", "jkl"};
+
+        result.emplace_back(std::make_unique<InterfaceConfig>());
+        result.back()->name = "int";
+        result.back()->storedValue = {"123", "63", "0", "-110"};
+
+        result.emplace_back(std::make_unique<InterfaceConfig>());
+        result.back()->name = "float";
+        result.back()->storedValue = {"1.2", "0.0", "-11.55"};
+
+        return result;
+    }
+
+    std::unique_ptr<operation::Operation> parse(
+        const std::string& json, const char* fieldName = "result",
+        const char* templateName = "template") {
+        auto& content = this->buffer.parseObject(json);
+        return this->parser.parse(content, fieldName, templateName);
+    }
+
+    DynamicJsonBuffer buffer{512};
+    std::vector<std::unique_ptr<InterfaceConfig>> interfaces =
+        createInterfaces();
+    operation::Parser parser{this->interfaces, this->interfaces[1].get()};
+};
+
+TEST_F(OperationParserTest, ParseConstantString) {
+    std::string json = R"({"result": "test value"})";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "test value");
+}
+
+TEST_F(OperationParserTest, ParseConstantInt) {
+    std::string json = R"({"result": 42})";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "42");
+}
+
+TEST_F(OperationParserTest, ParseConstantFloat) {
+    std::string json = R"({"result": 2.4})";
+    auto operation = parse(json);
+    EXPECT_NEAR(std::atof(operation->evaluate().c_str()), 2.4, 1e-6);
+}
+
+TEST_F(OperationParserTest, ParseTemplate) {
+    std::string json = R"({"template": "%1 %2 %3"})";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "asd fgh jkl");
+}
+
+TEST_F(OperationParserTest, ParseValue) {
+    std::string json = R"({
+        "result": {
+            "type": "value",
+            "interface": "str1",
+            "index": 2
+        }
+    })";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "bar");
+}
+
+TEST_F(OperationParserTest, ParseValueDefaultIndex) {
+    std::string json = R"({
+        "result": {
+            "type": "value",
+            "interface": "str1"
+        }
+    })";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "foo");
+}
+
+TEST_F(OperationParserTest, ParseValueTemplate) {
+    std::string json = R"({
+        "result": {
+            "type": "value",
+            "interface": "str1",
+            "template": "%1 %2 %3"
+        }
+    })";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "foo bar foobar");
+}
+
+TEST_F(OperationParserTest, ParseValueDefaultInterface) {
+    std::string json = R"({
+        "result": {
+            "type": "value",
+            "index": 3
+        }
+    })";
+    auto operation = parse(json);
+    EXPECT_EQ(operation->evaluate(), "jkl");
+}
+
+TEST_P(OperationParserTest, OperationTestWithStringResult) {
+    const auto& sample = std::get<OperationTestSampleString>(GetParam());
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -436,12 +449,17 @@ BOOST_DATA_TEST_CASE_F(
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == sample.expectedValue);
+    EXPECT_EQ(operation->evaluate(), sample.expectedValue);
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, OperationTestWithNumericalResult,
-    boost::unit_test::data::make(numericalOperations)) {
+INSTANTIATE_TEST_SUITE_P(
+    Ops, OperationParserTest,
+    testing::ValuesIn(toParamVector(stringOperations)));
+INSTANTIATE_TEST_SUITE_P(
+    Ops, OperationParserTest, testing::ValuesIn(toParamVector(comparisons)));
+
+TEST_P(OperationParserTest, OperationTestWithNumericalResult) {
+    const auto& sample = std::get<OperationTestSampleNumber>(GetParam());
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -451,14 +469,16 @@ BOOST_DATA_TEST_CASE_F(
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(
-        std::atof(operation->evaluate().c_str()) == sample.expectedValue,
-        boost::test_tools::tolerance(1e-6));
+    EXPECT_NEAR(
+        std::atof(operation->evaluate().c_str()), sample.expectedValue, 1e-6);
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, UnaryOperationTest,
-    boost::unit_test::data::make(unaryOperations)) {
+INSTANTIATE_TEST_SUITE_P(
+    Ops, OperationParserTest,
+    testing::ValuesIn(toParamVector(numericalOperations)));
+
+TEST_P(OperationParserTest, UnaryOperationTest) {
+    const auto& sample = std::get<OperationTestSampleString>(GetParam());
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -468,12 +488,15 @@ BOOST_DATA_TEST_CASE_F(
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == sample.expectedValue);
+    EXPECT_EQ(operation->evaluate(), sample.expectedValue);
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, ConditionalTest,
-    boost::unit_test::data::make(conditionalOperations)) {
+INSTANTIATE_TEST_SUITE_P(
+    Ops, OperationParserTest,
+    testing::ValuesIn(toParamVector(unaryOperations)));
+
+TEST_P(OperationParserTest, ConditionalTest) {
+    const auto& sample = std::get<OperationTestSampleConditional>(GetParam());
     std::string json = R"({
         "result": {
             "type": "if",
@@ -486,11 +509,15 @@ BOOST_DATA_TEST_CASE_F(
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == sample.expectedValue);
+    EXPECT_EQ(operation->evaluate(), sample.expectedValue);
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, MappingTest, boost::unit_test::data::make(mappingOperations)) {
+INSTANTIATE_TEST_SUITE_P(
+    Ops, OperationParserTest,
+    testing::ValuesIn(toParamVector(conditionalOperations)));
+
+TEST_P(OperationParserTest, MappingTest) {
+    const auto& sample = std::get<OperationTestSampleMapping>(GetParam());
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -502,10 +529,14 @@ BOOST_DATA_TEST_CASE_F(
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == sample.expectedValue);
+    EXPECT_EQ(operation->evaluate(), sample.expectedValue);
 }
 
-BOOST_FIXTURE_TEST_CASE(ComplexOperation, Fixture) {
+INSTANTIATE_TEST_SUITE_P(
+    Ops, OperationParserTest,
+    testing::ValuesIn(toParamVector(mappingOperations)));
+
+TEST_F(OperationParserTest, ComplexOperation) {
     std::string json = R"({
         "result": {
             "type": "=",
@@ -540,41 +571,39 @@ BOOST_FIXTURE_TEST_CASE(ComplexOperation, Fixture) {
         }
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "1");
+    EXPECT_EQ(operation->evaluate(), "1");
 }
 
-BOOST_FIXTURE_TEST_CASE(DifferentFieldName, Fixture) {
+TEST_F(OperationParserTest, DifferentFieldName) {
     std::string json = R"({
         "foobar": "barbar"
     })";
     auto operation = parse(json, "foobar");
-    BOOST_TEST(operation->evaluate() == "barbar");
+    EXPECT_EQ(operation->evaluate(), "barbar");
 }
 
-BOOST_FIXTURE_TEST_CASE(DifferentTemplateName, Fixture) {
+TEST_F(OperationParserTest, DifferentTemplateName) {
     std::string json = R"({
         "foobar": "%1"
     })";
     auto operation = parse(json, "result", "foobar");
-    BOOST_TEST(operation->evaluate() == "asd");
+    EXPECT_EQ(operation->evaluate(), "asd");
 }
 
-BOOST_FIXTURE_TEST_CASE(ValueCondition, Fixture) {
+TEST_F(OperationParserTest, ValueCondition) {
     std::string json = R"({
         "result": "foobar",
         "value": "asd"
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "foobar");
+    EXPECT_EQ(operation->evaluate(), "foobar");
 }
 
-BOOST_FIXTURE_TEST_CASE(ValueConditionDoesNotHold, Fixture) {
+TEST_F(OperationParserTest, ValueConditionDoesNotHold) {
     std::string json = R"({
         "result": "foobar",
         "value": "asdf"
     })";
     auto operation = parse(json);
-    BOOST_TEST(operation->evaluate() == "");
+    EXPECT_EQ(operation->evaluate(), "");
 }
-
-BOOST_AUTO_TEST_SUITE_END()
