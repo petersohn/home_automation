@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
-#include <variant>
 
 #include "EspTestBase.hpp"
 #include "common/ArduinoJson.hpp"
@@ -317,23 +316,7 @@ OperationTestSampleConditional conditionalOperations[] = {
      R"({"type": "value", "index": 2})", "fgh"},
 };
 
-using OperationParserTestParam = std::variant<
-    OperationTestSampleString, OperationTestSampleNumber,
-    OperationTestSampleConditional, OperationTestSampleMapping>;
-
-template <typename T, std::size_t N>
-std::vector<OperationParserTestParam> toParamVector(const T (&arr)[N]) {
-    std::vector<OperationParserTestParam> result;
-    result.reserve(N);
-    for (const auto& item : arr) {
-        result.emplace_back(item);
-    }
-    return result;
-}
-
-struct OperationParserTest
-    : public EspTestBase,
-      public testing::WithParamInterface<OperationParserTestParam> {
+struct OperationParserTest : public EspTestBase {
     static std::vector<std::unique_ptr<InterfaceConfig>> createInterfaces() {
         std::vector<std::unique_ptr<InterfaceConfig>> result;
         result.emplace_back(std::make_unique<InterfaceConfig>());
@@ -367,6 +350,26 @@ struct OperationParserTest
         createInterfaces();
     operation::Parser parser{this->interfaces, this->interfaces[1].get()};
 };
+
+struct OperationTestWithStringResultFixture
+    : public OperationParserTest,
+      public testing::WithParamInterface<OperationTestSampleString> {};
+
+struct OperationTestWithNumericalResultFixture
+    : public OperationParserTest,
+      public testing::WithParamInterface<OperationTestSampleNumber> {};
+
+struct UnaryOperationTestFixture
+    : public OperationParserTest,
+      public testing::WithParamInterface<OperationTestSampleString> {};
+
+struct ConditionalTestFixture
+    : public OperationParserTest,
+      public testing::WithParamInterface<OperationTestSampleConditional> {};
+
+struct MappingTestFixture
+    : public OperationParserTest,
+      public testing::WithParamInterface<OperationTestSampleMapping> {};
 
 TEST_F(OperationParserTest, ParseConstantString) {
     std::string json = R"({"result": "test value"})";
@@ -438,8 +441,23 @@ TEST_F(OperationParserTest, ParseValueDefaultInterface) {
     EXPECT_EQ(operation->evaluate(), "jkl");
 }
 
-TEST_P(OperationParserTest, OperationTestWithStringResult) {
-    const auto& sample = std::get<OperationTestSampleString>(GetParam());
+// Combine stringOperations and comparisons into a single parameter vector
+// (matches Boost's `make(stringOperations) + comparisons` concatenation
+// pattern)
+std::vector<OperationTestSampleString> makeStringAndComparisonParams() {
+    std::vector<OperationTestSampleString> result(
+        std::begin(stringOperations), std::end(stringOperations));
+    std::vector<OperationTestSampleString> cmp(
+        std::begin(comparisons), std::end(comparisons));
+    result.insert(result.end(), cmp.begin(), cmp.end());
+    return result;
+}
+INSTANTIATE_TEST_SUITE_P(
+    String, OperationTestWithStringResultFixture,
+    testing::ValuesIn(makeStringAndComparisonParams()));
+
+TEST_P(OperationTestWithStringResultFixture, OperationTestWithStringResult) {
+    const auto& sample = GetParam();
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -452,21 +470,9 @@ TEST_P(OperationParserTest, OperationTestWithStringResult) {
     EXPECT_EQ(operation->evaluate(), sample.expectedValue);
 }
 
-// Combine stringOperations and comparisons into a single parameter vector
-// (matches Boost's `make(stringOperations) + comparisons` concatenation
-// pattern)
-std::vector<OperationParserTestParam> makeStringAndComparisonParams() {
-    auto result = toParamVector(stringOperations);
-    auto cmp = toParamVector(comparisons);
-    result.insert(result.end(), cmp.begin(), cmp.end());
-    return result;
-}
-INSTANTIATE_TEST_SUITE_P(
-    String, OperationParserTest,
-    testing::ValuesIn(makeStringAndComparisonParams()));
-
-TEST_P(OperationParserTest, OperationTestWithNumericalResult) {
-    const auto& sample = std::get<OperationTestSampleNumber>(GetParam());
+TEST_P(
+    OperationTestWithNumericalResultFixture, OperationTestWithNumericalResult) {
+    const auto& sample = GetParam();
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -481,11 +487,11 @@ TEST_P(OperationParserTest, OperationTestWithNumericalResult) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Numeric, OperationParserTest,
-    testing::ValuesIn(toParamVector(numericalOperations)));
+    Numeric, OperationTestWithNumericalResultFixture,
+    testing::ValuesIn(numericalOperations));
 
-TEST_P(OperationParserTest, UnaryOperationTest) {
-    const auto& sample = std::get<OperationTestSampleString>(GetParam());
+TEST_P(UnaryOperationTestFixture, UnaryOperationTest) {
+    const auto& sample = GetParam();
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -499,11 +505,10 @@ TEST_P(OperationParserTest, UnaryOperationTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Unary, OperationParserTest,
-    testing::ValuesIn(toParamVector(unaryOperations)));
+    Unary, UnaryOperationTestFixture, testing::ValuesIn(unaryOperations));
 
-TEST_P(OperationParserTest, ConditionalTest) {
-    const auto& sample = std::get<OperationTestSampleConditional>(GetParam());
+TEST_P(ConditionalTestFixture, ConditionalTest) {
+    const auto& sample = GetParam();
     std::string json = R"({
         "result": {
             "type": "if",
@@ -520,11 +525,11 @@ TEST_P(OperationParserTest, ConditionalTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conditional, OperationParserTest,
-    testing::ValuesIn(toParamVector(conditionalOperations)));
+    Conditional, ConditionalTestFixture,
+    testing::ValuesIn(conditionalOperations));
 
-TEST_P(OperationParserTest, MappingTest) {
-    const auto& sample = std::get<OperationTestSampleMapping>(GetParam());
+TEST_P(MappingTestFixture, MappingTest) {
+    const auto& sample = GetParam();
     std::string json = R"({
         "result": {
             "type": ")" +
@@ -540,8 +545,7 @@ TEST_P(OperationParserTest, MappingTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Mapping, OperationParserTest,
-    testing::ValuesIn(toParamVector(mappingOperations)));
+    Mapping, MappingTestFixture, testing::ValuesIn(mappingOperations));
 
 TEST_F(OperationParserTest, ComplexOperation) {
     std::string json = R"({
