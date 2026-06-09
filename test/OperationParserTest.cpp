@@ -452,11 +452,18 @@ TEST_P(OperationParserTest, OperationTestWithStringResult) {
     EXPECT_EQ(operation->evaluate(), sample.expectedValue);
 }
 
+// Combine stringOperations and comparisons into a single parameter vector
+// (matches Boost's `make(stringOperations) + comparisons` concatenation
+// pattern)
+std::vector<OperationParserTestParam> makeStringAndComparisonParams() {
+    auto result = toParamVector(stringOperations);
+    auto cmp = toParamVector(comparisons);
+    result.insert(result.end(), cmp.begin(), cmp.end());
+    return result;
+}
 INSTANTIATE_TEST_SUITE_P(
-    Ops, OperationParserTest,
-    testing::ValuesIn(toParamVector(stringOperations)));
-INSTANTIATE_TEST_SUITE_P(
-    Ops, OperationParserTest, testing::ValuesIn(toParamVector(comparisons)));
+    String, OperationParserTest,
+    testing::ValuesIn(makeStringAndComparisonParams()));
 
 TEST_P(OperationParserTest, OperationTestWithNumericalResult) {
     const auto& sample = std::get<OperationTestSampleNumber>(GetParam());
@@ -474,7 +481,7 @@ TEST_P(OperationParserTest, OperationTestWithNumericalResult) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Ops, OperationParserTest,
+    Numeric, OperationParserTest,
     testing::ValuesIn(toParamVector(numericalOperations)));
 
 TEST_P(OperationParserTest, UnaryOperationTest) {
@@ -492,7 +499,7 @@ TEST_P(OperationParserTest, UnaryOperationTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Ops, OperationParserTest,
+    Unary, OperationParserTest,
     testing::ValuesIn(toParamVector(unaryOperations)));
 
 TEST_P(OperationParserTest, ConditionalTest) {
@@ -513,7 +520,7 @@ TEST_P(OperationParserTest, ConditionalTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Ops, OperationParserTest,
+    Conditional, OperationParserTest,
     testing::ValuesIn(toParamVector(conditionalOperations)));
 
 TEST_P(OperationParserTest, MappingTest) {
@@ -533,7 +540,7 @@ TEST_P(OperationParserTest, MappingTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Ops, OperationParserTest,
+    Mapping, OperationParserTest,
     testing::ValuesIn(toParamVector(mappingOperations)));
 
 TEST_F(OperationParserTest, ComplexOperation) {
