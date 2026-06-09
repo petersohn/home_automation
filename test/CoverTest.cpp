@@ -218,6 +218,7 @@ public:
     void calibrateToPosition(int position, unsigned long delay) {
         this->setPosition(position);
         this->loopFor(41000, delay, [](unsigned long, size_t) {});
+        ASSERT_NO_FAILURE();
         if (position <= 10) {
             EXPECT_EQ(this->getValue(0), "CLOSED");
         } else {
@@ -466,6 +467,7 @@ TEST_P(StopWhileOpeningFixture, StopWhileOpening) {
     this->open();
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(2000, delay, [](unsigned long, size_t) {}));
+    ASSERT_NO_FAILURE();
 
     this->stop();
     this->esp.delay(delay);
@@ -494,6 +496,7 @@ TEST_P(StopWhileClosingFixture, StopWhileClosing) {
     this->close();
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(2000, delay, [](unsigned long, size_t) {}));
+    ASSERT_NO_FAILURE();
 
     this->stop();
     this->esp.delay(delay);
@@ -540,6 +543,7 @@ TEST_P(CalibrateFixture, Calibrate) {
                 EXPECT_EQ(this->interface.storedValue.size(), 1u);
             };
             ASSERT_NO_FATAL_FAILURE(this->loopFor(1000, delay, func1));
+            ASSERT_NO_FAILURE();
         } else {
             EXPECT_EQ(this->getValue(0), "OPEN");
             EXPECT_EQ(this->getValue(1), "100");
@@ -562,6 +566,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             }
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(travelTime, delay, func1));
+        ASSERT_NO_FAILURE();
     }
 
     std::cout << "Phase 2: move from fully open to fully closed, calculating "
@@ -576,6 +581,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         };
 
         ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcOpen));
+        ASSERT_NO_FAILURE();
     }
 
     auto func2 = [&](unsigned long time, size_t round) {
@@ -592,6 +598,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
+    ASSERT_NO_FAILURE();
 
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(delay, delay, [&](unsigned long, size_t) {
@@ -599,6 +606,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         EXPECT_EQ(this->getValue(0), "CLOSED");
         EXPECT_EQ(this->getValue(1), "0");
     }));
+    ASSERT_NO_FAILURE();
 
     if (hasPositionSensor && start == 0) {
         std::cout << "After a known full open-close cycle, calibration is "
@@ -612,6 +620,7 @@ TEST_P(CalibrateFixture, Calibrate) {
                 std::to_string((time - delay) * 100 / this->maxPosition));
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(4000, delay, func4));
+        ASSERT_NO_FAILURE();
 
         ASSERT_NO_FATAL_FAILURE(
             this->loopFor(delay, delay, [&](unsigned long, size_t) {
@@ -620,6 +629,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             EXPECT_EQ(this->getValue(0), "OPENING");
             EXPECT_EQ(this->getValue(1), "40");
         }));
+        ASSERT_NO_FAILURE();
 
         EXPECT_EQ(this->position, 4000 + delay);
     } else {
@@ -641,6 +651,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             }
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
+        ASSERT_NO_FAILURE();
 
         std::cout << "Calibration is done, set position." << std::endl;
 
@@ -650,6 +661,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             EXPECT_EQ(this->getValue(0), "OPEN");
             EXPECT_EQ(this->getValue(1), "100");
         }));
+        ASSERT_NO_FAILURE();
 
         auto func4 = [&](unsigned long time, size_t round) {
             EXPECT_TRUE(this->isMovingDown());
@@ -664,6 +676,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             }
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(6000, delay, func4));
+        ASSERT_NO_FAILURE();
 
         auto func5 = [&](unsigned long /*time*/, size_t round) {
             EXPECT_FALSE(this->isMovingDown());
@@ -675,6 +688,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             }
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, func5));
+        ASSERT_NO_FAILURE();
 
         EXPECT_EQ(this->position, 4000 - delay);
     }
@@ -796,6 +810,7 @@ TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(2000, delay, func4));
+    ASSERT_NO_FAILURE();
 
     auto func5 = [&](unsigned long /*time*/, size_t round) {
         EXPECT_FALSE(this->isMovingDown());
@@ -807,6 +822,7 @@ TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, func5));
+    ASSERT_NO_FAILURE();
     EXPECT_EQ(this->position, 4000 - delay);
     EXPECT_FALSE(this->isMovingUp());
     EXPECT_FALSE(this->isMovingDown());
@@ -860,6 +876,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func1));
+    ASSERT_NO_FAILURE();
 
     auto funcOpen = [&](unsigned long time, size_t /*round*/) {
         if (time < static_cast<unsigned long>(delay + debounceTime)) {
@@ -870,6 +887,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
+    ASSERT_NO_FAILURE();
 
     this->close();
 
@@ -893,6 +911,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
+    ASSERT_NO_FAILURE();
 
     auto funcClosed = [&](unsigned long time, size_t /*round*/) {
         if (time < static_cast<unsigned long>(delay + debounceTime)) {
@@ -903,6 +922,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(2 * delay + 2 * debounceTime, delay, funcClosed));
+    ASSERT_NO_FAILURE();
 
     this->open();
 
@@ -931,8 +951,10 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
+    ASSERT_NO_FAILURE();
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
+    ASSERT_NO_FAILURE();
 
     this->close();
 
@@ -962,6 +984,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func4));
+    ASSERT_NO_FAILURE();
     ASSERT_NO_FATAL_FAILURE(
         this->loopFor(2 * delay + 2 * debounceTime, delay, funcClosed));
 }

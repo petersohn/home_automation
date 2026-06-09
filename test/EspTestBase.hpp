@@ -10,6 +10,13 @@
 #include "FakeWifi.hpp"
 #include "TestStream.hpp"
 
+#define ASSERT_NO_FAILURE()                  \
+    do {                                     \
+        if (::testing::Test::HasFailure()) { \
+            FAIL();                          \
+        }                                    \
+    } while (false)
+
 class LogExpectation;
 
 class EspTestBase : public ::testing::Test {
