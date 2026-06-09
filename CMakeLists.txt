@@ -10,11 +10,11 @@ endif(NOT CMAKE_BUILD_TYPE)
 set (CXX_COMMON_FLAGS "-std=c++17 -Wall -Wextra -Werror")
 set (CMAKE_CXX_FLAGS_DEBUG "${CXX_COMMON_FLAGS} -O0 -g")
 set (CMAKE_CXX_FLAGS_RELEASE "${CXX_COMMON_FLAGS} -O2")
-find_package(Boost COMPONENTS unit_test_framework REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
 
 include_directories(src)
 include_directories(test/ArduinoJson)
+
+add_subdirectory(test/googletest)
 
 file(GLOB test_sources test/*.cpp)
 file(GLOB common_sources src/common/*.cpp)
@@ -23,8 +23,7 @@ file(GLOB tools_sources src/tools/*.cpp)
 
 add_executable(home_automation_test
     ${test_sources} ${operation_sources} ${common_sources} ${tools_sources})
-target_include_directories(home_automation_test PRIVATE ${Boost_INCLUDE_DIRS})
-target_link_libraries(home_automation_test boost_unit_test_framework)
+target_link_libraries(home_automation_test gtest gtest_main)
 
 add_executable(operation_tester
     ${operation_sources}  ${common_sources} ${tools_sources}

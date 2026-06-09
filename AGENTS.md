@@ -35,12 +35,14 @@ make -j <cpu_count>
 
 **Important:** after every change, build the project and run the tests.
 
+> After cloning, run `git submodule update --init --recursive` to fetch `test/googletest` and `test/ArduinoJson`.
+
 ## Testing
 
-Testing uses the Boost test framework. To run the tests, run:
+Testing uses the GoogleTest framework. To run the tests, run:
 
 ```
-./build/home_automation_test --log_level=test_suite [ -t test_to_run ]
+./build/home_automation_test [--gtest_filter=SuiteName.*]
 ```
 
 ## Compilation database
