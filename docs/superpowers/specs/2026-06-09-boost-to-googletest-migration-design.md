@@ -138,6 +138,17 @@ name.
   because gtest uses the prefix in the generated internal symbol names.
   Use one `INSTANTIATE_TEST_SUITE_P` per `TEST_P`, each with a unique
   prefix that names the test it parameterizes.
+- **Different parameterized tests in the same translation unit must use
+  different fixtures.** gtest applies every `INSTANTIATE_TEST_SUITE_P`
+  to every `TEST_P` in the same fixture, so a single shared fixture
+  with 5 `TEST_P` cases and 5 `INSTANTIATE_TEST_SUITE_P` calls would
+  produce 25 test executions (every test against every parameter set),
+  with most of them failing because the parameter tuple has the wrong
+  arity or type. The correct gtest equivalent of Boost's
+  `BOOST_DATA_TEST_CASE_F(Fixture, Name, ...)` (which creates a
+  separate test class per invocation) is one fixture per `TEST_P`. The
+  fixtures can all inherit from a common base (e.g. `CoverTest`), and
+  each derives from `::testing::WithParamInterface<TheTupleType>`.
 - Datasets declared as `const auto foo = ...;` in an anonymous namespace at
   file scope stay in the same anonymous namespace.
 - Where the default test-suffix `/0`, `/1`, … is too terse, a custom
