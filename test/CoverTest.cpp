@@ -5,6 +5,10 @@
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
 
+#define GET_PARAM(name, n)                                                    \
+  auto name = std::get<n>(GetParam());                                        \
+  std::cout << #name "=" << name << std::endl
+
 enum Pin : uint8_t {
     UpOutput = 1,
     DownOutput,
@@ -279,7 +283,7 @@ constexpr int debounceTime = 20;
 }  // namespace
 
 TEST_P(NormalModeFixture, NormalMode) {
-    bool hasPositionSensor = std::get<0>(GetParam());
+    GET_PARAM(hasPositionSensor, 0);
     auto check = [this](const std::string& name, int upValue, int downValue) {
         SCOPED_TRACE(name);
         EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
@@ -324,7 +328,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(LatchingModeFixture, LatchingMode) {
-    bool hasPositionSensor = std::get<0>(GetParam());
+    GET_PARAM(hasPositionSensor, 0);
     auto check = [this](
                      const std::string& name, int upValue, int downValue,
                      int stopValue) {
@@ -373,10 +377,9 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(OpenFixture, Open) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->loop();
@@ -413,10 +416,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(CloseFixture, Close) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->position = 10000;
@@ -454,10 +456,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(StopWhileOpeningFixture, StopWhileOpening) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->loop();
@@ -482,10 +483,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(StopWhileClosingFixture, StopWhileClosing) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->position = 10000;
@@ -511,11 +511,10 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(CalibrateFixture, Calibrate) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
-    auto start = std::get<3>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
+    GET_PARAM(start, 3);
 
     if (hasPositionSensor && delay == 500) {
         return;
@@ -690,10 +689,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(calibrateStartPositions)));
 
 TEST_P(OpenAfterCalibrateFixture, OpenAfterCalibrate) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
@@ -733,10 +731,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(CloseAfterCalibrateFixture, CloseAfterCalibrate) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
@@ -774,10 +771,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
-    const auto& params = GetParam();
-    auto delay = std::get<0>(params);
-    auto isLatching = std::get<1>(params);
-    auto hasPositionSensor = std::get<2>(params);
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
@@ -821,11 +817,11 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(hasPositionSensorValues)));
 
 TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
-    auto delay = std::get<0>(GetParam());
-    auto isLatching = std::get<1>(GetParam());
-    auto invertClosed = std::get<2>(GetParam());
-    auto invertMiddle = std::get<3>(GetParam());
-    auto invertOpen = std::get<4>(GetParam());
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(invertClosed, 2);
+    GET_PARAM(invertMiddle, 3);
+    GET_PARAM(invertOpen, 4);
 
     this->init(
         isLatching, {
