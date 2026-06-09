@@ -1,14 +1,9 @@
 #include <algorithm>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_log.hpp>
-#include <boost/test/unit_test_suite.hpp>
+#include <iostream>
 #include <tuple>
 
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
-
-BOOST_AUTO_TEST_SUITE(CoverTest)
 
 enum Pin : uint8_t {
     UpOutput = 1,
@@ -28,7 +23,10 @@ struct TestPositionSensor {
         : sensor{value, 0, invert}, min(min), max(max) {}
 };
 
-class Fixture : public InterfaceTestBase {
+using CoverTestParam = std::tuple<int, bool, bool, int, bool, bool>;
+
+class CoverTest : public InterfaceTestBase,
+                  public ::testing::WithParamInterface<CoverTestParam> {
 public:
     const int maxPosition = 10000;
     bool latching = false;
@@ -39,7 +37,7 @@ public:
     bool movingDown = false;
     std::vector<TestPositionSensor> positionSensors;
 
-    Fixture() {}
+    CoverTest() {}
 
     void init(
         bool isLatching, std::vector<TestPositionSensor> positionSensors_) {
@@ -99,27 +97,27 @@ public:
 
     void loop() {
         auto now = this->esp.millis();
-        BOOST_TEST_MESSAGE("Loop begin, time=" << now);
+        std::cout << "Loop begin, time=" << now << std::endl;
         int delta = now - this->previousTime;
         const bool upOn = this->esp.digitalRead(UpOutput) != 0;
         const bool downOn = this->esp.digitalRead(DownOutput) != 0;
 
         if (this->isWorking) {
             if (upOn && downOn) {
-                BOOST_FAIL("Should not try to move in both directions.");
+                ADD_FAILURE() << "Should not try to move in both directions.";
             }
 
             if (this->latching) {
                 if (upOn) {
-                    BOOST_TEST_MESSAGE("Start moving up");
+                    std::cout << "Start moving up" << std::endl;
                     this->movingUp = true;
                     this->movingDown = false;
                 } else if (downOn) {
-                    BOOST_TEST_MESSAGE("Start moving down");
+                    std::cout << "Start moving down" << std::endl;
                     this->movingUp = false;
                     this->movingDown = true;
                 } else if (this->esp.digitalRead(StopOutput) != 0) {
-                    BOOST_TEST_MESSAGE("Stop");
+                    std::cout << "Stop" << std::endl;
                     this->movingUp = false;
                     this->movingDown = false;
                 }
@@ -157,11 +155,11 @@ public:
                 sensor.sensor.pin, sensor.sensor.invert ? !value : value);
         }
 
-        BOOST_TEST_MESSAGE(
-            "upOn=" << upOn << " downOn=" << downOn << " movingUp="
-                    << this->movingUp << " movingDown=" << this->movingDown
-                    << " position=" << newPosition << " movedUp=" << movedUp
-                    << " movedDown=" << movedDown);
+        std::cout << "upOn=" << upOn << " downOn=" << downOn
+                  << " movingUp=" << this->movingUp
+                  << " movingDown=" << this->movingDown
+                  << " position=" << newPosition << " movedUp=" << movedUp
+                  << " movedDown=" << movedDown << std::endl;
 
         this->esp.digitalWrite(UpInput, movedUp);
         this->esp.digitalWrite(DownInput, movedDown);
@@ -171,21 +169,21 @@ public:
 
         this->updateInterface();
 
-        BOOST_TEST_MESSAGE("Loop end");
+        std::cout << "Loop end" << std::endl;
     }
 
     void open() {
-        BOOST_TEST_MESSAGE("Open");
+        std::cout << "Open" << std::endl;
         this->interface.interface->execute("OPEN");
     }
 
     void close() {
-        BOOST_TEST_MESSAGE("Close");
+        std::cout << "Close" << std::endl;
         this->interface.interface->execute("CLOSE");
     }
 
     void stop() {
-        BOOST_TEST_MESSAGE("Stop");
+        std::cout << "Stop" << std::endl;
         this->interface.interface->execute("STOP");
     }
 
@@ -198,49 +196,53 @@ public:
         std::function<void(unsigned long delta, size_t round)> func) {
         auto beginTime = this->esp.millis();
         size_t round = 0;
-        BOOST_TEST_MESSAGE("---- loopFor " << time << "----");
+        std::cout << "---- loopFor " << time << "----" << std::endl;
         this->delayUntil(beginTime + time, delay, [&]() {
             this->loop();
             auto time = this->esp.millis() - beginTime;
             ++round;
-            BOOST_TEST_CONTEXT(
-                "round=" << round << " time=" << time
-                         << " position=" << this->position) {
-                BOOST_REQUIRE_NO_THROW(func(time, round));
-            }
+            SCOPED_TRACE(
+                "round=" + std::to_string(round) +
+                " time=" + std::to_string(time) +
+                " position=" + std::to_string(this->position));
+            ASSERT_NO_THROW(func(time, round));
         });
-        BOOST_TEST_MESSAGE("---- loopFor done ----");
+        std::cout << "---- loopFor done ----" << std::endl;
     }
 
     void calibrateToPosition(int position, unsigned long delay) {
         this->setPosition(position);
         this->loopFor(41000, delay, [](unsigned long, size_t) {});
         if (position <= 10) {
-            BOOST_TEST_REQUIRE(this->getValue(0) == "CLOSED");
+            EXPECT_EQ(this->getValue(0), "CLOSED");
         } else {
-            BOOST_TEST_REQUIRE(this->getValue(0) == "OPEN");
+            EXPECT_EQ(this->getValue(0), "OPEN");
         }
-        BOOST_TEST_REQUIRE(this->getValue(1) == std::to_string(position));
-        BOOST_TEST_MESSAGE("---- Calibration done ----");
+        EXPECT_EQ(this->getValue(1), std::to_string(position));
+        std::cout << "---- Calibration done ----" << std::endl;
     }
 };
 
 namespace {
-const auto hasPositionSensorValues =
-    boost::unit_test::data::make({false, true});
-}
+const bool hasPositionSensorValues[] = {false, true};
+const int delays1[] = {10, 50, 100, 500};
+const int delays2[] = {10, 50, 100};
+const bool latchings[] = {false, true};
+const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
+constexpr int debounceTime = 20;
+}  // namespace
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, NormalMode, hasPositionSensorValues, hasPositionSensor) {
+TEST_P(CoverTest, NormalMode) {
+    const auto& params = GetParam();
+    bool hasPositionSensor = std::get<2>(params);
     auto check = [this](const std::string& name, int upValue, int downValue) {
-        BOOST_TEST_CONTEXT(name) {
-            BOOST_TEST(this->esp.digitalRead(UpOutput) == upValue);
-            BOOST_TEST(this->esp.digitalRead(DownOutput) == downValue);
-            this->esp.delay(10);
-            this->loop();
-            BOOST_TEST(this->esp.digitalRead(UpOutput) == upValue);
-            BOOST_TEST(this->esp.digitalRead(DownOutput) == downValue);
-        }
+        SCOPED_TRACE(name);
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
+        this->esp.delay(10);
+        this->loop();
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
     };
 
     this->position = 5000;
@@ -272,21 +274,28 @@ BOOST_DATA_TEST_CASE_F(
     check("close after open 2", 0, 1);
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, LatchingMode, hasPositionSensorValues, hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    NormalMode, CoverTest,
+    testing::Combine(
+        testing::Values(1), testing::Values(false),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
+
+TEST_P(CoverTest, LatchingMode) {
+    const auto& params = GetParam();
+    bool hasPositionSensor = std::get<2>(params);
     auto check = [this](
                      const std::string& name, int upValue, int downValue,
                      int stopValue) {
-        BOOST_TEST_CONTEXT(name) {
-            BOOST_TEST(this->esp.digitalRead(UpOutput) == upValue);
-            BOOST_TEST(this->esp.digitalRead(DownOutput) == downValue);
-            BOOST_TEST(this->esp.digitalRead(StopOutput) == stopValue);
-            this->esp.delay(10);
-            this->loop();
-            BOOST_TEST(this->esp.digitalRead(UpOutput) == 0);
-            BOOST_TEST(this->esp.digitalRead(DownOutput) == 0);
-            BOOST_TEST(this->esp.digitalRead(StopOutput) == 0);
-        }
+        SCOPED_TRACE(name);
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
+        EXPECT_EQ(this->esp.digitalRead(StopOutput), stopValue);
+        this->esp.delay(10);
+        this->loop();
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), 0);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), 0);
+        EXPECT_EQ(this->esp.digitalRead(StopOutput), 0);
     };
 
     this->position = 5000;
@@ -318,45 +327,60 @@ BOOST_DATA_TEST_CASE_F(
     check("close after open 2", 0, 1, 0);
 }
 
-namespace {
-const auto delays1 = boost::unit_test::data::make({10, 50, 100, 500});
-const auto delays2 = boost::unit_test::data::make({10, 50, 100});
-const auto latchings = boost::unit_test::data::make({false, true});
-const auto params1 = delays1 * latchings * hasPositionSensorValues;
-const auto params2 = delays2 * latchings * hasPositionSensorValues;
-}  // namespace
-//
+INSTANTIATE_TEST_SUITE_P(
+    LatchingMode, CoverTest,
+    testing::Combine(
+        testing::Values(1), testing::Values(false),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, Open, params1, delay, isLatching, hasPositionSensor) {
+TEST_P(CoverTest, Open) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->loop();
 
     this->open();
     auto func = [&](unsigned long time, size_t round) {
         if (!hasPositionSensor && (time <= 20 || round == 1)) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->interface.storedValue.size() == 1);
-            BOOST_TEST(this->getValue(0) == "OPENING");
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->interface.storedValue.size(), 1u);
+            EXPECT_EQ(this->getValue(0), "OPENING");
         } else if (time <= 10000) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
             if (hasPositionSensor && time == 10000) {
-                BOOST_TEST(this->getValue(1) == "100");
+                EXPECT_EQ(this->getValue(1), "100");
             } else {
-                BOOST_TEST(this->getValue(1) == "1");
+                EXPECT_EQ(this->getValue(1), "1");
             }
+        } else if (
+            time < static_cast<unsigned long>(10000 + delay + debounceTime)) {
         } else {
-            BOOST_TEST(!this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10100, delay, func));
+    ASSERT_NO_THROW(
+        this->loopFor(10000 + 2 * delay + 2 * debounceTime, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, Close, params1, delay, isLatching, hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    Open, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
+
+TEST_P(CoverTest, Close) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->position = 10000;
     this->loop();
@@ -364,72 +388,99 @@ BOOST_DATA_TEST_CASE_F(
     this->close();
     auto func = [&](unsigned long time, size_t round) {
         if (!hasPositionSensor && (time <= 20 || round == 1)) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->interface.storedValue.size() == 1);
-            BOOST_TEST(this->getValue(0) == "CLOSING");
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->interface.storedValue.size(), 1u);
+            EXPECT_EQ(this->getValue(0), "CLOSING");
         } else if (time <= 10000) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "CLOSING");
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "CLOSING");
             if (hasPositionSensor && time == 10000) {
-                BOOST_TEST(this->getValue(1) == "0");
+                EXPECT_EQ(this->getValue(1), "0");
             } else {
-                BOOST_TEST(this->getValue(1) == "99");
+                EXPECT_EQ(this->getValue(1), "99");
             }
+        } else if (
+            time < static_cast<unsigned long>(10000 + delay + debounceTime)) {
         } else {
-            BOOST_TEST(!this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "CLOSED");
-            BOOST_TEST(this->getValue(1) == "0");
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10100, delay, func));
+    ASSERT_NO_THROW(
+        this->loopFor(10000 + 2 * delay + 2 * debounceTime, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, StopWhileOpening, params1, delay, isLatching, hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    Close, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
+
+TEST_P(CoverTest, StopWhileOpening) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->loop();
 
     this->open();
-    BOOST_REQUIRE_NO_THROW(
-        this->loopFor(2000, delay, [](unsigned long, size_t) {}));
+    ASSERT_NO_THROW(this->loopFor(2000, delay, [](unsigned long, size_t) {}));
 
     this->stop();
     this->esp.delay(delay);
     this->loop();
 
-    BOOST_TEST(!this->isMovingUp());
-    BOOST_TEST(!this->isMovingDown());
-    BOOST_TEST(this->position == 2000);
+    EXPECT_FALSE(this->isMovingUp());
+    EXPECT_FALSE(this->isMovingDown());
+    EXPECT_EQ(this->position, 2000);
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, StopWhileClosing, params1, delay, isLatching, hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    StopWhileOpening, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
+
+TEST_P(CoverTest, StopWhileClosing) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     this->position = 10000;
     this->loop();
 
     this->close();
-    BOOST_REQUIRE_NO_THROW(
-        this->loopFor(2000, delay, [](unsigned long, size_t) {}));
+    ASSERT_NO_THROW(this->loopFor(2000, delay, [](unsigned long, size_t) {}));
 
     this->stop();
     this->esp.delay(delay);
     this->loop();
 
-    BOOST_TEST(!this->isMovingUp());
-    BOOST_TEST(!this->isMovingDown());
-    BOOST_TEST(this->position == 8000);
+    EXPECT_FALSE(this->isMovingUp());
+    EXPECT_FALSE(this->isMovingDown());
+    EXPECT_EQ(this->position, 8000);
 }
 
-namespace {
-const auto calibrateStartPositions =
-    boost::unit_test::data::make({0, 5000, 8000, 10000});
-const auto calibrateParams = params1 * calibrateStartPositions;
-}  // namespace
+INSTANTIATE_TEST_SUITE_P(
+    StopWhileClosing, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, Calibrate, calibrateParams, delay, isLatching, hasPositionSensor,
-    start) {
+TEST_P(CoverTest, Calibrate) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+    auto start = std::get<3>(params);
+
     if (hasPositionSensor && delay == 500) {
         return;
     }
@@ -443,255 +494,287 @@ BOOST_DATA_TEST_CASE_F(
     if (start == this->maxPosition) {
         if (!hasPositionSensor) {
             auto func1 = [&](unsigned long /*time*/, size_t /*round*/) {
-                BOOST_TEST(this->isMovingUp());
-                BOOST_TEST(this->position == this->maxPosition);
-                BOOST_TEST(this->interface.storedValue.size() == 1);
+                EXPECT_TRUE(this->isMovingUp());
+                EXPECT_EQ(this->position, this->maxPosition);
+                EXPECT_EQ(this->interface.storedValue.size(), 1u);
             };
-            BOOST_REQUIRE_NO_THROW(this->loopFor(1000, delay, func1));
+            ASSERT_NO_THROW(this->loopFor(1000, delay, func1));
         } else {
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_EQ(this->getValue(0), "OPEN");
+            EXPECT_EQ(this->getValue(1), "100");
         }
     } else {
         const unsigned long travelTime = 10000 - start;
         auto func1 = [&](unsigned long time, size_t round) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
             if (!(hasPositionSensor && start == 0) &&
                 (time <= 20 || round == 1)) {
-                BOOST_TEST(this->interface.storedValue.size() == 1);
+                EXPECT_EQ(this->interface.storedValue.size(), 1u);
             } else {
                 if (hasPositionSensor && time == travelTime) {
-                    BOOST_TEST(this->getValue(1) == "100");
+                    EXPECT_EQ(this->getValue(1), "100");
                 } else {
-                    BOOST_TEST(this->getValue(1) == "1");
+                    EXPECT_EQ(this->getValue(1), "1");
                 }
             }
         };
-        BOOST_REQUIRE_NO_THROW(this->loopFor(travelTime, delay, func1));
+        ASSERT_NO_THROW(this->loopFor(travelTime, delay, func1));
     }
 
     if (!(hasPositionSensor && start == this->maxPosition)) {
         auto funcOpen = [&](unsigned long, size_t) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "OPEN");
+            EXPECT_EQ(this->getValue(1), "100");
         };
 
-        BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcOpen));
+        ASSERT_NO_THROW(this->loopFor(delay, delay, funcOpen));
     }
 
     auto func2 = [&](unsigned long time, size_t round) {
-        BOOST_TEST(this->isMovingDown());
-        BOOST_TEST(this->getValue(0) == "CLOSING");
+        EXPECT_TRUE(this->isMovingDown());
+        EXPECT_EQ(this->getValue(0), "CLOSING");
         if (!hasPositionSensor && (time <= 20 || round == 1)) {
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_EQ(this->getValue(1), "100");
         } else {
             if (hasPositionSensor && time == 10000) {
-                BOOST_TEST(this->getValue(1) == "0");
+                EXPECT_EQ(this->getValue(1), "0");
             } else {
-                BOOST_TEST(this->getValue(1) == "99");
+                EXPECT_EQ(this->getValue(1), "99");
             }
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func2));
+    ASSERT_NO_THROW(this->loopFor(10000, delay, func2));
 
-    BOOST_REQUIRE_NO_THROW(
-        this->loopFor(delay, delay, [&](unsigned long, size_t) {
-        BOOST_TEST(this->isMovingUp());
-        BOOST_TEST(this->getValue(0) == "CLOSED");
-        BOOST_TEST(this->getValue(1) == "0");
+    ASSERT_NO_THROW(this->loopFor(delay, delay, [&](unsigned long, size_t) {
+        EXPECT_TRUE(this->isMovingUp());
+        EXPECT_EQ(this->getValue(0), "CLOSED");
+        EXPECT_EQ(this->getValue(1), "0");
     }));
 
     if (hasPositionSensor && start == 0) {
         auto func4 = [&](unsigned long time, size_t /*round*/) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string((time - delay) * 100 / this->maxPosition));
         };
-        BOOST_REQUIRE_NO_THROW(this->loopFor(4000, delay, func4));
+        ASSERT_NO_THROW(this->loopFor(4000, delay, func4));
 
-        BOOST_REQUIRE_NO_THROW(
-            this->loopFor(delay, delay, [&](unsigned long, size_t) {
-            BOOST_TEST(!this->isMovingUp());
-            BOOST_TEST(!this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "OPENING");
-            BOOST_TEST(this->getValue(1) == "40");
+        ASSERT_NO_THROW(this->loopFor(delay, delay, [&](unsigned long, size_t) {
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "OPENING");
+            EXPECT_EQ(this->getValue(1), "40");
         }));
 
-        BOOST_TEST(this->position == 4000 + delay);
+        EXPECT_EQ(this->position, 4000 + delay);
     } else {
         auto func3 = [&](unsigned long time, size_t round) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
             if (!hasPositionSensor && (time <= 20 || round == 1)) {
-                BOOST_TEST(this->getValue(1) == "0");
+                EXPECT_EQ(this->getValue(1), "0");
             } else {
                 if (hasPositionSensor && time == 10000) {
-                    BOOST_TEST(this->getValue(1) == "100");
+                    EXPECT_EQ(this->getValue(1), "100");
                 } else {
-                    BOOST_TEST(this->getValue(1) == "1");
+                    EXPECT_EQ(this->getValue(1), "1");
                 }
             }
         };
-        BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func3));
+        ASSERT_NO_THROW(this->loopFor(10000, delay, func3));
 
-        BOOST_REQUIRE_NO_THROW(
-            this->loopFor(delay, delay, [&](unsigned long, size_t) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
+        ASSERT_NO_THROW(this->loopFor(delay, delay, [&](unsigned long, size_t) {
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "OPEN");
+            EXPECT_EQ(this->getValue(1), "100");
         }));
 
         auto func4 = [&](unsigned long time, size_t round) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "CLOSING");
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "CLOSING");
             if (time <= 20 || round == 1) {
-                BOOST_TEST(this->getValue(1) == "100");
+                EXPECT_EQ(this->getValue(1), "100");
             } else {
-                BOOST_TEST(
-                    this->getValue(1) ==
+                EXPECT_EQ(
+                    this->getValue(1),
                     std::to_string(
                         100 - (time - delay) * 100 / this->maxPosition));
             }
         };
-        BOOST_REQUIRE_NO_THROW(this->loopFor(6000, delay, func4));
+        ASSERT_NO_THROW(this->loopFor(6000, delay, func4));
 
         auto func5 = [&](unsigned long /*time*/, size_t round) {
-            BOOST_TEST(!this->isMovingDown());
-            BOOST_TEST(this->getValue(1) == "40");
+            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(1), "40");
             if (round == 1) {
-                BOOST_TEST(this->getValue(0) == "CLOSING");
+                EXPECT_EQ(this->getValue(0), "CLOSING");
             } else {
-                BOOST_TEST(this->getValue(0) == "OPEN");
+                EXPECT_EQ(this->getValue(0), "OPEN");
             }
         };
-        BOOST_REQUIRE_NO_THROW(this->loopFor(delay * 3, delay, func5));
+        ASSERT_NO_THROW(this->loopFor(delay * 3, delay, func5));
 
-        BOOST_TEST(this->position == 4000 - delay);
+        EXPECT_EQ(this->position, 4000 - delay);
     }
 
-    BOOST_TEST(!this->isMovingUp());
-    BOOST_TEST(!this->isMovingDown());
+    EXPECT_FALSE(this->isMovingUp());
+    EXPECT_FALSE(this->isMovingDown());
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, OpenAfterCalibrate, params2, delay, isLatching,
-    hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    Calibrate, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues),
+        testing::ValuesIn(calibrateStartPositions), testing::Values(false),
+        testing::Values(false)));
+
+TEST_P(CoverTest, OpenAfterCalibrate) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
-    BOOST_REQUIRE_NO_THROW(this->calibrateToPosition(60, delay));
+    ASSERT_NO_THROW(this->calibrateToPosition(60, delay));
     this->open();
     auto func = [&](unsigned long time, size_t round) {
         if (time <= 20 || round == 1) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
-            BOOST_TEST(this->getValue(1) == "60");
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
+            EXPECT_EQ(this->getValue(1), "60");
         } else if (time <= 4000) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string(60 + (time - delay) * 100 / this->maxPosition));
         } else if (time <= static_cast<unsigned long>(4000 + delay)) {
-            BOOST_TEST(this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPENING");
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
             if (hasPositionSensor) {
-                BOOST_TEST(this->getValue(1) == "100");
+                EXPECT_EQ(this->getValue(1), "100");
             } else {
-                BOOST_TEST(this->getValue(1) == "99");
+                EXPECT_EQ(this->getValue(1), "99");
             }
         } else {
-            BOOST_TEST(!this->isMovingUp());
-            BOOST_TEST(this->getValue(0) == "OPEN");
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPEN");
+            EXPECT_EQ(this->getValue(1), "100");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(4200, delay, func));
+    ASSERT_NO_THROW(this->loopFor(4200, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, CloseAfterCalibrate, params2, delay, isLatching,
-    hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    OpenAfterCalibrate, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
+
+TEST_P(CoverTest, CloseAfterCalibrate) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
-    BOOST_REQUIRE_NO_THROW(this->calibrateToPosition(60, delay));
+    ASSERT_NO_THROW(this->calibrateToPosition(60, delay));
     this->close();
     auto func = [&](unsigned long time, size_t round) {
         if (time <= 20 || round == 1) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "CLOSING");
-            BOOST_TEST(this->getValue(1) == "60");
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "CLOSING");
+            EXPECT_EQ(this->getValue(1), "60");
         } else if (time <= static_cast<unsigned long>(6000 - delay)) {
-            BOOST_TEST(this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "CLOSING");
+            EXPECT_TRUE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "CLOSING");
             if (hasPositionSensor &&
                 time == static_cast<unsigned long>(6000 - delay)) {
-                BOOST_TEST(this->getValue(1) == "0");
+                EXPECT_EQ(this->getValue(1), "0");
             } else {
-                BOOST_TEST(
-                    this->getValue(1) ==
+                EXPECT_EQ(
+                    this->getValue(1),
                     std::to_string(
                         60 - (time - delay) * 100 / this->maxPosition));
             }
         } else {
-            BOOST_TEST(!this->isMovingDown());
-            BOOST_TEST(this->getValue(0) == "CLOSED");
-            BOOST_TEST(this->getValue(1) == "0");
+            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "CLOSED");
+            EXPECT_EQ(this->getValue(1), "0");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(6200, delay, func));
+    ASSERT_NO_THROW(this->loopFor(6200, delay, func));
 }
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, RestartAfterCalibrate, params2, delay, isLatching,
-    hasPositionSensor) {
+INSTANTIATE_TEST_SUITE_P(
+    CloseAfterCalibrate, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
+
+TEST_P(CoverTest, RestartAfterCalibrate) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto hasPositionSensor = std::get<2>(params);
+
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
-    BOOST_REQUIRE_NO_THROW(this->calibrateToPosition(60, delay));
+    ASSERT_NO_THROW(this->calibrateToPosition(60, delay));
     this->reboot();
     this->position = 6000;
     this->loop();
     this->setPosition(40);
 
     auto func4 = [&](unsigned long time, size_t round) {
-        BOOST_TEST(this->isMovingDown());
-        BOOST_TEST(this->getValue(0) == "CLOSING");
+        EXPECT_TRUE(this->isMovingDown());
+        EXPECT_EQ(this->getValue(0), "CLOSING");
         if (time <= 20 || round == 1) {
-            BOOST_TEST(this->getValue(1) == "60");
+            EXPECT_EQ(this->getValue(1), "60");
         } else {
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string(60 - (time - delay) * 100 / this->maxPosition));
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(2000, delay, func4));
+    ASSERT_NO_THROW(this->loopFor(2000, delay, func4));
 
     auto func5 = [&](unsigned long /*time*/, size_t round) {
-        BOOST_TEST(!this->isMovingDown());
-        BOOST_TEST(this->getValue(1) == "40");
+        EXPECT_FALSE(this->isMovingDown());
+        EXPECT_EQ(this->getValue(1), "40");
         if (round == 1) {
-            BOOST_TEST(this->getValue(0) == "CLOSING");
+            EXPECT_EQ(this->getValue(0), "CLOSING");
         } else {
-            BOOST_TEST(this->getValue(0) == "OPEN");
+            EXPECT_EQ(this->getValue(0), "OPEN");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay * 3, delay, func5));
-    BOOST_TEST(this->position == 4000 - delay);
-    BOOST_TEST(!this->isMovingUp());
-    BOOST_TEST(!this->isMovingDown());
+    ASSERT_NO_THROW(this->loopFor(delay * 3, delay, func5));
+    EXPECT_EQ(this->position, 4000 - delay);
+    EXPECT_FALSE(this->isMovingUp());
+    EXPECT_FALSE(this->isMovingDown());
 }
 
-namespace {
-const auto params2NoPositionSensor =
-    delays2 * latchings * boost::unit_test::data::make({false, true}) *
-    boost::unit_test::data::make({false, true}) *
-    boost::unit_test::data::make({false, true});
+INSTANTIATE_TEST_SUITE_P(
+    RestartAfterCalibrate, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues), testing::Values(0),
+        testing::Values(false), testing::Values(false)));
 
-}  // namespace
+TEST_P(CoverTest, MultiplePositionSensors) {
+    const auto& params = GetParam();
+    auto delay = std::get<0>(params);
+    auto isLatching = std::get<1>(params);
+    auto invertClosed = std::get<2>(params);
+    auto invertMiddle = std::get<4>(params);
+    auto invertOpen = std::get<5>(params);
 
-BOOST_DATA_TEST_CASE_F(
-    Fixture, MultiplePositionSensors, params2NoPositionSensor, delay,
-    isLatching, invertClosed, invertMiddle, invertOpen) {
     this->init(
         isLatching, {
                         TestPositionSensor{0, 0, 200, invertClosed},
@@ -700,117 +783,126 @@ BOOST_DATA_TEST_CASE_F(
                     });
     this->loop();
 
-    BOOST_TEST(!this->isMovingUp());
-    BOOST_TEST(!this->isMovingDown());
-    BOOST_TEST(this->getValue(0) == "CLOSED");
-    BOOST_TEST(this->getValue(1) == "0");
+    EXPECT_FALSE(this->isMovingUp());
+    EXPECT_FALSE(this->isMovingDown());
+    EXPECT_EQ(this->getValue(0), "CLOSED");
+    EXPECT_EQ(this->getValue(1), "0");
 
     this->open();
 
     auto func1 = [&](unsigned long time, size_t /*round*/) {
-        BOOST_TEST(this->isMovingUp());
-        BOOST_TEST(this->getValue(0) == "OPENING");
+        EXPECT_TRUE(this->isMovingUp());
+        EXPECT_EQ(this->getValue(0), "OPENING");
         if (time <= 200) {
-            BOOST_TEST(this->getValue(1) == "0");
+            EXPECT_EQ(this->getValue(1), "0");
         } else if (time < 4800) {
-            BOOST_TEST(this->getValue(1) == "1");
+            EXPECT_EQ(this->getValue(1), "1");
         } else if (time <= 5200) {
-            BOOST_TEST(this->getValue(1) == "50");
+            EXPECT_EQ(this->getValue(1), "50");
         } else if (time < 9800) {
-            BOOST_TEST(this->getValue(1) == "51");
+            EXPECT_EQ(this->getValue(1), "51");
         } else {
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_EQ(this->getValue(1), "100");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func1));
+    ASSERT_NO_THROW(this->loopFor(10000, delay, func1));
 
-    auto funcOpen = [&](unsigned long /*time*/, size_t /*round*/) {
-        BOOST_TEST(!this->isMovingUp());
-        BOOST_TEST(!this->isMovingDown());
-        BOOST_TEST(this->getValue(0) == "OPEN");
-        BOOST_TEST(this->getValue(1) == "100");
-        BOOST_TEST(this->position == 10000);
+    auto funcOpen = [&](unsigned long time, size_t /*round*/) {
+        if (time < static_cast<unsigned long>(delay + debounceTime)) {
+        } else {
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
+        }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcOpen));
+    ASSERT_NO_THROW(
+        this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
 
     this->close();
 
     auto func2 = [&](unsigned long time, size_t /*round*/) {
-        BOOST_TEST(this->isMovingDown());
-        BOOST_TEST(this->getValue(0) == "CLOSING");
+        EXPECT_TRUE(this->isMovingDown());
+        EXPECT_EQ(this->getValue(0), "CLOSING");
         if (time <= 200) {
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_EQ(this->getValue(1), "100");
         } else if (time < 4800) {
-            BOOST_TEST(this->getValue(1) == "99");
+            EXPECT_EQ(this->getValue(1), "99");
         } else if (time <= 5200) {
-            BOOST_TEST(this->getValue(1) == "50");
+            EXPECT_EQ(this->getValue(1), "50");
         } else if (time < 9800) {
-            BOOST_TEST(this->getValue(1) == "49");
+            EXPECT_EQ(this->getValue(1), "49");
         } else {
-            BOOST_TEST(this->getValue(1) == "0");
+            EXPECT_EQ(this->getValue(1), "0");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func2));
+    ASSERT_NO_THROW(this->loopFor(10000, delay, func2));
 
-    auto funcClosed = [&](unsigned long /*time*/, size_t /*round*/) {
-        BOOST_TEST(!this->isMovingUp());
-        BOOST_TEST(!this->isMovingDown());
-        BOOST_TEST(this->getValue(0) == "CLOSED");
-        BOOST_TEST(this->getValue(1) == "0");
-        BOOST_TEST(this->position == 0);
+    auto funcClosed = [&](unsigned long time, size_t /*round*/) {
+        if (time < static_cast<unsigned long>(delay + debounceTime)) {
+        } else {
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
+        }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcClosed));
+    ASSERT_NO_THROW(
+        this->loopFor(2 * delay + 2 * debounceTime, delay, funcClosed));
 
     this->open();
 
     auto func3 = [&](unsigned long time, size_t /*round*/) {
-        BOOST_TEST(this->isMovingUp());
-        BOOST_TEST(this->getValue(0) == "OPENING");
+        EXPECT_TRUE(this->isMovingUp());
+        EXPECT_EQ(this->getValue(0), "OPENING");
         if (time <= 200) {
-            BOOST_TEST(this->getValue(1) == "0");
+            EXPECT_EQ(this->getValue(1), "0");
         } else if (time < 4800) {
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string((time - 200 - delay) * 50 / (4600 - delay)));
         } else if (time <= 5200) {
-            BOOST_TEST(this->getValue(1) == "50");
+            EXPECT_EQ(this->getValue(1), "50");
         } else if (time < 9800) {
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string(
                     50 + (time - 5200 - delay) * 50 / (4600 - delay)));
         } else {
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_EQ(this->getValue(1), "100");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func3));
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcOpen));
+    ASSERT_NO_THROW(this->loopFor(10000, delay, func3));
+    ASSERT_NO_THROW(
+        this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
 
     this->close();
 
     auto func4 = [&](unsigned long time, size_t /*round*/) {
-        BOOST_TEST(this->isMovingDown());
-        BOOST_TEST(this->getValue(0) == "CLOSING");
+        EXPECT_TRUE(this->isMovingDown());
+        EXPECT_EQ(this->getValue(0), "CLOSING");
         if (time <= 200) {
-            BOOST_TEST(this->getValue(1) == "100");
+            EXPECT_EQ(this->getValue(1), "100");
         } else if (time < 4800) {
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string(
                     100 - (time - 200 - delay) * 50 / (4600 - delay)));
         } else if (time <= 5200) {
-            BOOST_TEST(this->getValue(1) == "50");
+            EXPECT_EQ(this->getValue(1), "50");
         } else if (time < 9800) {
-            BOOST_TEST(
-                this->getValue(1) ==
+            EXPECT_EQ(
+                this->getValue(1),
                 std::to_string(
                     50 - (time - 5200 - delay) * 50 / (4600 - delay)));
         } else {
-            BOOST_TEST(this->getValue(1) == "0");
+            EXPECT_EQ(this->getValue(1), "0");
         }
     };
-    BOOST_REQUIRE_NO_THROW(this->loopFor(10000, delay, func4));
-    BOOST_REQUIRE_NO_THROW(this->loopFor(delay, delay, funcClosed));
+    ASSERT_NO_THROW(this->loopFor(10000, delay, func4));
+    ASSERT_NO_THROW(
+        this->loopFor(2 * delay + 2 * debounceTime, delay, funcClosed));
 }
 
-BOOST_AUTO_TEST_SUITE_END();
+INSTANTIATE_TEST_SUITE_P(
+    MultiplePositionSensors, CoverTest,
+    testing::Combine(
+        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
+        testing::Values(false, true), testing::Values(0),
+        testing::Values(false, true), testing::Values(false, true)));

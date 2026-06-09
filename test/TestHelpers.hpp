@@ -10,6 +10,8 @@ template <typename IterA, typename IterB>
     const char* a_begin_expr, const char* a_end_expr, const char* b_begin_expr,
     const char* b_end_expr, IterA a_begin, IterA a_end, IterB b_begin,
     IterB b_end) {
+    (void)a_end_expr;
+    (void)b_end_expr;
     auto a_it = a_begin;
     auto b_it = b_begin;
     std::size_t index = 0;
