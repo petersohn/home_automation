@@ -28,6 +28,16 @@ struct PositionSensor {
  *   interpreted as reaching the end position, which is then used as a fixed
  *   point.
  *
+ * Calibration: if the opening/closing time is not known when an exact position
+ * command is received, open and close until the timing is calibrated, then set
+ * the position.
+ *
+ * Input commands:
+ * - OPEN: start opening. No calibration.
+ * - CLOSE: start closing. No calibration.
+ * - STOP: stop moving.
+ * - <number>: Set to a target position. Calibrate if needed.
+ *
  * Output:
  * - In latching mode, the up or down pin is activated, then once it begins
  *   moving, the pin is released. It is stopped by activating the stop pin.

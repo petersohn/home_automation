@@ -459,7 +459,8 @@ TEST_P(StopWhileOpeningFixture, StopWhileOpening) {
     this->loop();
 
     this->open();
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(2000, delay, [](unsigned long, size_t) {}));
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(2000, delay, [](unsigned long, size_t) {}));
 
     this->stop();
     this->esp.delay(delay);
@@ -487,7 +488,8 @@ TEST_P(StopWhileClosingFixture, StopWhileClosing) {
     this->loop();
 
     this->close();
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(2000, delay, [](unsigned long, size_t) {}));
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(2000, delay, [](unsigned long, size_t) {}));
 
     this->stop();
     this->esp.delay(delay);
@@ -521,8 +523,12 @@ TEST_P(CalibrateFixture, Calibrate) {
 
     this->setPosition(40);
 
+    std::cout << "Phase 1: open fully" << std::endl;
     if (start == this->maxPosition) {
         if (!hasPositionSensor) {
+            std::cout
+                << "Trying to open, but won't start because we are at the top."
+                << std::endl;
             auto func1 = [&](unsigned long /*time*/, size_t /*round*/) {
                 EXPECT_TRUE(this->isMovingUp());
                 EXPECT_EQ(this->position, this->maxPosition);
@@ -534,6 +540,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             EXPECT_EQ(this->getValue(1), "100");
         }
     } else {
+        std::cout << "Opening" << std::endl;
         const unsigned long travelTime = 10000 - start;
         auto func1 = [&](unsigned long time, size_t round) {
             EXPECT_TRUE(this->isMovingUp());
@@ -551,6 +558,10 @@ TEST_P(CalibrateFixture, Calibrate) {
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(travelTime, delay, func1));
     }
+
+    std::cout << "Phase 2: move from fully open to fully closed, calculating "
+                 "closing time."
+              << std::endl;
 
     if (!(hasPositionSensor && start == this->maxPosition)) {
         auto funcOpen = [&](unsigned long, size_t) {
@@ -577,13 +588,17 @@ TEST_P(CalibrateFixture, Calibrate) {
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
 
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, [&](unsigned long, size_t) {
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(delay, delay, [&](unsigned long, size_t) {
         EXPECT_TRUE(this->isMovingUp());
         EXPECT_EQ(this->getValue(0), "CLOSED");
         EXPECT_EQ(this->getValue(1), "0");
     }));
 
     if (hasPositionSensor && start == 0) {
+        std::cout << "After a known full open-close cycle, calibration is "
+                     "done. Skip phase 3, set position."
+                  << std::endl;
         auto func4 = [&](unsigned long time, size_t /*round*/) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPENING");
@@ -593,7 +608,8 @@ TEST_P(CalibrateFixture, Calibrate) {
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(4000, delay, func4));
 
-        ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, [&](unsigned long, size_t) {
+        ASSERT_NO_FATAL_FAILURE(
+            this->loopFor(delay, delay, [&](unsigned long, size_t) {
             EXPECT_FALSE(this->isMovingUp());
             EXPECT_FALSE(this->isMovingDown());
             EXPECT_EQ(this->getValue(0), "OPENING");
@@ -602,6 +618,10 @@ TEST_P(CalibrateFixture, Calibrate) {
 
         EXPECT_EQ(this->position, 4000 + delay);
     } else {
+        std::cout
+            << "Phase 3: move from fully closed to fully open, calculating "
+               "opening time."
+            << std::endl;
         auto func3 = [&](unsigned long time, size_t round) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPENING");
@@ -617,7 +637,10 @@ TEST_P(CalibrateFixture, Calibrate) {
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
 
-        ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, [&](unsigned long, size_t) {
+        std::cout << "Calibration is done, set position." << std::endl;
+
+        ASSERT_NO_FATAL_FAILURE(
+            this->loopFor(delay, delay, [&](unsigned long, size_t) {
             EXPECT_TRUE(this->isMovingDown());
             EXPECT_EQ(this->getValue(0), "OPEN");
             EXPECT_EQ(this->getValue(1), "100");
@@ -815,6 +838,10 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     this->open();
 
+    std::cerr << "Phase 1: opening time is not known, only position sensors "
+                 "are reported."
+              << std::endl;
+
     auto func1 = [&](unsigned long time, size_t /*round*/) {
         EXPECT_TRUE(this->isMovingUp());
         EXPECT_EQ(this->getValue(0), "OPENING");
@@ -843,6 +870,10 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
         this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
 
     this->close();
+
+    std::cerr << "Phase 2: closing time is not known, only position sensors "
+                 "are reported."
+              << std::endl;
 
     auto func2 = [&](unsigned long time, size_t /*round*/) {
         EXPECT_TRUE(this->isMovingDown());
@@ -873,6 +904,10 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     this->open();
 
+    std::cerr << "Phase 3: opening time is known, positions are interpolated "
+                 "between position sensos."
+              << std::endl;
+
     auto func3 = [&](unsigned long time, size_t /*round*/) {
         EXPECT_TRUE(this->isMovingUp());
         EXPECT_EQ(this->getValue(0), "OPENING");
@@ -898,6 +933,10 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
         this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
 
     this->close();
+
+    std::cerr << "Phase 4: closing time is known, positions are interpolated "
+                 "between position sensos."
+              << std::endl;
 
     auto func4 = [&](unsigned long time, size_t /*round*/) {
         EXPECT_TRUE(this->isMovingDown());
