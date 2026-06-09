@@ -1,16 +1,12 @@
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/unit_test.hpp>
-
 #include "DummyBackoff.hpp"
 #include "EspTestBase.hpp"
 #include "FakeMqttConnection.hpp"
+#include "TestHelpers.hpp"
 #include "common/ArduinoJson.hpp"
 #include "common/MqttClient.hpp"
 #include "tools/string.hpp"
 
 using namespace ArduinoJson;
-
-BOOST_AUTO_TEST_SUITE(MqttClientTest)
 
 struct StatusMessage {
     unsigned long time;
@@ -89,7 +85,7 @@ bool operator!=(const ConnectionAttempt& lhs, const ConnectionAttempt& rhs) {
     return !(lhs == rhs);
 }
 
-class Fixture : public EspTestBase {
+class MqttClientTest : public EspTestBase {
 public:
     FakeMqttServer server;
     FakeMqttConnection connection{this->server, [this](bool success) {
@@ -105,7 +101,7 @@ public:
     std::vector<ConnectionAttempt> connectionAttempts;
     const std::string deviceName = "this name should be way long enough to fit";
 
-    Fixture() {
+    MqttClientTest() {
         this->connectionId = this->server.connect({});
         this->server.subscribe(
             this->connectionId, "status",
@@ -114,7 +110,7 @@ public:
                 return;
             }
 
-            BOOST_TEST_MESSAGE(message.payload);
+            std::cout << message.payload << std::endl;
             DynamicJsonBuffer buffer(200);
             auto& json = buffer.parseObject(message.payload);
             auto name = json.get<std::string>("name");
@@ -123,8 +119,8 @@ public:
             auto maxCycleTime = json.get<unsigned long>("maxCycleTime");
             auto avgCycleTime = json.get<float>("avgCycleTime");
 
-            BOOST_TEST(uptime == this->esp.millis());
-            BOOST_TEST(name == this->deviceName);
+            EXPECT_EQ(uptime, this->esp.millis());
+            EXPECT_EQ(name, this->deviceName);
             this->statusMessages.emplace_back(
                 uptime, restarted, maxCycleTime, avgCycleTime);
         });
@@ -137,7 +133,7 @@ public:
             bool isAvailable = false;
             auto res = tools::getBoolValue(
                 message.payload.c_str(), isAvailable, message.payload.size());
-            BOOST_TEST_REQUIRE(res);
+            ASSERT_TRUE(res);
             this->availabilityMessages.emplace_back(
                 this->esp.millis(), isAvailable);
         });
@@ -178,14 +174,14 @@ public:
         const std::vector<ConnectionAttempt>& expectedConnectionAttempts,
         const std::vector<StatusMessage>& expectedStatusMessages,
         const std::vector<AvailabilityMessage>& expectedAvailabilityMessages) {
-        BOOST_CHECK_EQUAL_COLLECTIONS(
+        EXPECT_COLLECTIONS_EQ(
             this->connectionAttempts.begin(), this->connectionAttempts.end(),
             expectedConnectionAttempts.begin(),
             expectedConnectionAttempts.end());
-        BOOST_CHECK_EQUAL_COLLECTIONS(
+        EXPECT_COLLECTIONS_EQ(
             this->statusMessages.begin(), this->statusMessages.end(),
             expectedStatusMessages.begin(), expectedStatusMessages.end());
-        BOOST_CHECK_EQUAL_COLLECTIONS(
+        EXPECT_COLLECTIONS_EQ(
             this->availabilityMessages.begin(),
             this->availabilityMessages.end(),
             expectedAvailabilityMessages.begin(),
@@ -193,7 +189,7 @@ public:
     }
 };
 
-BOOST_FIXTURE_TEST_CASE(NormalFlow, Fixture) {
+TEST_F(MqttClientTest, NormalFlow) {
     this->loopUntil(100000);
     this->connection.disconnect();
     this->loopUntil(110000);
@@ -208,7 +204,7 @@ BOOST_FIXTURE_TEST_CASE(NormalFlow, Fixture) {
         {{2100, true}, {62100, true}, {100000, false}, {100200, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
+TEST_F(MqttClientTest, RetryConnection) {
     this->server.working = false;
     this->loopUntil(200000);
     this->server.working = true;
@@ -229,107 +225,101 @@ BOOST_FIXTURE_TEST_CASE(RetryConnection, Fixture) {
         {{245600, true, 100, 100.0}}, {{245600, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromSameDevice_Available_StatusFirst, Fixture) {
+TEST_F(MqttClientTest, ConnectionFromSameDevice_Available_StatusFirst) {
     this->loopUntil(20, 5);
     this->sendSameDeviceStatus();
     this->loopUntil(40, 5);
     this->sendAvailability(true);
     this->loopUntil(60, 5);
 
-    BOOST_TEST(this->connection.isConnected());
+    EXPECT_TRUE(this->connection.isConnected());
     this->check({{5, true}}, {{30, true, 5, 5.0}}, {{30, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromSameDevice_NotAvailable_StatusFirst, Fixture) {
+TEST_F(MqttClientTest, ConnectionFromSameDevice_NotAvailable_StatusFirst) {
     this->loopUntil(20, 5);
     this->sendSameDeviceStatus();
     this->loopUntil(40, 5);
     this->sendAvailability(false);
     this->loopUntil(60, 5);
 
-    BOOST_TEST(this->connection.isConnected());
+    EXPECT_TRUE(this->connection.isConnected());
     this->check(
         {{5, true}}, {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
         {{30, true}, {50, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromSameDevice_Available_AvailabilityFirst, Fixture) {
+TEST_F(MqttClientTest, ConnectionFromSameDevice_Available_AvailabilityFirst) {
     this->loopUntil(20, 5);
     this->sendAvailability(true);
     this->loopUntil(40, 5);
     this->sendSameDeviceStatus();
     this->loopUntil(60, 5);
 
-    BOOST_TEST(this->connection.isConnected());
+    EXPECT_TRUE(this->connection.isConnected());
     this->check({{5, true}}, {{50, true, 5, 5.0}}, {{50, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromSameDevice_NotAvailable_AvailabilityFirst, Fixture) {
+TEST_F(
+    MqttClientTest, ConnectionFromSameDevice_NotAvailable_AvailabilityFirst) {
     this->loopUntil(20, 5);
     this->sendAvailability(false);
     this->loopUntil(40, 5);
     this->sendSameDeviceStatus();
     this->loopUntil(60, 5);
 
-    BOOST_TEST(this->connection.isConnected());
+    EXPECT_TRUE(this->connection.isConnected());
     this->check({{5, true}}, {{30, true, 5, 5.0}}, {{30, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromOtherDevice_Available_StatusFirst, Fixture) {
+TEST_F(MqttClientTest, ConnectionFromOtherDevice_Available_StatusFirst) {
     this->loopUntil(20, 5);
     this->sendOtherDeviceStatus();
     this->loopUntil(40, 5);
     this->sendAvailability(true);
     this->loopUntil(60, 5);
 
-    BOOST_TEST(!this->connection.isConnected());
+    EXPECT_FALSE(this->connection.isConnected());
     this->check({{5, true}}, {}, {{45, false}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromOtherDevice_NotAvailable_StatusFirst, Fixture) {
+TEST_F(MqttClientTest, ConnectionFromOtherDevice_NotAvailable_StatusFirst) {
     this->loopUntil(20, 5);
     this->sendOtherDeviceStatus();
     this->loopUntil(40, 5);
     this->sendAvailability(false);
     this->loopUntil(60, 5);
 
-    BOOST_TEST(this->connection.isConnected());
+    EXPECT_TRUE(this->connection.isConnected());
     this->check({{5, true}}, {{50, true, 5, 5.0}}, {{50, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromOtherDevice_Available_AvailabilityFirst, Fixture) {
+TEST_F(MqttClientTest, ConnectionFromOtherDevice_Available_AvailabilityFirst) {
     this->loopUntil(20, 5);
     this->sendAvailability(true);
     this->loopUntil(40, 5);
     this->sendOtherDeviceStatus();
     this->loopUntil(60, 5);
 
-    BOOST_TEST(!this->connection.isConnected());
+    EXPECT_FALSE(this->connection.isConnected());
     this->check({{5, true}}, {}, {{45, false}});
 }
 
-BOOST_FIXTURE_TEST_CASE(
-    ConnectionFromOtherDevice_NotAvailable_AvailabilityFirst, Fixture) {
+TEST_F(
+    MqttClientTest, ConnectionFromOtherDevice_NotAvailable_AvailabilityFirst) {
     this->loopUntil(20, 5);
     this->sendAvailability(false);
     this->loopUntil(40, 5);
     this->sendOtherDeviceStatus();
     this->loopUntil(60, 5);
 
-    BOOST_TEST(this->connection.isConnected());
+    EXPECT_TRUE(this->connection.isConnected());
     this->check(
         {{5, true}}, {{30, true, 5, 5.0}, {50, false, 5, 5.0}},
         {{30, true}, {50, true}});
 }
 
-BOOST_FIXTURE_TEST_CASE(Subscribe, Fixture) {
+TEST_F(MqttClientTest, Subscribe) {
     std::string received;
 
     this->mqttClient.subscribe(
@@ -343,29 +333,29 @@ BOOST_FIXTURE_TEST_CASE(Subscribe, Fixture) {
     this->server.publish(
         this->connectionId, FakeMessage{"otherTopic", "payload1"});
     this->mqttClient.loop();
-    BOOST_TEST(received == "");
+    EXPECT_EQ(received, "");
 
     this->server.publish(
         this->connectionId, FakeMessage{"someTopic", "payload2"});
     this->mqttClient.loop();
-    BOOST_TEST(received == "payload2");
+    EXPECT_EQ(received, "payload2");
 
     this->server.publish(
         this->connectionId, FakeMessage{"otherTopic", "payload3"});
     this->mqttClient.loop();
-    BOOST_TEST(received == "payload2");
+    EXPECT_EQ(received, "payload2");
 
     this->server.publish(
         this->connectionId, FakeMessage{"someTopic", "payload4"});
     this->mqttClient.loop();
-    BOOST_TEST(received == "payload4");
+    EXPECT_EQ(received, "payload4");
 
     this->esp.delay(100000);
     this->mqttClient.loop();
-    BOOST_TEST(received == "payload4");
+    EXPECT_EQ(received, "payload4");
 }
 
-BOOST_FIXTURE_TEST_CASE(CycleTime, Fixture) {
+TEST_F(MqttClientTest, CycleTime) {
     this->sendAvailability(false);
     this->loopUntil(20, 10);
     this->loopUntil(40020, 1000);
@@ -379,5 +369,3 @@ BOOST_FIXTURE_TEST_CASE(CycleTime, Fixture) {
         },
         {{20, true}, {60020, true}});
 }
-
-BOOST_AUTO_TEST_SUITE_END()
