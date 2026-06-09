@@ -180,7 +180,8 @@ same instance prefix and different `testing::ValuesIn(...)` arguments.
 | `BOOST_REQUIRE_EQUAL(a, b)` | `ASSERT_EQ(a, b)` |
 | `BOOST_REQUIRE_NO_THROW(expr)` | `EXPECT_NO_THROW(expr)` |
 | `BOOST_FAIL(msg)` | `FAIL() << msg` |
-| `BOOST_TEST_MESSAGE(msg)` | `RecordProperty("message", msg)` |
+| `BOOST_TEST_MESSAGE(msg)` (inside a test body) | `RecordProperty("message", msg)` |
+| `BOOST_TEST_MESSAGE(msg)` (inside a non-test helper function) | `std::cout << msg << std::endl;` — `RecordProperty` is not available outside test bodies. This makes the message always-visible instead of gated by Boost's `--log_level`. The four affected call sites are in `FakeEspApi.cpp`, `FakeMqttConnection.cpp`, `FakeRtc.cpp`, and `TestStream.cpp`. |
 | `BOOST_TEST_CONTEXT(name) { body; }` | `SCOPED_TRACE(name); body;` (the `SCOPED_TRACE` lives at the same scope as the original `BOOST_TEST_CONTEXT` and applies to the rest of the function / block) |
 | `BOOST_CHECK_EQUAL_COLLECTIONS(a_begin, a_end, b_begin, b_end)` | `EXPECT_TRUE(std::equal(a_begin, a_end, b_begin, b_end))` (a small `EXPECT_COLLECTIONS_EQ` helper is introduced in `test/TestHelpers.hpp` to print a one-line diff on failure) |
 

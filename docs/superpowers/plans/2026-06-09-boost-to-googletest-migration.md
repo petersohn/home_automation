@@ -196,6 +196,11 @@ In `test/LogExpectation.cpp`:
 - Replace any `BOOST_REQUIRE(cond)` with `ASSERT_TRUE(cond)`.
 - Replace any `BOOST_TEST(cond)` with `EXPECT_TRUE(cond)`.
 
+Note: `LogExpectationTest.cpp` uses `EspTestBase` as a fixture (see Step 2.4), so `EspTestBase` must derive from `::testing::Test` for `TEST_F(EspTestBase, ...)` to compile. In `test/EspTestBase.hpp`:
+- Add `#include <gtest/gtest.h>`.
+- Change the class declaration to `class EspTestBase : public ::testing::Test`.
+- The `::testing::Test` virtual destructor is inherited automatically; no other change to the class is needed.
+
 - [ ] **Step 2.3: Rewrite collectionTest.cpp**
 
 Replace the file contents with:
@@ -231,26 +236,28 @@ This collapses the nested `CollectionTest > FindValueTest` Boost suites into a s
 
 - [ ] **Step 2.4: Rewrite LogExpectationTest.cpp**
 
+The original file used `BOOST_FIXTURE_TEST_CASE(name, EspTestBase)`, so the gtest equivalent is `TEST_F(EspTestBase, name)` (preserves the fixture and the suite name in the gtest output as `EspTestBase.Name`).
+
 Replace the file contents with:
 
 ```cpp
 #include "EspTestBase.hpp"
 
-TEST(LogExpectationTest, ExpectedLogFound) {
+TEST_F(EspTestBase, ExpectedLogFound) {
     auto e = this->expectLog("foo");
     this->debug << "bar" << std::endl;
     this->debug << "foobar" << std::endl;
     this->debug << "laskdhfroequwrbv qoreibqewroujqw" << std::endl;
 }
 
-TEST(LogExpectationTest, ExpectedNoLog) {
+TEST_F(EspTestBase, ExpectedNoLog) {
     auto e = this->expectLog("baz", 0);
     this->debug << "bar" << std::endl;
     this->debug << "foobar" << std::endl;
     this->debug << "laskdhfroequwrbv qoreibqewroujqw" << std::endl;
 }
 
-TEST(LogExpectationTest, ExpectedMultipleLogs) {
+TEST_F(EspTestBase, ExpectedMultipleLogs) {
     auto e = this->expectLog("foo", 3);
     this->debug << "foofoo" << std::endl;
     this->debug << "bar" << std::endl;
