@@ -30,59 +30,59 @@ struct BackoffTest : public EspTestBase {
 };
 
 TEST_F(BackoffTest, Good) {
-    EXPECT_NO_THROW(this->test(5, true));
-    EXPECT_NO_THROW(this->test(10, true));
-    EXPECT_NO_THROW(this->test(10, true));
-    EXPECT_NO_THROW(this->test(15, true));
-    EXPECT_NO_THROW(this->test(30, true));
-    EXPECT_NO_THROW(this->test(50, true));
-    EXPECT_NO_THROW(this->test(50, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(15, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(30, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(50, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(50, true));
 }
 
 TEST_F(BackoffTest, Bad) {
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(6, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(6, false, true));
 
-    EXPECT_NO_THROW(this->test(200, false));
-    EXPECT_NO_THROW(this->test(6, false));
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(5, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(200, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(6, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false, true));
 
-    EXPECT_NO_THROW(this->test(50, false));
-    EXPECT_NO_THROW(this->test(11, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(50, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(11, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false, true));
 
-    EXPECT_NO_THROW(this->test(150, false));
-    EXPECT_NO_THROW(this->test(11, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(150, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(11, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false, true));
 
-    EXPECT_NO_THROW(this->test(2, false));
-    EXPECT_NO_THROW(this->test(11, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(10, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(2, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(11, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false, true));
 }
 
 TEST_F(BackoffTest, ResetAfterFix) {
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(6, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(6, false, true));
 
-    EXPECT_NO_THROW(this->test(5, false));
-    EXPECT_NO_THROW(this->test(6, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(5, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(6, true));
 
-    EXPECT_NO_THROW(this->test(50, false));
-    EXPECT_NO_THROW(this->test(11, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(50, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(11, false, true));
 
-    EXPECT_NO_THROW(this->test(10, false));
-    EXPECT_NO_THROW(this->test(11, false));
-    EXPECT_NO_THROW(this->test(10, false, true));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(11, false));
+    ASSERT_NO_FATAL_FAILURE(this->test(10, false, true));
 }
