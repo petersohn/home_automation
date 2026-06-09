@@ -207,6 +207,10 @@ public:
         std::cout << "---- loopFor done ----" << std::endl;
     }
 
+    static bool isDebouncing(unsigned long time, size_t round) {
+        return time <= 20 || round == 1;
+    }
+
     void calibrateToPosition(int position, unsigned long delay) {
         this->setPosition(position);
         this->loopFor(41000, delay, [](unsigned long, size_t) {});
@@ -379,7 +383,7 @@ TEST_P(OpenFixture, Open) {
 
     this->open();
     auto func = [&](unsigned long time, size_t round) {
-        if (!hasPositionSensor && (time <= 20 || round == 1)) {
+        if (!hasPositionSensor && (this->isDebouncing(time, round))) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->interface.storedValue.size(), 1u);
             EXPECT_EQ(this->getValue(0), "OPENING");
@@ -420,7 +424,7 @@ TEST_P(CloseFixture, Close) {
 
     this->close();
     auto func = [&](unsigned long time, size_t round) {
-        if (!hasPositionSensor && (time <= 20 || round == 1)) {
+        if (!hasPositionSensor && (this->isDebouncing(time, round))) {
             EXPECT_TRUE(this->isMovingDown());
             EXPECT_EQ(this->interface.storedValue.size(), 1u);
             EXPECT_EQ(this->getValue(0), "CLOSING");
@@ -546,7 +550,7 @@ TEST_P(CalibrateFixture, Calibrate) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPENING");
             if (!(hasPositionSensor && start == 0) &&
-                (time <= 20 || round == 1)) {
+                (this->isDebouncing(time, round))) {
                 EXPECT_EQ(this->interface.storedValue.size(), 1u);
             } else {
                 if (hasPositionSensor && time == travelTime) {
@@ -576,7 +580,7 @@ TEST_P(CalibrateFixture, Calibrate) {
     auto func2 = [&](unsigned long time, size_t round) {
         EXPECT_TRUE(this->isMovingDown());
         EXPECT_EQ(this->getValue(0), "CLOSING");
-        if (!hasPositionSensor && (time <= 20 || round == 1)) {
+        if (!hasPositionSensor && (this->isDebouncing(time, round))) {
             EXPECT_EQ(this->getValue(1), "100");
         } else {
             if (hasPositionSensor && time == 10000) {
@@ -625,7 +629,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         auto func3 = [&](unsigned long time, size_t round) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPENING");
-            if (!hasPositionSensor && (time <= 20 || round == 1)) {
+            if (!hasPositionSensor && (this->isDebouncing(time, round))) {
                 EXPECT_EQ(this->getValue(1), "0");
             } else {
                 if (hasPositionSensor && time == 10000) {
@@ -649,7 +653,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         auto func4 = [&](unsigned long time, size_t round) {
             EXPECT_TRUE(this->isMovingDown());
             EXPECT_EQ(this->getValue(0), "CLOSING");
-            if (time <= 20 || round == 1) {
+            if (this->isDebouncing(time, round)) {
                 EXPECT_EQ(this->getValue(1), "100");
             } else {
                 EXPECT_EQ(
@@ -695,7 +699,7 @@ TEST_P(OpenAfterCalibrateFixture, OpenAfterCalibrate) {
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
     this->open();
     auto func = [&](unsigned long time, size_t round) {
-        if (time <= 20 || round == 1) {
+        if (this->isDebouncing(time, round)) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPENING");
             EXPECT_EQ(this->getValue(1), "60");
@@ -738,7 +742,7 @@ TEST_P(CloseAfterCalibrateFixture, CloseAfterCalibrate) {
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
     this->close();
     auto func = [&](unsigned long time, size_t round) {
-        if (time <= 20 || round == 1) {
+        if (this->isDebouncing(time, round)) {
             EXPECT_TRUE(this->isMovingDown());
             EXPECT_EQ(this->getValue(0), "CLOSING");
             EXPECT_EQ(this->getValue(1), "60");
@@ -785,7 +789,7 @@ TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
     auto func4 = [&](unsigned long time, size_t round) {
         EXPECT_TRUE(this->isMovingDown());
         EXPECT_EQ(this->getValue(0), "CLOSING");
-        if (time <= 20 || round == 1) {
+        if (this->isDebouncing(time, round)) {
             EXPECT_EQ(this->getValue(1), "60");
         } else {
             EXPECT_EQ(
