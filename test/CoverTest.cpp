@@ -5,9 +5,9 @@
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
 
-#define GET_PARAM(name, n)                                                    \
-  auto name = std::get<n>(GetParam());                                        \
-  std::cout << #name "=" << name << std::endl
+#define GET_PARAM(name, n)               \
+    auto name = std::get<n>(GetParam()); \
+    std::cout << #name "=" << name << std::endl
 
 enum Pin : uint8_t {
     UpOutput = 1,
@@ -517,7 +517,9 @@ TEST_P(CalibrateFixture, Calibrate) {
     GET_PARAM(start, 3);
 
     if (hasPositionSensor && delay == 500) {
-        return;
+        std::cout << "Cannot test position sensor with too large delay"
+                  << std::endl;
+        GTEST_SKIP();
     }
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
