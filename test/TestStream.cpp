@@ -1,7 +1,7 @@
 #include "TestStream.hpp"
 
 #include <algorithm>
-#include <boost/test/unit_test.hpp>
+#include <iostream>
 
 #include "LogExpectation.hpp"
 
@@ -11,9 +11,9 @@ int TestStreambuf::sync() {
         s.resize(s.size() - 1);
     }
     if (this->esp) {
-        BOOST_TEST_MESSAGE(this->esp->millis() << " " << s);
+        std::cout << this->esp->millis() << " " << s << std::endl;
     } else {
-        BOOST_TEST_MESSAGE(s);
+        std::cout << s << std::endl;
     }
     this->expectations.erase(
         std::remove_if(

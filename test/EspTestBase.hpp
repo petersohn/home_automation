@@ -1,6 +1,8 @@
 #ifndef TEST_ESPTESTBASE_HPP
 #define TEST_ESPTESTBASE_HPP
 
+#include <gtest/gtest.h>
+
 #include <ostream>
 
 #include "FakeEspApi.hpp"
@@ -10,7 +12,7 @@
 
 class LogExpectation;
 
-class EspTestBase {
+class EspTestBase : public ::testing::Test {
 public:
     TestStreambuf debugStreambuf;
     std::ostream debug;

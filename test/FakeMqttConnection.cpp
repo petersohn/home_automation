@@ -1,6 +1,6 @@
 #include "FakeMqttConnection.hpp"
 
-#include <boost/test/unit_test.hpp>
+#include <iostream>
 
 FakeMessage::FakeMessage() : retain(false) {}
 
@@ -52,7 +52,8 @@ bool FakeMqttServer::unsubscribe(size_t id, const std::string& topic) {
 }
 
 void FakeMqttServer::publish(size_t id, const FakeMessage& message) {
-    BOOST_TEST_MESSAGE("publish " << message.topic << " " << message.payload);
+    std::cout << "publish " << message.topic << " " << message.payload
+              << std::endl;
     for (auto it =
              this->subscriptions.lower_bound(std::make_pair(message.topic, 0));
          it != this->subscriptions.end() && it->first.first == message.topic;

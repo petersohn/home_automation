@@ -1,6 +1,6 @@
 #include "LogExpectation.hpp"
 
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
 
 void LogExpectation::addLog(const std::string& log) {
     if (log.find(this->expectedLog) != std::string::npos) {
@@ -9,5 +9,5 @@ void LogExpectation::addLog(const std::string& log) {
 }
 
 LogExpectation::~LogExpectation() {
-    BOOST_TEST(this->count == this->expectedCount);
+    EXPECT_TRUE(this->count == this->expectedCount);
 }

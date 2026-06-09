@@ -1,6 +1,7 @@
 #include "InterfaceTestBase.hpp"
 
-#include "boost/test/unit_test.hpp"
+#include <gtest/gtest.h>
+
 #include "common/Interface.hpp"
 
 void InterfaceTestBase::initInterface(
@@ -15,6 +16,9 @@ void InterfaceTestBase::updateInterface() {
 }
 
 std::string InterfaceTestBase::getValue(size_t index) {
-    BOOST_REQUIRE(index < this->interface.storedValue.size());
+    EXPECT_TRUE(index < this->interface.storedValue.size());
+    if (index >= this->interface.storedValue.size()) {
+        return "";
+    }
     return this->interface.storedValue[index];
 }

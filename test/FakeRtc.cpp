@@ -1,6 +1,6 @@
 #include "FakeRtc.hpp"
 
-#include <boost/test/unit_test.hpp>
+#include <iostream>
 
 Rtc::Data FakeRtc::get(unsigned id) {
     auto it = this->data.find(id);
@@ -8,7 +8,7 @@ Rtc::Data FakeRtc::get(unsigned id) {
 }
 
 void FakeRtc::set(unsigned id, Data value) {
-    BOOST_TEST_MESSAGE("RTC set " << id << " = " << value);
+    std::cout << "RTC set " << id << " = " << value << std::endl;
     this->data[id] = value;
 }
 
