@@ -399,15 +399,13 @@ TEST_P(OpenFixture, Open) {
             } else {
                 EXPECT_EQ(this->getValue(1), "1");
             }
-        } else if (
-            time < static_cast<unsigned long>(10000 + delay + debounceTime)) {
         } else {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_TRUE(!this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPEN");
+            EXPECT_EQ(this->getValue(1), "100");
         }
     };
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(10000 + 2 * delay + 2 * debounceTime, delay, func));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(10100, delay, func));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -439,15 +437,13 @@ TEST_P(CloseFixture, Close) {
             } else {
                 EXPECT_EQ(this->getValue(1), "99");
             }
-        } else if (
-            time < static_cast<unsigned long>(10000 + delay + debounceTime)) {
         } else {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_TRUE(!this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "CLOSED");
+            EXPECT_EQ(this->getValue(1), "0");
         }
     };
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(10000 + 2 * delay + 2 * debounceTime, delay, func));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(10100, delay, func));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -913,15 +909,14 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
     ASSERT_NO_FAILURE();
 
-    auto funcClosed = [&](unsigned long time, size_t /*round*/) {
-        if (time < static_cast<unsigned long>(delay + debounceTime)) {
-        } else {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
-        }
+    auto funcClosed = [&](unsigned long /*time*/, size_t /*round*/) {
+        EXPECT_FALSE(this->isMovingUp());
+        EXPECT_FALSE(this->isMovingDown());
+        EXPECT_EQ(this->getValue(0), "CLOSED");
+        EXPECT_EQ(this->getValue(1), "0");
+        EXPECT_EQ(this->position, 0);
     };
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(2 * delay + 2 * debounceTime, delay, funcClosed));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcClosed));
     ASSERT_NO_FAILURE();
 
     this->open();
@@ -952,8 +947,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
     ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcOpen));
     ASSERT_NO_FAILURE();
 
     this->close();
@@ -985,8 +979,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func4));
     ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(2 * delay + 2 * debounceTime, delay, funcClosed));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcClosed));
 }
 
 INSTANTIATE_TEST_SUITE_P(
