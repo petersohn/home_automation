@@ -986,3 +986,44 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(delays2), testing::ValuesIn(latchings),
         testing::Values(false, true), testing::Values(false, true),
         testing::Values(false, true)));
+
+class StopEarlyWhileCalibratingFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+TEST_P(StopEarlyWhileCalibratingFixture, StopEarlyWhileCalibrating) {
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
+
+    this->init(isLatching, this->getPositionSensors(hasPositionSensor));
+    this->loop();
+
+    this->setPosition(50);
+
+    auto openFunc = [&](unsigned long time, size_t round) {
+        if (hasPositionSensor || !this->isDebouncing(time, round)) {
+            EXPECT_EQ(this->getValue(1), "1");
+        }
+        EXPECT_TRUE(this->isMovingUp());
+        EXPECT_EQ(this->getValue(0), "OPENING");
+    };
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(1000, delay, openFunc));
+    ASSERT_NO_FAILURE();
+
+    this->stop();
+    this->esp.delay(delay);
+    this->loop();
+
+    auto checkNotMoving = [&](unsigned long, size_t) {
+        EXPECT_FALSE(this->isMovingUp());
+        EXPECT_FALSE(this->isMovingDown());
+    };
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    StopEarlyWhileCalibrating, StopEarlyWhileCalibratingFixture,
+    testing::Combine(
+        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues)));
