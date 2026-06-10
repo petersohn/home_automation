@@ -140,8 +140,6 @@ int Cover::Movement::update() {
         }
 
         if (moving) {
-            this->didNotStartCount = 0;
-
             if (paps >= 0) {
                 this->log(
                     "Just left position sensor " + tools::intToString(paps));
@@ -202,7 +200,6 @@ int Cover::Movement::update() {
     } else if (
         !moving && this->isStarted() &&
         now - this->startedTime > startTimeout) {
-        ++this->didNotStartCount;
         if (this->parent.hasPositionSensors()) {
             this->log("Did not start.");
         } else {
@@ -360,6 +357,7 @@ void Cover::execute(const std::string& command) {
             this->log("Invalid command: " + command);
             return;
         }
+        this->restartCount = 0;
         this->setPosition(*pos);
     }
 }
@@ -493,18 +491,34 @@ void Cover::update(Actions action) {
     }
 
     if (this->targetPosition != noPosition) {
+        enum class Action { Nothing, Restart, Reset };
+        Action action = Action::Nothing;
+
         if (this->position == this->targetPosition) {
-            this->targetPosition = noPosition;
-            this->stop();
+            action = Action::Reset;
         } else if (!this->up.isStarted() && !this->down.isStarted()) {
-            if (this->up.getDidNotStartCount() < 2 &&
-                this->down.getDidNotStartCount() < 2) {
-                this->setPosition(this->targetPosition);
+            if (this->hasPositionSensors() && this->position != 0 &&
+                this->position != 100) {
+                action = Action::Reset;
+            } else if (this->restartCount < 3) {
+                action = Action::Restart;
             } else {
-                this->targetPosition = noPosition;
-                this->up.resetDidNotStartCount();
-                this->down.resetDidNotStartCount();
+                action = Action::Reset;
             }
+        }
+
+        switch (action) {
+        case Action::Restart:
+            ++this->restartCount;
+            this->setPosition(this->targetPosition);
+            break;
+        case Action::Reset:
+            this->targetPosition = noPosition;
+            this->restartCount = 0;
+            this->stop();
+            break;
+        case Action::Nothing:
+            break;
         }
     }
 }

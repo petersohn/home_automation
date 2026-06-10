@@ -98,8 +98,6 @@ private:
         void stop();
         bool isMoving() const;
         bool isStarted() const;
-        unsigned getDidNotStartCount() const { return this->didNotStartCount; }
-        void resetDidNotStartCount() { this->didNotStartCount = 0; }
         void resetStarted();
 
     private:
@@ -115,7 +113,6 @@ private:
         unsigned long moveStartTime = 0;
         unsigned long startedTime = 0;
         int moveStartPosition = -2;
-        unsigned didNotStartCount = 0;
         bool startTriggered = false;
 
         bool isReallyMoving() const;
@@ -162,6 +159,7 @@ private:
     int targetPosition = -1;
     bool stateChanged = false;
     int previousMovementDirection = 0;
+    unsigned restartCount = 0;
 
     bool hasPositionSensors() const;
     bool isMovingUp() const;

@@ -1020,10 +1020,49 @@ TEST_P(StopEarlyWhileCalibratingFixture, StopEarlyWhileCalibrating) {
         EXPECT_FALSE(this->isMovingDown());
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
+    ASSERT_NO_FAILURE();
 }
+
+class StopMomentarilyWhileCalibratingFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool>> {};
+
+TEST_P(
+    StopMomentarilyWhileCalibratingFixture, StopMomentarilyWhileCalibrating) {
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+
+    this->init(isLatching, this->getPositionSensors(true));
+    this->loop();
+
+    this->setPosition(50);
+
+    auto openFunc = [&](unsigned long time, size_t round) {
+        if (!this->isDebouncing(time, round)) {
+            EXPECT_EQ(this->getValue(1), "1");
+        }
+        EXPECT_TRUE(this->isMovingUp());
+        EXPECT_EQ(this->getValue(0), "OPENING");
+    };
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(1000, delay, openFunc));
+    ASSERT_NO_FAILURE();
+
+    this->movingUp = false;
+    this->loop();
+
+    auto checkNotMoving = [&](unsigned long, size_t) {
+        EXPECT_FALSE(this->isMovingUp());
+        EXPECT_FALSE(this->isMovingDown());
+    };
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    StopMomentarilyWhileCalibrating, StopMomentarilyWhileCalibratingFixture,
+    testing::Combine(testing::ValuesIn(delays2), testing::ValuesIn(latchings)));
 
 INSTANTIATE_TEST_SUITE_P(
     StopEarlyWhileCalibrating, StopEarlyWhileCalibratingFixture,
     testing::Combine(
-        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
         testing::ValuesIn(hasPositionSensorValues)));
