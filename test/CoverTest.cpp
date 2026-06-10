@@ -280,7 +280,6 @@ const int delays1[] = {10, 50, 100, 500};
 const int delays2[] = {10, 50, 100};
 const bool latchings[] = {false, true};
 const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
-constexpr int debounceTime = 20;
 }  // namespace
 
 TEST_P(NormalModeFixture, NormalMode) {
@@ -875,14 +874,13 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     ASSERT_NO_FAILURE();
 
     auto funcOpen = [&](unsigned long time, size_t /*round*/) {
-        if (time < static_cast<unsigned long>(delay + debounceTime)) {
+        if (time < static_cast<unsigned long>(delay)) {
         } else {
             EXPECT_FALSE(this->isMovingUp());
             EXPECT_FALSE(this->isMovingDown());
         }
     };
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(2 * delay + 2 * debounceTime, delay, funcOpen));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcOpen));
     ASSERT_NO_FAILURE();
 
     this->close();
