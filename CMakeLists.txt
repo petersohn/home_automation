@@ -13,6 +13,7 @@ set (CMAKE_CXX_FLAGS_RELEASE "${CXX_COMMON_FLAGS} -O2")
 
 include_directories(src)
 include_directories(test/ArduinoJson)
+include_directories(test/googletest/googlemock/include)
 
 add_subdirectory(test/googletest)
 

@@ -1,17 +1,24 @@
 #ifndef COVER_HPP
 #define COVER_HPP
 
+#include <cstdint>
 #include <ostream>
+#include <string>
+#include <vector>
 
 #include "EspApi.hpp"
 #include "Interface.hpp"
+#include "PositionSensor.hpp"
 #include "rtc.hpp"
 
-struct PositionSensor {
-    int position = 0;
-    uint8_t pin = 0;
-    bool invert = false;
-};
+class CoverMovement;
+class CoverUpdate;
+
+// Full includes for direct member instances
+#include "CoverMovementContext.hpp"
+#include "CoverMovementImpl.hpp"
+#include "CoverStop.hpp"
+#include "CoverUpdateImpl.hpp"
 
 /**
  * Controls a cover (gate, window shutter, etc.).
@@ -83,60 +90,12 @@ public:
     void update(Actions action) override;
 
 private:
-    struct MoveTime {
-        unsigned rtcId;
-        unsigned time;
-    };
-
-    class Movement {
-    public:
-        Movement(
-            Cover& parent, uint8_t inputPin, uint8_t outputPin, int endPosition,
-            int direction, const std::string& directionName);
-        int update();
-        void start();
-        void stop();
-        bool isMoving() const;
-        bool isStarted() const;
-        void resetStarted();
-
-    private:
-        Cover& parent;
-        const uint8_t inputPin;
-        const uint8_t outputPin;
-        int beginPosition;
-        int endPosition;
-        const int direction;
-        const std::string debugPrefix;
-        std::vector<MoveTime> moveTimes;
-        int moveTimeIndex = -1;
-        unsigned long moveStartTime = 0;
-        unsigned long startedTime = 0;
-        int moveStartPosition = -2;
-        bool startTriggered = false;
-
-        bool isReallyMoving() const;
-        void log(const std::string& msg);
-        void resetStart();
-        void handleStopped();
-        void calculateMoveTimeIfNeeded();
-        void calculateBeginAndEndPosition();
-    };
-
-    class Stop {
-    public:
-        Stop(Cover& parent, uint8_t pin, bool latching);
-        void stop();
-        void reset();
-        bool isTriggered() const;
-        bool isLatching() const;
-
-    private:
-        Cover& parent;
-        const uint8_t pin;
-        const bool latching;
-        bool triggered = false;
-    };
+    void stop();
+    void log(const std::string& msg);
+    void beginOpening();
+    void beginClosing();
+    void beginMoving(CoverMovement& direction, CoverMovement& reverse);
+    void setPosition(int value);
 
     std::ostream& debug;
     EspApi& esp;
@@ -144,13 +103,10 @@ private:
 
     const std::string debugPrefix;
     std::vector<PositionSensor> positionSensors;
-    Stop stopper;
-    Movement up;
-    Movement down;
     const bool invertInput;
     const bool invertOutput;
-    const int closedPosition;
     const bool invertPositionSensors;
+    const int closedPosition;
     const unsigned positionId;
 
     int position = -1;
@@ -161,17 +117,11 @@ private:
     int previousMovementDirection = 0;
     unsigned restartCount = 0;
 
-    bool hasPositionSensors() const;
-    bool isMovingUp() const;
-    bool isMovingDown() const;
-    void stop();
-    void setOutput(uint8_t pin, bool value);
-
-    void log(const std::string& msg);
-    void beginOpening();
-    void beginClosing();
-    void beginMoving(Movement& direction, Movement& reverse);
-    void setPosition(int value);
+    CoverMovementContext context;
+    CoverStop stopper;
+    CoverMovementImpl up;
+    CoverMovementImpl down;
+    CoverUpdateImpl updateImpl;
 };
 
 #endif  // COVER_HPP
