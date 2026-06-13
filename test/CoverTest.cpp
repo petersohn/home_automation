@@ -446,6 +446,39 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
         testing::ValuesIn(hasPositionSensorValues)));
 
+class CloseWhileFullyClosedFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
+
+TEST_P(CloseWhileFullyClosedFixture, CloseWhileFullyClosed) {
+    GET_PARAM(delay, 0);
+    GET_PARAM(isLatching, 1);
+    GET_PARAM(hasPositionSensor, 2);
+
+    this->init(isLatching, this->getPositionSensors(hasPositionSensor));
+    this->position = 0;
+    this->loop();
+
+    this->close();
+
+    auto func = [&](unsigned long time, size_t /*round*/) {
+        if (time <= 1000) {
+            EXPECT_EQ(this->esp.digitalRead(DownOutput), 1);
+            EXPECT_EQ(this->position, 0);
+        } else {
+            EXPECT_EQ(this->esp.digitalRead(DownOutput), 0);
+            EXPECT_EQ(this->getValue(1), "0");
+        }
+    };
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(1100, delay, func));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CloseWhileFullyClosed, CloseWhileFullyClosedFixture,
+    testing::Combine(
+        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
+        testing::ValuesIn(hasPositionSensorValues)));
+
 TEST_P(CloseFixture, Close) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
