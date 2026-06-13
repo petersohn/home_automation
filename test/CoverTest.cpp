@@ -229,50 +229,26 @@ public:
     }
 };
 
-class NormalModeFixture
+class CoverTestHasPositionSensorFixture
     : public CoverTest,
       public ::testing::WithParamInterface<std::tuple<bool>> {};
 
-class LatchingModeFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<bool>> {};
-
-class OpenFixture
+class CoverTestBasicFixture
     : public CoverTest,
       public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
 
-class CloseFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-class StopWhileOpeningFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-class StopWhileClosingFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-class CalibrateFixture
+class CoverTestCalibrateFixture
     : public CoverTest,
       public ::testing::WithParamInterface<std::tuple<int, bool, bool, int>> {};
 
-class OpenAfterCalibrateFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-class CloseAfterCalibrateFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-class RestartAfterCalibrateFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-class MultiplePositionSensorsFixture
+class CoverTestMultiplePositionSensorsFixture
     : public CoverTest,
       public ::testing::WithParamInterface<
           std::tuple<int, bool, bool, bool, bool>> {};
+
+class CoverTestStopMomentarilyWhileCalibratingFixture
+    : public CoverTest,
+      public ::testing::WithParamInterface<std::tuple<int, bool>> {};
 
 namespace {
 const bool hasPositionSensorValues[] = {false, true};
@@ -282,7 +258,7 @@ const bool latchings[] = {false, true};
 const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
 }  // namespace
 
-TEST_P(NormalModeFixture, NormalMode) {
+TEST_P(CoverTestHasPositionSensorFixture, NormalMode) {
     GET_PARAM(hasPositionSensor, 0);
     auto check = [this](const std::string& name, int upValue, int downValue) {
         SCOPED_TRACE(name);
@@ -324,10 +300,10 @@ TEST_P(NormalModeFixture, NormalMode) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    NormalMode, NormalModeFixture,
+    HasPositionSensor, CoverTestHasPositionSensorFixture,
     testing::Combine(testing::ValuesIn(hasPositionSensorValues)));
 
-TEST_P(LatchingModeFixture, LatchingMode) {
+TEST_P(CoverTestHasPositionSensorFixture, LatchingMode) {
     GET_PARAM(hasPositionSensor, 0);
     auto check = [this](
                      const std::string& name, int upValue, int downValue,
@@ -372,11 +348,7 @@ TEST_P(LatchingModeFixture, LatchingMode) {
     check("close after open 2", 0, 1, 0);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    LatchingMode, LatchingModeFixture,
-    testing::Combine(testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(OpenFixture, Open) {
+TEST_P(CoverTestBasicFixture, Open) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -407,17 +379,7 @@ TEST_P(OpenFixture, Open) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10100, delay, func));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Open, OpenFixture,
-    testing::Combine(
-        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-class OpenWhileFullyOpenFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-TEST_P(OpenWhileFullyOpenFixture, OpenWhileFullyOpen) {
+TEST_P(CoverTestBasicFixture, OpenWhileFullyOpen) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -440,17 +402,7 @@ TEST_P(OpenWhileFullyOpenFixture, OpenWhileFullyOpen) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(1100, delay, func));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    OpenWhileFullyOpen, OpenWhileFullyOpenFixture,
-    testing::Combine(
-        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-class CloseWhileFullyClosedFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-TEST_P(CloseWhileFullyClosedFixture, CloseWhileFullyClosed) {
+TEST_P(CoverTestBasicFixture, CloseWhileFullyClosed) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -473,13 +425,7 @@ TEST_P(CloseWhileFullyClosedFixture, CloseWhileFullyClosed) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(1100, delay, func));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    CloseWhileFullyClosed, CloseWhileFullyClosedFixture,
-    testing::Combine(
-        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(CloseFixture, Close) {
+TEST_P(CoverTestBasicFixture, Close) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -511,13 +457,7 @@ TEST_P(CloseFixture, Close) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10100, delay, func));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Close, CloseFixture,
-    testing::Combine(
-        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(StopWhileOpeningFixture, StopWhileOpening) {
+TEST_P(CoverTestBasicFixture, StopWhileOpening) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -539,13 +479,7 @@ TEST_P(StopWhileOpeningFixture, StopWhileOpening) {
     EXPECT_EQ(this->position, 2000);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    StopWhileOpening, StopWhileOpeningFixture,
-    testing::Combine(
-        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(StopWhileClosingFixture, StopWhileClosing) {
+TEST_P(CoverTestBasicFixture, StopWhileClosing) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -568,13 +502,7 @@ TEST_P(StopWhileClosingFixture, StopWhileClosing) {
     EXPECT_EQ(this->position, 8000);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    StopWhileClosing, StopWhileClosingFixture,
-    testing::Combine(
-        testing::ValuesIn(delays1), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(CalibrateFixture, Calibrate) {
+TEST_P(CoverTestCalibrateFixture, Calibrate) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -759,16 +687,20 @@ TEST_P(CalibrateFixture, Calibrate) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Calibrate, CalibrateFixture,
+    Calibrate, CoverTestCalibrateFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
         testing::ValuesIn(hasPositionSensorValues),
         testing::ValuesIn(calibrateStartPositions)));
 
-TEST_P(OpenAfterCalibrateFixture, OpenAfterCalibrate) {
+TEST_P(CoverTestBasicFixture, OpenAfterCalibrate) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
+
+    if (delay == 500) {
+        GTEST_SKIP() << "delay=500 not supported for this test";
+    }
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
@@ -801,16 +733,14 @@ TEST_P(OpenAfterCalibrateFixture, OpenAfterCalibrate) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(4200, delay, func));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    OpenAfterCalibrate, OpenAfterCalibrateFixture,
-    testing::Combine(
-        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(CloseAfterCalibrateFixture, CloseAfterCalibrate) {
+TEST_P(CoverTestBasicFixture, CloseAfterCalibrate) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
+
+    if (delay == 500) {
+        GTEST_SKIP() << "delay=500 not supported for this test";
+    }
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
@@ -841,16 +771,14 @@ TEST_P(CloseAfterCalibrateFixture, CloseAfterCalibrate) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(6200, delay, func));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    CloseAfterCalibrate, CloseAfterCalibrateFixture,
-    testing::Combine(
-        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
+TEST_P(CoverTestBasicFixture, RestartAfterCalibrate) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
+
+    if (delay == 500) {
+        GTEST_SKIP() << "delay=500 not supported for this test";
+    }
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
@@ -889,13 +817,7 @@ TEST_P(RestartAfterCalibrateFixture, RestartAfterCalibrate) {
     EXPECT_FALSE(this->isMovingDown());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    RestartAfterCalibrate, RestartAfterCalibrateFixture,
-    testing::Combine(
-        testing::ValuesIn(delays2), testing::ValuesIn(latchings),
-        testing::ValuesIn(hasPositionSensorValues)));
-
-TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
+TEST_P(CoverTestMultiplePositionSensorsFixture, MultiplePositionSensors) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(invertClosed, 2);
@@ -1047,17 +969,13 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    MultiplePositionSensors, MultiplePositionSensorsFixture,
+    MultiplePositionSensors, CoverTestMultiplePositionSensorsFixture,
     testing::Combine(
         testing::ValuesIn(delays2), testing::ValuesIn(latchings),
         testing::Values(false, true), testing::Values(false, true),
         testing::Values(false, true)));
 
-class StopEarlyWhileCalibratingFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool, bool>> {};
-
-TEST_P(StopEarlyWhileCalibratingFixture, StopEarlyWhileCalibrating) {
+TEST_P(CoverTestBasicFixture, StopEarlyWhileCalibrating) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
     GET_PARAM(hasPositionSensor, 2);
@@ -1089,12 +1007,9 @@ TEST_P(StopEarlyWhileCalibratingFixture, StopEarlyWhileCalibrating) {
     ASSERT_NO_FAILURE();
 }
 
-class StopMomentarilyWhileCalibratingFixture
-    : public CoverTest,
-      public ::testing::WithParamInterface<std::tuple<int, bool>> {};
-
 TEST_P(
-    StopMomentarilyWhileCalibratingFixture, StopMomentarilyWhileCalibrating) {
+    CoverTestStopMomentarilyWhileCalibratingFixture,
+    StopMomentarilyWhileCalibrating) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
 
@@ -1124,11 +1039,12 @@ TEST_P(
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    StopMomentarilyWhileCalibrating, StopMomentarilyWhileCalibratingFixture,
+    StopMomentarilyWhileCalibrating,
+    CoverTestStopMomentarilyWhileCalibratingFixture,
     testing::Combine(testing::ValuesIn(delays2), testing::ValuesIn(latchings)));
 
 INSTANTIATE_TEST_SUITE_P(
-    StopEarlyWhileCalibrating, StopEarlyWhileCalibratingFixture,
+    Basic, CoverTestBasicFixture,
     testing::Combine(
         testing::ValuesIn(delays1), testing::ValuesIn(latchings),
         testing::ValuesIn(hasPositionSensorValues)));
