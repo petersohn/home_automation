@@ -453,7 +453,7 @@ std::vector<OperationTestSampleString> makeStringAndComparisonParams() {
     return result;
 }
 INSTANTIATE_TEST_SUITE_P(
-    String, OperationTestWithStringResultFixture,
+    OperationParserTestString, OperationTestWithStringResultFixture,
     testing::ValuesIn(makeStringAndComparisonParams()));
 
 TEST_P(OperationTestWithStringResultFixture, OperationTestWithStringResult) {
@@ -487,7 +487,7 @@ TEST_P(
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Numeric, OperationTestWithNumericalResultFixture,
+    OperationParserTestNumeric, OperationTestWithNumericalResultFixture,
     testing::ValuesIn(numericalOperations));
 
 TEST_P(UnaryOperationTestFixture, UnaryOperationTest) {
@@ -505,7 +505,8 @@ TEST_P(UnaryOperationTestFixture, UnaryOperationTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Unary, UnaryOperationTestFixture, testing::ValuesIn(unaryOperations));
+    OperationParserTestUnary, UnaryOperationTestFixture,
+    testing::ValuesIn(unaryOperations));
 
 TEST_P(ConditionalTestFixture, ConditionalTest) {
     const auto& sample = GetParam();
@@ -525,7 +526,7 @@ TEST_P(ConditionalTestFixture, ConditionalTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conditional, ConditionalTestFixture,
+    OperationParserTestConditional, ConditionalTestFixture,
     testing::ValuesIn(conditionalOperations));
 
 TEST_P(MappingTestFixture, MappingTest) {
@@ -545,7 +546,8 @@ TEST_P(MappingTestFixture, MappingTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Mapping, MappingTestFixture, testing::ValuesIn(mappingOperations));
+    OperationParserTestMapping, MappingTestFixture,
+    testing::ValuesIn(mappingOperations));
 
 TEST_F(OperationParserTest, ComplexOperation) {
     std::string json = R"({

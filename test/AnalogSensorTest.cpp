@@ -185,7 +185,7 @@ TEST_P(AnalogSensorTest, Aggregate50HzSineWithScaling) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Analog, AnalogSensorTest, testing::Values(1, 2),
+    AnalogSensorTest, AnalogSensorTest, testing::Values(1, 2),
     [](const testing::TestParamInfo<AnalogSensorTest::ParamType>& info) {
         return "delay" + std::to_string(info.param);
     });
