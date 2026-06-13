@@ -1,4 +1,4 @@
-#include "CoverUpdateImpl.hpp"
+#include "CoverUpdate.hpp"
 
 #include "../tools/string.hpp"
 
@@ -15,12 +15,12 @@ constexpr int upDirection = 1;
 constexpr int downDirection = -1;
 }  // namespace
 
-CoverUpdateImpl::CoverUpdateImpl(
+CoverUpdate::CoverUpdate(
     CoverMovementContext& context, CoverMovement& up, CoverMovement& down,
     CoverStop& stopper)
     : context(context), up(up), down(down), stopper(stopper) {}
 
-void CoverUpdateImpl::update(Actions& action) {
+void CoverUpdate::update(Actions& action) {
     int newPositionSensor = noPositionSensor;
     for (size_t i = 0; i < this->context.positionSensors.size(); ++i) {
         if (getActualValue(
@@ -160,6 +160,6 @@ void CoverUpdateImpl::update(Actions& action) {
     }
 }
 
-void CoverUpdateImpl::log(const std::string& msg) {
+void CoverUpdate::log(const std::string& msg) {
     this->context.debug << this->context.debugPrefix << msg << std::endl;
 }

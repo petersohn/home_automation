@@ -24,26 +24,21 @@ Cover::Cover(
     , debugPrefix(
           "Cover " + tools::intToString(upPin) + "." +
           tools::intToString(downPin) + ": ")
-    , positionSensors(std::move(positionSensors))
-    , invertInput(invertInput)
     , invertOutput(invertOutput)
-    , invertPositionSensors(invertPositionSensors)
-    , closedPosition(closedPosition)
-    , positionId(this->rtc.next())
     , context{
-          this->position,
-          this->stateChanged,
-          this->activePositionSensor,
-          this->previouslyActivePositionSensor,
-          this->previousMovementDirection,
-          this->targetPosition,
-          this->restartCount,
-          this->positionSensors,
-          this->invertInput,
-          this->invertOutput,
-          this->invertPositionSensors,
-          this->closedPosition,
-          this->positionId,
+          -1,            // position
+          false,         // stateChanged
+          -1,            // activePositionSensor
+          -1,            // previouslyActivePositionSensor
+          0,             // previousMovementDirection
+          -1,            // targetPosition
+          0,             // restartCount
+          std::move(positionSensors),  // positionSensors
+          invertInput,
+          invertOutput,
+          invertPositionSensors,
+          closedPosition,
+          this->rtc.next(),  // positionId
           this->esp,
           this->rtc,
           this->debug,
@@ -57,46 +52,48 @@ Cover::Cover(
           context, stopper, downMovementPin, downPin, 0, downDirection,
           std::string("down"))
     , updateImpl(context, up, down, stopper) {
-    if (this->positionSensors.size() == 1) {
+    if (this->context.positionSensors.size() == 1) {
         this->debug
             << "Invalid position sensors: there should be zero or at least 2."
             << std::endl;
-        this->positionSensors.clear();
+        this->context.positionSensors.clear();
     }
 
     std::sort(
-        this->positionSensors.begin(), this->positionSensors.end(),
+        this->context.positionSensors.begin(),
+        this->context.positionSensors.end(),
         [](const PositionSensor& lhs, const PositionSensor& rhs) {
         return lhs.position < rhs.position;
     });
 
-    if (!this->positionSensors.empty() &&
-        (this->positionSensors.front().position != 0 ||
-         this->positionSensors.back().position != 100)) {
+    if (!this->context.positionSensors.empty() &&
+        (this->context.positionSensors.front().position != 0 ||
+         this->context.positionSensors.back().position != 100)) {
         this->debug
             << "Invalid position sensors: positions should go from 0 to 100."
             << std::endl;
-        this->positionSensors.clear();
+        this->context.positionSensors.clear();
     }
 
-    this->position = this->rtc.get(this->positionId) - 1;
-    this->log("Initial position: " + tools::intToString(this->position));
+    this->context.position = this->rtc.get(this->context.positionId) - 1;
+    this->log(
+        "Initial position: " + tools::intToString(this->context.position));
     this->stop();
 }
 
 void Cover::start() {
-    this->stateChanged = true;
+    this->context.stateChanged = true;
 }
 
 void Cover::execute(const std::string& command) {
     if (command == "STOP") {
-        this->targetPosition = noPosition;
+        this->context.targetPosition = noPosition;
         this->stop();
     } else if (command == "OPEN") {
-        this->targetPosition = noPosition;
+        this->context.targetPosition = noPosition;
         this->beginOpening();
     } else if (command == "CLOSE") {
-        this->targetPosition = noPosition;
+        this->context.targetPosition = noPosition;
         this->beginClosing();
     } else {
         auto pos = tools::fromString<int>(command);
@@ -104,7 +101,7 @@ void Cover::execute(const std::string& command) {
             this->log("Invalid command: " + command);
             return;
         }
-        this->restartCount = 0;
+        this->context.restartCount = 0;
         this->setPosition(*pos);
     }
 }
@@ -115,15 +112,15 @@ void Cover::setPosition(int value) {
         return;
     }
 
-    if (this->position == noPosition) {
+    if (this->context.position == noPosition) {
         this->log("Position is not known, calibrating.");
     }
 
-    this->targetPosition = value;
+    this->context.targetPosition = value;
 
-    if (value == 0 || value < this->position) {
+    if (value == 0 || value < this->context.position) {
         this->beginClosing();
-    } else if (value == 100 || value > this->position) {
+    } else if (value == 100 || value > this->context.position) {
         this->beginOpening();
     } else {
         this->stop();
@@ -134,7 +131,7 @@ void Cover::beginMoving(CoverMovement& direction, CoverMovement& reverse) {
     if (!direction.isStarted()) {
         reverse.stop();
         direction.start();
-        this->stateChanged = true;
+        this->context.stateChanged = true;
     }
 }
 

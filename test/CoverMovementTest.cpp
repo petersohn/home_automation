@@ -16,6 +16,7 @@ class CoverMovementTest : public ::testing::Test {
 protected:
     static constexpr uint8_t inputPin = 1;
     static constexpr uint8_t outputPin = 2;
+    static constexpr uint8_t stopPin = 5;
     static constexpr int upDirection = 1;
     static constexpr int downDirection = -1;
     static constexpr int endPositionUp = 100;
@@ -25,38 +26,29 @@ protected:
     FakeRtc rtc;
     std::ostringstream debug;
 
-    // Context variables (mutable state owned by test)
-    int position = 0;
-    bool stateChanged = false;
-    int activePositionSensor = -1;
-    int previouslyActivePositionSensor = -1;
-    int previousMovementDirection = 0;
-    int targetPosition = 0;
-    unsigned restartCount = 0;
-    std::vector<PositionSensor> positionSensors;
-    std::string debugPrefix = "test: ";
+    // Context (state + config + services). Owns all mutable state.
+    CoverMovementContext context;
 
-    CoverMovementContext makeContext() {
-        return CoverMovementContext{
-            this->position,
-            this->stateChanged,
-            this->activePositionSensor,
-            this->previouslyActivePositionSensor,
-            this->previousMovementDirection,
-            this->targetPosition,
-            this->restartCount,
-            this->positionSensors,
-            false,  // invertInput
-            false,  // invertOutput
-            false,  // invertPositionSensors
-            0,      // closedPosition
-            0,      // positionId
-            this->esp,
-            this->rtc,
-            this->debug,
-            this->debugPrefix,
-        };
-    }
+    CoverMovementTest()
+        : context{
+              0,            // position
+              false,        // stateChanged
+              -1,           // activePositionSensor
+              -1,           // previouslyActivePositionSensor
+              0,            // previousMovementDirection
+              -1,           // targetPosition
+              0,            // restartCount
+              {},           // positionSensors
+              false,        // invertInput
+              false,        // invertOutput
+              false,        // invertPositionSensors
+              0,            // closedPosition
+              0,            // positionId
+              this->esp,    // esp
+              this->rtc,    // rtc
+              this->debug,  // debug
+              "test: ",     // debugPrefix
+          } {}
 
     void advanceMs(unsigned long ms) { this->esp.delay(ms); }
 
@@ -71,16 +63,15 @@ protected:
 // ============= Construction =============
 
 TEST_F(CoverMovementTest, ConstructionWithPositionSensors) {
-    this->positionSensors = {
+    this->context.positionSensors = {
         PositionSensor{0, 10, false},
         PositionSensor{50, 11, false},
         PositionSensor{100, 12, false},
     };
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     // output pin starts LOW
     EXPECT_EQ(this->esp.digitalRead(this->outputPin), 0);
@@ -89,11 +80,10 @@ TEST_F(CoverMovementTest, ConstructionWithPositionSensors) {
 }
 
 TEST_F(CoverMovementTest, ConstructionWithoutPositionSensors) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     EXPECT_EQ(this->esp.digitalRead(this->outputPin), 0);
     // Without position sensors, 1 moveTime should be allocated
@@ -103,11 +93,10 @@ TEST_F(CoverMovementTest, ConstructionWithoutPositionSensors) {
 // ============= start() and stop() =============
 
 TEST_F(CoverMovementTest, StartActivatesOutput) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -116,27 +105,26 @@ TEST_F(CoverMovementTest, StartActivatesOutput) {
 }
 
 TEST_F(CoverMovementTest, StartResetsStopper) {
-    auto context = this->makeContext();
     // latching stopper
-    CoverStop stopper(this->esp, 5, true, false, this->debug, "stop: ");
-    // After construction, latching stopper calls stop(): pin 5 = 1
-    EXPECT_EQ(this->esp.digitalRead(5), 1);
+    CoverStop stopper(
+        this->esp, this->stopPin, true, false, this->debug, "stop: ");
+    // After construction, latching stopper calls stop(): pin = 1
+    EXPECT_EQ(this->esp.digitalRead(this->stopPin), 1);
 
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     movement.start();
-    // reset() should set pin 5 = 0
-    EXPECT_EQ(this->esp.digitalRead(5), 0);
+    // reset() should set pin = 0
+    EXPECT_EQ(this->esp.digitalRead(this->stopPin), 0);
 }
 
 TEST_F(CoverMovementTest, StartSetsStartedTime) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     EXPECT_FALSE(movement.isStarted());
@@ -146,11 +134,10 @@ TEST_F(CoverMovementTest, StartSetsStartedTime) {
 }
 
 TEST_F(CoverMovementTest, StopDeactivatesOutput) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -163,11 +150,10 @@ TEST_F(CoverMovementTest, StopDeactivatesOutput) {
 // ============= isMoving() and isStarted() =============
 
 TEST_F(CoverMovementTest, IsMovingReadsInput) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     // input pin defaults to 0
     EXPECT_FALSE(movement.isMoving());
@@ -182,11 +168,10 @@ TEST_F(CoverMovementTest, IsMovingReadsInput) {
 }
 
 TEST_F(CoverMovementTest, IsStartedReflectsStartedTime) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     EXPECT_FALSE(movement.isStarted());
 
@@ -199,33 +184,31 @@ TEST_F(CoverMovementTest, IsStartedReflectsStartedTime) {
 }
 
 TEST_F(CoverMovementTest, ResetStartedSetsStateChanged) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     // Before start, startedTime = 0, stop should not set stateChanged
-    this->stateChanged = false;
+    this->context.stateChanged = false;
     movement.stop();
-    EXPECT_FALSE(this->stateChanged);
+    EXPECT_FALSE(this->context.stateChanged);
 
     // After start, startedTime != 0, stop should set stateChanged
     this->advanceMs(1);
     movement.start();
-    this->stateChanged = false;
+    this->context.stateChanged = false;
     movement.stop();
-    EXPECT_TRUE(this->stateChanged);
+    EXPECT_TRUE(this->context.stateChanged);
 }
 
 // ============= update() — timeout without moving =============
 
 TEST_F(CoverMovementTest, UpdateStartTimeoutNoPositionSensors) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -243,16 +226,15 @@ TEST_F(CoverMovementTest, UpdateStartTimeoutNoPositionSensors) {
 }
 
 TEST_F(CoverMovementTest, UpdateStartTimeoutWithPositionSensors) {
-    this->positionSensors = {
+    this->context.positionSensors = {
         PositionSensor{0, 10, false},
         PositionSensor{100, 11, false},
     };
-    this->position = 50;
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    this->context.position = 50;
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -274,11 +256,10 @@ TEST_F(CoverMovementTest, UpdateStartTimeoutWithPositionSensors) {
 // ============= update() — moving without position sensors =============
 
 TEST_F(CoverMovementTest, UpdateMovementStartsAfterDebounce) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -310,11 +291,10 @@ TEST_F(CoverMovementTest, UpdateMovementInterpolatesPosition) {
     // Pre-set RTC so moveTime is known
     this->rtc.set(0, 1000);
 
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -339,11 +319,10 @@ TEST_F(CoverMovementTest, UpdateMovementEndReached) {
     // Pre-set RTC for moveTime
     this->rtc.set(0, 1000);
 
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -373,11 +352,10 @@ TEST_F(CoverMovementTest, UpdateMovementEndReached) {
 // ============= update() — direction down =============
 
 TEST_F(CoverMovementTest, UpdateDownDirection) {
-    this->position = 100;
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    this->context.position = 100;
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin,
+        this->context, stopper, this->inputPin, this->outputPin,
         this->endPositionDown, this->downDirection, "Down");
 
     this->advanceMs(1);
@@ -418,11 +396,10 @@ TEST_F(CoverMovementTest, UpdateDownDirectionInterpolates) {
     // Pre-set RTC for moveTime
     this->rtc.set(0, 1000);
 
-    this->position = 100;
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    this->context.position = 100;
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin,
+        this->context, stopper, this->inputPin, this->outputPin,
         this->endPositionDown, this->downDirection, "Down");
 
     this->advanceMs(1);
@@ -448,12 +425,12 @@ TEST_F(CoverMovementTest, UpdateDownDirectionInterpolates) {
 // ============= update() — latching mode =============
 
 TEST_F(CoverMovementTest, UpdateLatchingModeResetsStart) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 5, true, false, this->debug, "stop: ");
+    CoverStop stopper(
+        this->esp, this->stopPin, true, false, this->debug, "stop: ");
 
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -484,39 +461,38 @@ TEST_F(CoverMovementTest, UpdateLatchingModeResetsStart) {
     // In latching mode, handleStopped calls resetStarted (not stop)
     // startedTime should be 0, stateChanged = true
     EXPECT_FALSE(movement.isStarted());
-    EXPECT_TRUE(this->stateChanged);
+    EXPECT_TRUE(this->context.stateChanged);
 }
 
 TEST_F(CoverMovementTest, StartInLatchingMode) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 5, true, false, this->debug, "stop: ");
+    CoverStop stopper(
+        this->esp, this->stopPin, true, false, this->debug, "stop: ");
 
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
 
     // In latching mode, start() calls stopper.reset() then sets output HIGH
     EXPECT_EQ(this->esp.digitalRead(this->outputPin), 1);
-    EXPECT_EQ(this->esp.digitalRead(5), 0);
+    EXPECT_EQ(this->esp.digitalRead(this->stopPin), 0);
 }
 
 // ============= update() — with position sensors =============
 
 TEST_F(CoverMovementTest, UpdateWithPositionSensorReportsBeginPosition) {
-    this->positionSensors = {
+    this->context.positionSensors = {
         PositionSensor{0, 10, false},
         PositionSensor{50, 11, false},
         PositionSensor{100, 12, false},
     };
-    this->position = 50;
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    this->context.position = 50;
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
@@ -525,8 +501,8 @@ TEST_F(CoverMovementTest, UpdateWithPositionSensorReportsBeginPosition) {
     this->esp.digitalWrite(this->inputPin, 1);
 
     // When a position sensor is active, update should report that position
-    this->activePositionSensor = 1;  // position 50
-    this->previouslyActivePositionSensor = -1;
+    this->context.activePositionSensor = 1;  // position 50
+    this->context.previouslyActivePositionSensor = -1;
 
     this->advanceMs(10);
     this->debug.str("");
@@ -538,26 +514,25 @@ TEST_F(CoverMovementTest, UpdateWithPositionSensorReportsBeginPosition) {
 }
 
 TEST_F(CoverMovementTest, UpdateWithSensorTransitionReportsBeginPlusDirection) {
-    this->positionSensors = {
+    this->context.positionSensors = {
         PositionSensor{0, 10, false},
         PositionSensor{50, 11, false},
         PositionSensor{100, 12, false},
     };
-    this->position = 50;
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    this->context.position = 50;
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();
     this->esp.digitalWrite(this->inputPin, 1);
 
     // Motor was just at position sensor 1 (50) and has now left it
-    // In the real system, CoverUpdateImpl sets previouslyActivePositionSensor
-    this->activePositionSensor = -1;           // no sensor active now
-    this->previouslyActivePositionSensor = 1;  // left sensor 1
+    // In the real system, CoverUpdate sets previouslyActivePositionSensor
+    this->context.activePositionSensor = -1;           // no sensor active now
+    this->context.previouslyActivePositionSensor = 1;  // left sensor 1
 
     this->advanceMs(10);
     this->debug.str("");
@@ -573,11 +548,10 @@ TEST_F(CoverMovementTest, UpdateWithSensorTransitionReportsBeginPlusDirection) {
 // ============= Calculate move time =============
 
 TEST_F(CoverMovementTest, CalculateMoveTimeSavesToRtc) {
-    auto context = this->makeContext();
-    CoverStop stopper(this->esp, 0, false, false, this->debug, "");
+    CoverStop stopper(this->esp, this->stopPin, false, false, this->debug, "");
     CoverMovementImpl movement(
-        context, stopper, this->inputPin, this->outputPin, this->endPositionUp,
-        this->upDirection, "Up");
+        this->context, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
 
     this->advanceMs(1);
     movement.start();

@@ -10,28 +10,28 @@
 #include "rtc.hpp"
 
 struct CoverMovementContext {
-    // Mutable state (references to fields owned by Cover)
-    int& position;
-    bool& stateChanged;
-    int& activePositionSensor;
-    int& previouslyActivePositionSensor;
-    int& previousMovementDirection;
-    int& targetPosition;
-    unsigned& restartCount;
+    // Mutable state (owned by the context)
+    int position = -1;
+    bool stateChanged = false;
+    int activePositionSensor = -1;
+    int previouslyActivePositionSensor = -1;
+    int previousMovementDirection = 0;
+    int targetPosition = -1;
+    unsigned restartCount = 0;
 
     // Immutable config
-    const std::vector<PositionSensor>& positionSensors;
-    const bool invertInput;
-    const bool invertOutput;
-    const bool invertPositionSensors;
-    const int closedPosition;
-    const unsigned positionId;
+    std::vector<PositionSensor> positionSensors;
+    bool invertInput;
+    bool invertOutput;
+    bool invertPositionSensors;
+    int closedPosition;
+    unsigned positionId;
 
     // Services
     EspApi& esp;
     Rtc& rtc;
     std::ostream& debug;
-    const std::string& debugPrefix;
+    std::string debugPrefix;
 
     bool hasPositionSensors() const { return !this->positionSensors.empty(); }
 };

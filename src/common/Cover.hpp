@@ -12,13 +12,12 @@
 #include "rtc.hpp"
 
 class CoverMovement;
-class CoverUpdate;
 
 // Full includes for direct member instances
 #include "CoverMovementContext.hpp"
 #include "CoverMovementImpl.hpp"
 #include "CoverStop.hpp"
-#include "CoverUpdateImpl.hpp"
+#include "CoverUpdate.hpp"
 
 /**
  * Controls a cover (gate, window shutter, etc.).
@@ -102,26 +101,13 @@ private:
     Rtc& rtc;
 
     const std::string debugPrefix;
-    std::vector<PositionSensor> positionSensors;
-    const bool invertInput;
     const bool invertOutput;
-    const bool invertPositionSensors;
-    const int closedPosition;
-    const unsigned positionId;
-
-    int position = -1;
-    int activePositionSensor = -1;
-    int previouslyActivePositionSensor = -1;
-    int targetPosition = -1;
-    bool stateChanged = false;
-    int previousMovementDirection = 0;
-    unsigned restartCount = 0;
 
     CoverMovementContext context;
     CoverStop stopper;
     CoverMovementImpl up;
     CoverMovementImpl down;
-    CoverUpdateImpl updateImpl;
+    CoverUpdate updateImpl;
 };
 
 #endif  // COVER_HPP

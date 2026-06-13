@@ -2,11 +2,25 @@
 #define COVER_UPDATE_HPP
 
 #include "Actions.hpp"
+#include "CoverMovement.hpp"
+#include "CoverMovementContext.hpp"
+#include "CoverStop.hpp"
 
 class CoverUpdate {
 public:
-    virtual ~CoverUpdate() = default;
-    virtual void update(Actions& action) = 0;
+    CoverUpdate(
+        CoverMovementContext& context, CoverMovement& up, CoverMovement& down,
+        CoverStop& stopper);
+
+    void update(Actions& action);
+
+private:
+    void log(const std::string& msg);
+
+    CoverMovementContext& context;
+    CoverMovement& up;
+    CoverMovement& down;
+    CoverStop& stopper;
 };
 
 #endif  // COVER_UPDATE_HPP
