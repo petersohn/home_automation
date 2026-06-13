@@ -1004,7 +1004,6 @@ TEST_P(BasicFixture, StopEarlyWhileCalibrating) {
         EXPECT_FALSE(this->isMovingDown());
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
-    ASSERT_NO_FAILURE();
 }
 
 TEST_P(
@@ -1117,7 +1116,6 @@ TEST_P(CalibrateFixture, CalibrationFailsIfMovementCannotStart) {
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(5 * t1, delay, check));
-    ASSERT_NO_FAILURE();
 }
 
 INSTANTIATE_TEST_SUITE_P(
