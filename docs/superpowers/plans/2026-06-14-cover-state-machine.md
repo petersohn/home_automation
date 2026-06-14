@@ -618,14 +618,26 @@ void CoverUpdate::requestSetPosition(int value) {
     this->state.restartCount = 0;
 
     if (value < this->state.position) {
-        this->requestClose();
+        if (!this->down.isStarted()) {
+            this->up.stop();
+            this->down.start();
+            this->state.stateChanged = true;
+        }
     } else if (value > this->state.position) {
-        this->requestOpen();
+        if (!this->up.isStarted()) {
+            this->down.stop();
+            this->up.start();
+            this->state.stateChanged = true;
+        }
     } else {
-        this->requestStop();
+        this->up.stop();
+        this->down.stop();
+        this->stopper.stop();
     }
 }
 ```
+
+**Note:** the spec originally called for delegation to `requestOpen()` / `requestClose()` / `requestStop()`. That would not work — those methods set `targetPosition = -1`, which would clobber the value this method just assigned and break the tests. The branches are intentionally inlined to preserve `targetPosition = value`. The idempotency guards (`!isStarted()`) match the behavior of the sibling methods.
 
 Verify `#include "../tools/string.hpp"` is present at the top of `CoverUpdate.cpp` (it already is).
 
