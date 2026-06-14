@@ -6,7 +6,7 @@
 
 #include "FakeEspApi.hpp"
 #include "FakeRtc.hpp"
-#include "common/CoverMovementContext.hpp"
+#include "common/CoverState.hpp"
 #include "common/CoverMovementImpl.hpp"
 #include "common/CoverStop.hpp"
 
@@ -27,7 +27,7 @@ protected:
     std::ostringstream debug;
 
     // Context (state + config + services). Owns all mutable state.
-    CoverMovementContext context;
+    CoverState context;
 
     CoverMovementTest()
         : context{

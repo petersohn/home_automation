@@ -1,5 +1,5 @@
-#ifndef COVER_MOVEMENT_CONTEXT_HPP
-#define COVER_MOVEMENT_CONTEXT_HPP
+#ifndef COVER_STATE_HPP
+#define COVER_STATE_HPP
 
 #include <ostream>
 #include <string>
@@ -9,7 +9,7 @@
 #include "PositionSensor.hpp"
 #include "rtc.hpp"
 
-struct CoverMovementContext {
+struct CoverState {
     // Mutable state (owned by the context)
     int position = -1;
     bool stateChanged = false;
@@ -36,4 +36,4 @@ struct CoverMovementContext {
     bool hasPositionSensors() const { return !this->positionSensors.empty(); }
 };
 
-#endif  // COVER_MOVEMENT_CONTEXT_HPP
+#endif  // COVER_STATE_HPP

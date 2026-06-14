@@ -15,7 +15,7 @@ constexpr int mspNotMoving = -2;
 }  // namespace
 
 CoverMovementImpl::CoverMovementImpl(
-    CoverMovementContext& context, CoverStop& stopper, uint8_t inputPin,
+    CoverState& context, CoverStop& stopper, uint8_t inputPin,
     uint8_t outputPin, int endPosition, int direction,
     std::string directionName)
     : context(context)

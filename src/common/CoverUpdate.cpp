@@ -16,7 +16,7 @@ constexpr int downDirection = -1;
 }  // namespace
 
 CoverUpdate::CoverUpdate(
-    CoverMovementContext& context, CoverMovement& up, CoverMovement& down,
+    CoverState& context, CoverMovement& up, CoverMovement& down,
     CoverStop& stopper)
     : context(context), up(up), down(down), stopper(stopper) {}
 

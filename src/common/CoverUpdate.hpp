@@ -3,13 +3,13 @@
 
 #include "Actions.hpp"
 #include "CoverMovement.hpp"
-#include "CoverMovementContext.hpp"
+#include "CoverState.hpp"
 #include "CoverStop.hpp"
 
 class CoverUpdate {
 public:
     CoverUpdate(
-        CoverMovementContext& context, CoverMovement& up, CoverMovement& down,
+        CoverState& context, CoverMovement& up, CoverMovement& down,
         CoverStop& stopper);
 
     void update(Actions& action);
@@ -17,7 +17,7 @@ public:
 private:
     void log(const std::string& msg);
 
-    CoverMovementContext& context;
+    CoverState& context;
     CoverMovement& up;
     CoverMovement& down;
     CoverStop& stopper;

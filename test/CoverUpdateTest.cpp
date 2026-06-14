@@ -7,7 +7,7 @@
 #include "EspTestBase.hpp"
 #include "common/Actions.hpp"
 #include "common/CoverMovement.hpp"
-#include "common/CoverMovementContext.hpp"
+#include "common/CoverState.hpp"
 #include "common/CoverStop.hpp"
 #include "common/CoverUpdate.hpp"
 #include "common/InterfaceConfig.hpp"
@@ -43,7 +43,7 @@ public:
     static constexpr uint8_t stopPin = 50;
 
     // Context (state + config + services). Owns all mutable state.
-    CoverMovementContext ctx;
+    CoverState ctx;
 
     // Test doubles
     FakeCoverMovement up;

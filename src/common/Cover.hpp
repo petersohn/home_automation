@@ -14,7 +14,7 @@
 class CoverMovement;
 
 // Full includes for direct member instances
-#include "CoverMovementContext.hpp"
+#include "CoverState.hpp"
 #include "CoverMovementImpl.hpp"
 #include "CoverStop.hpp"
 #include "CoverUpdate.hpp"
@@ -103,7 +103,7 @@ private:
     const std::string debugPrefix;
     const bool invertOutput;
 
-    CoverMovementContext context;
+    CoverState context;
     CoverStop stopper;
     CoverMovementImpl up;
     CoverMovementImpl down;

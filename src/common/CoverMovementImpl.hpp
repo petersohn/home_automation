@@ -6,13 +6,13 @@
 #include <vector>
 
 #include "CoverMovement.hpp"
-#include "CoverMovementContext.hpp"
+#include "CoverState.hpp"
 #include "CoverStop.hpp"
 
 class CoverMovementImpl : public CoverMovement {
 public:
     CoverMovementImpl(
-        CoverMovementContext& context, CoverStop& stopper, uint8_t inputPin,
+        CoverState& context, CoverStop& stopper, uint8_t inputPin,
         uint8_t outputPin, int endPosition, int direction,
         std::string directionName);
 
@@ -36,7 +36,7 @@ private:
     void calculateMoveTimeIfNeeded();
     void calculateBeginAndEndPosition();
 
-    CoverMovementContext& context;
+    CoverState& context;
     CoverStop& stopper;
     const uint8_t inputPin;
     const uint8_t outputPin;
