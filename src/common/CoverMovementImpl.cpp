@@ -1,12 +1,9 @@
 #include "CoverMovementImpl.hpp"
 
 #include "../tools/string.hpp"
+#include "CoverHelper.hpp"
 
 namespace {
-bool getActualValue(bool value, bool invert) {
-    return invert ? !value : value;
-}
-
 constexpr int debounceTime = 20;
 constexpr int startTimeout = 1000;
 constexpr int noPositionSensor = -1;

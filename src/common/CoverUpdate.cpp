@@ -1,12 +1,9 @@
 #include "CoverUpdate.hpp"
 
 #include "../tools/string.hpp"
+#include "CoverHelper.hpp"
 
 namespace {
-bool getActualValue(bool value, bool invert) {
-    return invert ? !value : value;
-}
-
 constexpr int papsNoChange = -2;
 constexpr int noPosition = -1;
 constexpr int noPositionSensor = -1;

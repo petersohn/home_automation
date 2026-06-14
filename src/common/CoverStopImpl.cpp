@@ -1,5 +1,7 @@
 #include "CoverStopImpl.hpp"
 
+#include "CoverHelper.hpp"
+
 CoverStopImpl::CoverStopImpl(
     EspApi& esp, CoverState& state, uint8_t pin, bool invertOutput)
     : esp(esp), state(state), pin(pin), invertOutput(invertOutput) {
@@ -16,7 +18,7 @@ void CoverStopImpl::stop() {
 
     this->state.log("stop");
     this->triggered = true;
-    this->esp.digitalWrite(this->pin, this->invertOutput ? 0 : 1);
+    this->esp.digitalWrite(this->pin, getActualValue(true, this->invertOutput));
 }
 
 void CoverStopImpl::reset() {
@@ -25,7 +27,7 @@ void CoverStopImpl::reset() {
     }
 
     this->state.log("Reset stop");
-    this->esp.digitalWrite(this->pin, this->invertOutput ? 1 : 0);
+    this->esp.digitalWrite(this->pin, getActualValue(false, this->invertOutput));
     this->triggered = false;
 }
 
