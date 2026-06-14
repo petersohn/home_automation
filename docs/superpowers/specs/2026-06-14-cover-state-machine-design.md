@@ -72,7 +72,7 @@ Cover (~70 lines, src/common/Cover.hpp/.cpp)
 | File | Change |
 |------|--------|
 | `src/common/CoverMovementImpl.hpp`/`.cpp` | `CoverMovementContext&` → `CoverState&` in constructor; `CoverStop&` already abstract |
-| `src/common/CoverUpdate.hpp`/`.cpp` | Add `requestOpen/Close/Stop/SetPosition`; constructor takes `std::unique_ptr` to abstract bases; add `up()/down()/stopper()` test accessors |
+| `src/common/CoverUpdate.hpp`/`.cpp` | Add `requestOpen/Close/Stop/SetPosition`; constructor takes `std::unique_ptr` to abstract bases |
 | `src/common/Cover.hpp`/`.cpp` | Remove 5 redundant service members; remove `beginOpening/beginClosing/beginMoving/setPosition/stop`; replace direct `up.start()` etc. with `updateImpl.requestX()` |
 | `test/CoverMovementTest.cpp` | `CoverMovementContext` → `CoverState`; `CoverStop` → `CoverStopImpl` in construction |
 | `test/CoverUpdateTest.cpp` | Use `FakeCoverStop` (no `FakeEspApi` for stopper); add 5–8 new tests for `request*` methods |
@@ -187,11 +187,6 @@ public:
     void requestClose();
     void requestStop();
     void requestSetPosition(int value);
-
-    // Test accessors (return references to owned components)
-    CoverMovement& up();
-    CoverMovement& down();
-    CoverStop& stopper();
 
 private:
     void log(const std::string& msg);
@@ -329,8 +324,7 @@ void Cover::log(const std::string& msg) {
 **Setup changes:**
 - `CoverMovementContext` → `CoverState`
 - Real `CoverStop` → `FakeCoverStop` (no `FakeEspApi` for the stopper)
-- Components constructed and moved into `CoverUpdate` via `std::unique_ptr`
-- Tests that need to inspect call counts use `static_cast<FakeCoverMovement&>(update.up())` etc.
+- Components constructed in the fixture, **references saved before move**, then components moved into `CoverUpdate` via `std::unique_ptr`
 
 **Test logic:** Most existing tests stay the same — they test `update(action)`. The fixture simplifies because the latching `CoverStop` constructor used to call `stop()`, which used to require a follow-up `reset()` — no longer needed.
 
@@ -390,6 +384,43 @@ private:
 };
 ```
 
+### Test fixture pattern (no accessors needed)
+
+The test fixture constructs the components, **saves references before moving ownership**, and uses those references for inspection:
+
+```cpp
+class CoverUpdateTest : public EspTestBase {
+public:
+    CoverState state;
+    // Raw pointers / references to the fakes the fixture owns-by-raw-pointer
+    FakeCoverMovement* upPtr;
+    FakeCoverMovement* downPtr;
+    FakeCoverStop* stopperPtr;
+    // Owned by CoverUpdate
+    std::unique_ptr<CoverUpdate> update;
+
+    CoverUpdateTest()
+        : state{/* ... */} {
+        auto up = std::make_unique<FakeCoverMovement>();
+        auto down = std::make_unique<FakeCoverMovement>();
+        auto stopper = std::make_unique<FakeCoverStop>();
+        this->upPtr = up.get();
+        this->downPtr = down.get();
+        this->stopperPtr = stopper.get();
+        this->update = std::make_unique<CoverUpdate>(
+            this->state, std::move(up), std::move(down), std::move(stopper));
+    }
+};
+
+// In a test:
+this->update->requestOpen();
+EXPECT_EQ(this->upPtr->startCount(), 1);
+EXPECT_EQ(this->downPtr->stopCount(), 1);
+```
+
+The references (raw pointers) remain valid because the underlying objects live inside `CoverUpdate`'s `unique_ptr`s for the test's lifetime. No `static_cast` or accessor needed; the fixture retains direct typed access to its fakes.
+```
+
 ---
 
 ## Migration order
@@ -430,9 +461,8 @@ The refactor is structured as a series of steps, each leaving the code in a work
 
 ### Step 6: Add `unique_ptr` ownership transfer to `CoverUpdate`
 - Change `CoverUpdate` constructor to take `std::unique_ptr<CoverMovement>`, `std::unique_ptr<CoverMovement>`, `std::unique_ptr<CoverStop>`
-- Add public `up()` / `down()` / `stopper()` accessors
 - Update `Cover` constructor to construct the components and move them in
-- Update both test fixtures to move components in
+- Update both test fixtures to: construct components, save raw pointers for inspection, move components into `CoverUpdate`
 - **Verify:** All tests pass
 
 ### Step 7: Cleanup
