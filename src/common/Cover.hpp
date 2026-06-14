@@ -6,15 +6,12 @@
 #include <string>
 #include <vector>
 
+#include "CoverState.hpp"
+#include "CoverUpdate.hpp"
 #include "EspApi.hpp"
 #include "Interface.hpp"
 #include "PositionSensor.hpp"
 #include "rtc.hpp"
-
-class CoverMovement;
-
-#include "CoverState.hpp"
-#include "CoverUpdate.hpp"
 
 /**
  * Controls a cover (gate, window shutter, etc.).
@@ -86,18 +83,12 @@ public:
     void update(Actions action) override;
 
 private:
-    void stop();
     void log(const std::string& msg);
-    void beginOpening();
-    void beginClosing();
-    void beginMoving(CoverMovement& direction, CoverMovement& reverse);
-    void setPosition(int value);
 
     static CoverUpdate makeUpdateImpl(
         CoverState& state, EspApi& esp, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        uint8_t stopPin, bool latching, bool invertOutput,
-        std::ostream& debug);
+        uint8_t stopPin, bool latching, bool invertOutput, std::ostream& debug);
 
     CoverState state;
     CoverUpdate updateImpl;

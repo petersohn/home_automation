@@ -11,8 +11,7 @@
 class CoverUpdate {
 public:
     CoverUpdate(
-        CoverState& state,
-        std::unique_ptr<CoverMovement> up,
+        CoverState& state, std::unique_ptr<CoverMovement> up,
         std::unique_ptr<CoverMovement> down,
         std::unique_ptr<CoverStop> stopper);
 

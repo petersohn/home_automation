@@ -45,11 +45,10 @@ Cover::Cover(
     }
 
     std::sort(
-        this->state.positionSensors.begin(),
-        this->state.positionSensors.end(),
+        this->state.positionSensors.begin(), this->state.positionSensors.end(),
         [](const PositionSensor& lhs, const PositionSensor& rhs) {
-            return lhs.position < rhs.position;
-        });
+        return lhs.position < rhs.position;
+    });
 
     if (!this->state.positionSensors.empty() &&
         (this->state.positionSensors.front().position != 0 ||
@@ -61,15 +60,13 @@ Cover::Cover(
     }
 
     this->state.position = this->state.rtc.get(this->state.positionId) - 1;
-    this->log(
-        "Initial position: " + tools::intToString(this->state.position));
+    this->log("Initial position: " + tools::intToString(this->state.position));
 }
 
 CoverUpdate Cover::makeUpdateImpl(
     CoverState& state, EspApi& esp, uint8_t upMovementPin,
-    uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-    uint8_t stopPin, bool latching, bool invertOutput,
-    std::ostream& debug) {
+    uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
+    bool latching, bool invertOutput, std::ostream& debug) {
     auto stopper = std::make_unique<CoverStopImpl>(
         esp, stopPin, latching, invertOutput, debug, state.debugPrefix);
     auto up = std::make_unique<CoverMovementImpl>(

@@ -309,7 +309,8 @@ TEST_F(CoverUpdateTest, UpdateFiresOpenState) {
     this->ctx.closedPosition = 10;
     // Movement returns new position 50 (> closedPosition 10)
     this->upPtr->setUpdateReturn(50);
-    this->downPtr->setUpdateReturn(10);  // Same as old position, not conflicting
+    this->downPtr->setUpdateReturn(
+        10);  // Same as old position, not conflicting
 
     this->update->update(this->actions);
 

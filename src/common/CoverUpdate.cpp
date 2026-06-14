@@ -16,10 +16,8 @@ constexpr int downDirection = -1;
 }  // namespace
 
 CoverUpdate::CoverUpdate(
-    CoverState& state,
-    std::unique_ptr<CoverMovement> up,
-    std::unique_ptr<CoverMovement> down,
-    std::unique_ptr<CoverStop> stopper)
+    CoverState& state, std::unique_ptr<CoverMovement> up,
+    std::unique_ptr<CoverMovement> down, std::unique_ptr<CoverStop> stopper)
     : context(state)
     , up(std::move(up))
     , down(std::move(down))

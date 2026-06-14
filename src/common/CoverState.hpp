@@ -10,7 +10,7 @@
 #include "rtc.hpp"
 
 struct CoverState {
-    // Mutable state (owned by the context)
+    // Mutable state
     int position = -1;
     bool stateChanged = false;
     int activePositionSensor = -1;
