@@ -36,7 +36,7 @@ private:
     void calculateMoveTimeIfNeeded();
     void calculateBeginAndEndPosition();
 
-    CoverState& context;
+    CoverState& state;
     CoverStop& stopper;
     const uint8_t inputPin;
     const uint8_t outputPin;

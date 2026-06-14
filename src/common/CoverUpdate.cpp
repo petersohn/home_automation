@@ -18,52 +18,52 @@ constexpr int downDirection = -1;
 CoverUpdate::CoverUpdate(
     CoverState& state, std::unique_ptr<CoverMovement> up,
     std::unique_ptr<CoverMovement> down, std::unique_ptr<CoverStop> stopper)
-    : context(state)
+    : state(state)
     , up(std::move(up))
     , down(std::move(down))
     , stopper(std::move(stopper)) {}
 
 void CoverUpdate::update(Actions& action) {
     int newPositionSensor = noPositionSensor;
-    for (size_t i = 0; i < this->context.positionSensors.size(); ++i) {
+    for (size_t i = 0; i < this->state.positionSensors.size(); ++i) {
         if (getActualValue(
                 getActualValue(
-                    this->context.esp.digitalRead(
-                        this->context.positionSensors[i].pin) != 0,
-                    this->context.positionSensors[i].invert),
-                this->context.invertPositionSensors)) {
+                    this->state.esp.digitalRead(
+                        this->state.positionSensors[i].pin) != 0,
+                    this->state.positionSensors[i].invert),
+                this->state.invertPositionSensors)) {
             newPositionSensor = i;
             break;
         }
     }
 
-    if (newPositionSensor != this->context.activePositionSensor) {
-        this->context.previouslyActivePositionSensor =
-            this->context.activePositionSensor;
+    if (newPositionSensor != this->state.activePositionSensor) {
+        this->state.previouslyActivePositionSensor =
+            this->state.activePositionSensor;
         if (newPositionSensor >= 0) {
             this->log(
                 "Position sensor activated: " +
                 tools::intToString(
-                    this->context.positionSensors[newPositionSensor].position));
+                    this->state.positionSensors[newPositionSensor].position));
         } else {
             this->log("Position sensor deactivated");
         }
-        this->context.activePositionSensor = newPositionSensor;
+        this->state.activePositionSensor = newPositionSensor;
     } else {
-        this->context.previouslyActivePositionSensor = papsNoChange;
+        this->state.previouslyActivePositionSensor = papsNoChange;
     }
 
     int newPositionUp = this->up->update();
     int newPositionDown = this->down->update();
-    int newPosition = this->context.position;
-    if (newPositionUp != this->context.position &&
-        newPositionDown != this->context.position) {
+    int newPosition = this->state.position;
+    if (newPositionUp != this->state.position &&
+        newPositionDown != this->state.position) {
         this->log("Inconsistent moving state.");
         newPosition = noPosition;
         this->up->stop();
         this->down->stop();
         this->stopper->stop();
-    } else if (newPositionUp != this->context.position) {
+    } else if (newPositionUp != this->state.position) {
         newPosition = newPositionUp;
     } else {
         newPosition = newPositionDown;
@@ -76,14 +76,14 @@ void CoverUpdate::update(Actions& action) {
         movementDirection = downDirection;
     }
 
-    if (this->context.previousMovementDirection != movementDirection) {
-        this->context.previousMovementDirection = movementDirection;
-        this->context.stateChanged = true;
+    if (this->state.previousMovementDirection != movementDirection) {
+        this->state.previousMovementDirection = movementDirection;
+        this->state.stateChanged = true;
     }
 
-    if (this->context.activePositionSensor != noPositionSensor) {
+    if (this->state.activePositionSensor != noPositionSensor) {
         newPosition =
-            this->context.positionSensors[this->context.activePositionSensor]
+            this->state.positionSensors[this->state.activePositionSensor]
                 .position;
     }
 
@@ -92,17 +92,17 @@ void CoverUpdate::update(Actions& action) {
         this->stopper->reset();
     }
 
-    if (newPosition != this->context.position || this->context.stateChanged) {
-        this->context.position = newPosition;
-        this->context.rtc.set(
-            this->context.positionId, this->context.position + 1);
+    if (newPosition != this->state.position || this->state.stateChanged) {
+        this->state.position = newPosition;
+        this->state.rtc.set(
+            this->state.positionId, this->state.position + 1);
         std::string stateName;
 
         if (movementDirection == upDirection) {
             stateName = "OPENING";
         } else if (movementDirection == downDirection) {
             stateName = "CLOSING";
-        } else if (this->context.position <= this->context.closedPosition) {
+        } else if (this->state.position <= this->state.closedPosition) {
             stateName = "CLOSED";
         } else {
             stateName = "OPEN";
@@ -110,28 +110,28 @@ void CoverUpdate::update(Actions& action) {
 
         this->log(
             "state=" + stateName +
-            " position=" + tools::intToString(this->context.position));
+            " position=" + tools::intToString(this->state.position));
 
         std::vector<std::string> values{std::move(stateName)};
-        if (this->context.position != noPosition) {
-            values.push_back(tools::intToString(this->context.position));
+        if (this->state.position != noPosition) {
+            values.push_back(tools::intToString(this->state.position));
         }
         action.fire(values);
 
-        this->context.stateChanged = false;
+        this->state.stateChanged = false;
     }
 
-    if (this->context.targetPosition != noPosition) {
+    if (this->state.targetPosition != noPosition) {
         enum class Action { Nothing, Restart, Reset };
         Action restartAction = Action::Nothing;
 
-        if (this->context.position == this->context.targetPosition) {
+        if (this->state.position == this->state.targetPosition) {
             restartAction = Action::Reset;
         } else if (!this->up->isStarted() && !this->down->isStarted()) {
-            if (this->context.hasPositionSensors() &&
-                this->context.position != 0 && this->context.position != 100) {
+            if (this->state.hasPositionSensors() &&
+                this->state.position != 0 && this->state.position != 100) {
                 restartAction = Action::Reset;
-            } else if (this->context.restartCount < 3) {
+            } else if (this->state.restartCount < 3) {
                 restartAction = Action::Restart;
             } else {
                 restartAction = Action::Reset;
@@ -140,19 +140,19 @@ void CoverUpdate::update(Actions& action) {
 
         switch (restartAction) {
         case Action::Restart:
-            ++this->context.restartCount;
-            if (this->context.targetPosition < this->context.position) {
+            ++this->state.restartCount;
+            if (this->state.targetPosition < this->state.position) {
                 this->up->stop();
                 this->down->start();
             } else {
                 this->down->stop();
                 this->up->start();
             }
-            this->context.stateChanged = true;
+            this->state.stateChanged = true;
             break;
         case Action::Reset:
-            this->context.targetPosition = noPosition;
-            this->context.restartCount = 0;
+            this->state.targetPosition = noPosition;
+            this->state.restartCount = 0;
             this->up->stop();
             this->down->stop();
             this->stopper->stop();
@@ -164,27 +164,27 @@ void CoverUpdate::update(Actions& action) {
 }
 
 void CoverUpdate::requestOpen() {
-    this->context.targetPosition = -1;
+    this->state.targetPosition = -1;
     if (!this->up->isStarted()) {
         this->down->stop();
         this->up->start();
-        this->context.stateChanged = true;
+        this->state.stateChanged = true;
     }
 }
 
 void CoverUpdate::requestStop() {
-    this->context.targetPosition = -1;
+    this->state.targetPosition = -1;
     this->up->stop();
     this->down->stop();
     this->stopper->stop();
 }
 
 void CoverUpdate::requestClose() {
-    this->context.targetPosition = -1;
+    this->state.targetPosition = -1;
     if (!this->down->isStarted()) {
         this->up->stop();
         this->down->start();
-        this->context.stateChanged = true;
+        this->state.stateChanged = true;
     }
 }
 
@@ -194,24 +194,24 @@ void CoverUpdate::requestSetPosition(int value) {
         return;
     }
 
-    if (this->context.position == -1) {
+    if (this->state.position == -1) {
         this->log("Position is not known, calibrating.");
     }
 
-    this->context.targetPosition = value;
-    this->context.restartCount = 0;
+    this->state.targetPosition = value;
+    this->state.restartCount = 0;
 
-    if (value < this->context.position) {
+    if (value < this->state.position) {
         if (!this->down->isStarted()) {
             this->up->stop();
             this->down->start();
-            this->context.stateChanged = true;
+            this->state.stateChanged = true;
         }
-    } else if (value > this->context.position) {
+    } else if (value > this->state.position) {
         if (!this->up->isStarted()) {
             this->down->stop();
             this->up->start();
-            this->context.stateChanged = true;
+            this->state.stateChanged = true;
         }
     } else {
         this->up->stop();
@@ -221,5 +221,5 @@ void CoverUpdate::requestSetPosition(int value) {
 }
 
 void CoverUpdate::log(const std::string& msg) {
-    this->context.debug << this->context.debugPrefix << msg << std::endl;
+    this->state.debug << this->state.debugPrefix << msg << std::endl;
 }

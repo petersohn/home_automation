@@ -24,7 +24,7 @@ public:
 private:
     void log(const std::string& msg);
 
-    CoverState& context;
+    CoverState& state;
     std::unique_ptr<CoverMovement> up;
     std::unique_ptr<CoverMovement> down;
     std::unique_ptr<CoverStop> stopper;

@@ -18,21 +18,21 @@ CoverMovementImpl::CoverMovementImpl(
     CoverState& context, CoverStop& stopper, uint8_t inputPin,
     uint8_t outputPin, int endPosition, int direction,
     std::string directionName)
-    : context(context)
+    : state(context)
     , stopper(stopper)
     , inputPin(inputPin)
     , outputPin(outputPin)
     , beginPosition(100 - endPosition)
     , endPosition(endPosition)
     , direction(direction)
-    , debugPrefix(this->context.debugPrefix + directionName + ": ") {
-    this->context.esp.pinMode(inputPin, GpioMode::input);
-    this->context.esp.pinMode(outputPin, GpioMode::output);
-    this->context.esp.digitalWrite(
-        this->outputPin, this->context.invertOutput ? 1 : 0);
+    , debugPrefix(this->state.debugPrefix + directionName + ": ") {
+    this->state.esp.pinMode(inputPin, GpioMode::input);
+    this->state.esp.pinMode(outputPin, GpioMode::output);
+    this->state.esp.digitalWrite(
+        this->outputPin, this->state.invertOutput ? 1 : 0);
     size_t timeCount = 1;
-    if (this->context.hasPositionSensors()) {
-        timeCount = this->context.positionSensors.size() - 1;
+    if (this->state.hasPositionSensors()) {
+        timeCount = this->state.positionSensors.size() - 1;
     }
 
     if (timeCount == 1) {
@@ -41,19 +41,19 @@ CoverMovementImpl::CoverMovementImpl(
 
     this->moveTimes.reserve(timeCount);
     for (size_t i = 0; i < timeCount; ++i) {
-        const auto id = this->context.rtc.next();
-        this->moveTimes.emplace_back(MoveTime{id, this->context.rtc.get(id)});
+        const auto id = this->state.rtc.next();
+        this->moveTimes.emplace_back(MoveTime{id, this->state.rtc.get(id)});
     }
 }
 
 void CoverMovementImpl::start() {
     this->stopper.reset();
     this->log("Start");
-    this->context.esp.digitalWrite(
-        this->outputPin, this->context.invertOutput ? 0 : 1);
+    this->state.esp.digitalWrite(
+        this->outputPin, this->state.invertOutput ? 0 : 1);
     this->startTriggered = true;
     if (!this->isStarted()) {
-        this->startedTime = this->context.esp.millis();
+        this->startedTime = this->state.esp.millis();
     }
 }
 
@@ -66,13 +66,13 @@ void CoverMovementImpl::stop() {
 void CoverMovementImpl::resetStarted() {
     if (this->startedTime != 0) {
         this->startedTime = 0;
-        this->context.stateChanged = true;
+        this->state.stateChanged = true;
     }
 }
 
 void CoverMovementImpl::resetStart() {
-    this->context.esp.digitalWrite(
-        this->outputPin, this->context.invertOutput ? 1 : 0);
+    this->state.esp.digitalWrite(
+        this->outputPin, this->state.invertOutput ? 1 : 0);
     this->startTriggered = false;
 }
 
@@ -85,13 +85,13 @@ void CoverMovementImpl::handleStopped() {
 }
 
 void CoverMovementImpl::log(const std::string& msg) {
-    this->context.debug << this->debugPrefix << msg << std::endl;
+    this->state.debug << this->debugPrefix << msg << std::endl;
 }
 
 bool CoverMovementImpl::isMoving() const {
     return getActualValue(
-        this->context.esp.digitalRead(this->inputPin),
-        this->context.invertInput);
+        this->state.esp.digitalRead(this->inputPin),
+        this->state.invertInput);
 }
 
 bool CoverMovementImpl::isStarted() const {
@@ -103,8 +103,8 @@ bool CoverMovementImpl::isReallyMoving() const {
 }
 
 int CoverMovementImpl::update() {
-    int newPosition = this->context.position;
-    auto now = this->context.esp.millis();
+    int newPosition = this->state.position;
+    auto now = this->state.esp.millis();
     bool moving = this->isMoving();
 
     if (this->stopper.isLatching()) {
@@ -114,21 +114,21 @@ int CoverMovementImpl::update() {
         }
     }
 
-    const auto paps = this->context.previouslyActivePositionSensor;
+    const auto paps = this->state.previouslyActivePositionSensor;
     const bool hasActivePositionSensor =
-        this->context.activePositionSensor >= 0;
+        this->state.activePositionSensor >= 0;
     if (hasActivePositionSensor) {
         if (paps == noPositionSensor) {
             this->calculateMoveTimeIfNeeded();
         }
         this->moveStartTime = 0;
     } else {
-        if (this->context.position != noPosition && this->moveTimeIndex < 0) {
-            for (size_t i = 0; i < this->context.positionSensors.size(); ++i) {
-                size_t j = this->context.positionSensors.size() - 1 - i;
-                if (this->context.position >=
-                    this->context.positionSensors[j].position) {
-                    if (j < this->context.positionSensors.size() - 1) {
+        if (this->state.position != noPosition && this->moveTimeIndex < 0) {
+            for (size_t i = 0; i < this->state.positionSensors.size(); ++i) {
+                size_t j = this->state.positionSensors.size() - 1 - i;
+                if (this->state.position >=
+                    this->state.positionSensors[j].position) {
+                    if (j < this->state.positionSensors.size() - 1) {
                         this->log(
                             "Found position index: " + tools::intToString(j));
                         this->moveTimeIndex = j;
@@ -160,11 +160,11 @@ int CoverMovementImpl::update() {
                 } else if (
                     !this->isReallyMoving() &&
                     now - this->moveStartTime >= debounceTime) {
-                    this->moveStartPosition = this->context.position;
+                    this->moveStartPosition = this->state.position;
                     this->log("Started moving");
                 }
 
-                if (this->context.position == this->endPosition) {
+                if (this->state.position == this->endPosition) {
                     newPosition = this->endPosition - this->direction;
                 }
             }
@@ -176,7 +176,7 @@ int CoverMovementImpl::update() {
             if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
                 const auto& moveTime =
                     this->moveTimes[this->moveTimeIndex].time;
-                if (this->context.position != noPosition && moveTime != 0) {
+                if (this->state.position != noPosition && moveTime != 0) {
                     const int a = (this->endPosition - this->beginPosition) *
                                   (now - this->moveStartTime);
                     const auto d =
@@ -190,7 +190,7 @@ int CoverMovementImpl::update() {
                 }
             }
         } else if (this->isStarted()) {
-            if (!this->context.hasPositionSensors()) {
+            if (!this->state.hasPositionSensors()) {
                 this->log("End position reached.");
                 newPosition = this->endPosition;
                 this->calculateMoveTimeIfNeeded();
@@ -200,7 +200,7 @@ int CoverMovementImpl::update() {
     } else if (
         !moving && this->isStarted() &&
         now - this->startedTime > startTimeout) {
-        if (this->context.hasPositionSensors()) {
+        if (this->state.hasPositionSensors()) {
             this->log("Did not start.");
         } else {
             this->log("Was at end position.");
@@ -228,14 +228,14 @@ void CoverMovementImpl::calculateBeginAndEndPosition() {
 
     if (this->direction > 0) {
         this->beginPosition =
-            this->context.positionSensors[this->moveTimeIndex].position;
+            this->state.positionSensors[this->moveTimeIndex].position;
         this->endPosition =
-            this->context.positionSensors[this->moveTimeIndex + 1].position;
+            this->state.positionSensors[this->moveTimeIndex + 1].position;
     } else {
         this->beginPosition =
-            this->context.positionSensors[this->moveTimeIndex + 1].position;
+            this->state.positionSensors[this->moveTimeIndex + 1].position;
         this->endPosition =
-            this->context.positionSensors[this->moveTimeIndex].position;
+            this->state.positionSensors[this->moveTimeIndex].position;
     }
 }
 
@@ -246,8 +246,8 @@ void CoverMovementImpl::calculateMoveTimeIfNeeded() {
 
     auto& moveTime = this->moveTimes[this->moveTimeIndex];
     if (this->moveStartPosition == this->beginPosition) {
-        moveTime.time = this->context.esp.millis() - this->moveStartTime;
-        this->context.rtc.set(moveTime.rtcId, moveTime.time);
+        moveTime.time = this->state.esp.millis() - this->moveStartTime;
+        this->state.rtc.set(moveTime.rtcId, moveTime.time);
         this->log("Move time: " + tools::intToString(moveTime.time));
     }
 }
