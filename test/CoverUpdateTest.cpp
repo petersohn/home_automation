@@ -8,7 +8,7 @@
 #include "common/Actions.hpp"
 #include "common/CoverMovement.hpp"
 #include "common/CoverState.hpp"
-#include "common/CoverStop.hpp"
+#include "common/CoverStopImpl.hpp"
 #include "common/CoverUpdate.hpp"
 #include "common/InterfaceConfig.hpp"
 #include "common/PositionSensor.hpp"
@@ -50,7 +50,7 @@ public:
     FakeCoverMovement down;
 
     // Stopper (real, using FakeEspApi from base)
-    CoverStop stopper{this->esp, this->stopPin, true,
+    CoverStopImpl stopper{this->esp, this->stopPin, true,
                       false,     this->debug,   "[test] "};
 
     CoverUpdate updateImpl{this->ctx, this->up, this->down, this->stopper};

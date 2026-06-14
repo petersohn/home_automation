@@ -16,7 +16,7 @@ class CoverMovement;
 // Full includes for direct member instances
 #include "CoverState.hpp"
 #include "CoverMovementImpl.hpp"
-#include "CoverStop.hpp"
+#include "CoverStopImpl.hpp"
 #include "CoverUpdate.hpp"
 
 /**
@@ -104,7 +104,7 @@ private:
     const bool invertOutput;
 
     CoverState context;
-    CoverStop stopper;
+    CoverStopImpl stopper;
     CoverMovementImpl up;
     CoverMovementImpl down;
     CoverUpdate updateImpl;

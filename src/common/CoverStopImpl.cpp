@@ -1,6 +1,6 @@
-#include "CoverStop.hpp"
+#include "CoverStopImpl.hpp"
 
-CoverStop::CoverStop(
+CoverStopImpl::CoverStopImpl(
     EspApi& esp, uint8_t pin, bool latching, bool invertOutput,
     std::ostream& debug, std::string debugPrefix)
     : esp(esp)
@@ -15,7 +15,7 @@ CoverStop::CoverStop(
     }
 }
 
-void CoverStop::stop() {
+void CoverStopImpl::stop() {
     if (!this->isLatching()) {
         return;
     }
@@ -25,7 +25,7 @@ void CoverStop::stop() {
     this->esp.digitalWrite(this->pin, this->invertOutput ? 0 : 1);
 }
 
-void CoverStop::reset() {
+void CoverStopImpl::reset() {
     if (!this->isLatching()) {
         return;
     }
@@ -35,10 +35,10 @@ void CoverStop::reset() {
     this->triggered = false;
 }
 
-bool CoverStop::isTriggered() const {
+bool CoverStopImpl::isTriggered() const {
     return this->triggered;
 }
 
-bool CoverStop::isLatching() const {
+bool CoverStopImpl::isLatching() const {
     return this->latching;
 }
