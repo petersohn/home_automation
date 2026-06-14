@@ -15,6 +15,7 @@ public:
     void update(Actions& action);
     void requestOpen();
     void requestClose();
+    void requestStop();
 
 private:
     void log(const std::string& msg);

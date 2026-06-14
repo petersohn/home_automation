@@ -169,6 +169,13 @@ void CoverUpdate::requestOpen() {
     }
 }
 
+void CoverUpdate::requestStop() {
+    this->context.targetPosition = -1;
+    this->up.stop();
+    this->down.stop();
+    this->stopper.stop();
+}
+
 void CoverUpdate::requestClose() {
     this->context.targetPosition = -1;
     if (!this->down.isStarted()) {
