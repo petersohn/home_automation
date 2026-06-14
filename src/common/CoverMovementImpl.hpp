@@ -9,6 +9,45 @@
 #include "CoverState.hpp"
 #include "CoverStop.hpp"
 
+/**
+ * Drives a cover in a single direction (open or close) and reports its
+ * position.
+ *
+ * An output pin is activated to make the cover move, and an input pin is
+ * read to detect motion. Position is reported as a percentage from the
+ * begin position (0%) to the end position (100%).
+ *
+ * Position tracking uses a combination of fixed reference points and
+ * interpolation:
+ * - If position sensors are configured, each sensor is a fixed reference
+ *   point. When the cover leaves one sensor and before it reaches the next,
+ *   the position is interpolated using the measured travel time between
+ *   those two sensors.
+ * - If no position sensors are configured, the end position is the only
+ *   fixed reference point that is assumed to have been reached when the cover
+ *   stops moving.
+ *
+ * Travel times between adjacent reference points are measured on the fly
+ * and persisted in RTC memory, so position interpolation becomes accurate
+ * (calibrated) after the first traversal of each segment.
+ *
+ * Movement is terminated automatically when the end position is reached,
+ * when motion stops, or when a start command fails to produce motion
+ * within a short timeout (in which case the cover is assumed to have
+ * already been at the end position).
+ *
+ * Edge cases in reported position:
+ * - Travel time not yet known (first traversal of a segment, or no prior
+ *   calibration in RTC): reports one step past the begin position of the
+ *   current segment instead of an interpolated value.
+ * - The actual position is unknown and no segment is currently being
+ *   traversed: position is reported as unknown (noPosition) and the system
+ *   waits for the cover to cross a sensor.
+ * - Start timeout with no position sensors: position is reported as the
+ *   end position, on the assumption that the cover was already there.
+ * - Start timeout with position sensors: the last known position is kept
+ *   and a failure to start is logged.
+ */
 class CoverMovementImpl : public CoverMovement {
 public:
     CoverMovementImpl(
