@@ -24,6 +24,14 @@ public:
 private:
     void startDirection(CoverMovement& forward, CoverMovement& reverse);
     void stopAll();
+    void updateActivePositionSensor();
+    int resolveMovementPosition();
+    int updateMovementDirection();
+    int applySensorPosition(int newPosition);
+    void resetStopperIfStopped();
+    void emitStateChange(
+        int movementDirection, int newPosition, Actions& action);
+    void handleTargetPosition();
 
     CoverState& state;
     std::unique_ptr<CoverMovement> up;

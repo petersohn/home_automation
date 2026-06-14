@@ -21,6 +21,18 @@ CoverUpdate::CoverUpdate(
     , stopper(std::move(stopper)) {}
 
 void CoverUpdate::update(Actions& action) {
+    this->updateActivePositionSensor();
+
+    int newPosition = this->resolveMovementPosition();
+    int movementDirection = this->updateMovementDirection();
+    newPosition = this->applySensorPosition(newPosition);
+
+    this->resetStopperIfStopped();
+    this->emitStateChange(movementDirection, newPosition, action);
+    this->handleTargetPosition();
+}
+
+void CoverUpdate::updateActivePositionSensor() {
     int newPositionSensor = noPositionSensor;
     for (size_t i = 0; i < this->state.positionSensors.size(); ++i) {
         if (getActualValue(
@@ -49,7 +61,9 @@ void CoverUpdate::update(Actions& action) {
     } else {
         this->state.previouslyActivePositionSensor = papsNoChange;
     }
+}
 
+int CoverUpdate::resolveMovementPosition() {
     int newPositionUp = this->up->update();
     int newPositionDown = this->down->update();
     int newPosition = this->state.position;
@@ -63,7 +77,10 @@ void CoverUpdate::update(Actions& action) {
     } else {
         newPosition = newPositionDown;
     }
+    return newPosition;
+}
 
+int CoverUpdate::updateMovementDirection() {
     int movementDirection = 0;
     if (this->up->isMoving()) {
         movementDirection = upDirection;
@@ -75,18 +92,27 @@ void CoverUpdate::update(Actions& action) {
         this->state.previousMovementDirection = movementDirection;
         this->state.stateChanged = true;
     }
+    return movementDirection;
+}
 
+int CoverUpdate::applySensorPosition(int newPosition) {
     if (this->state.activePositionSensor != noPositionSensor) {
         newPosition =
             this->state.positionSensors[this->state.activePositionSensor]
                 .position;
     }
+    return newPosition;
+}
 
+void CoverUpdate::resetStopperIfStopped() {
     if (this->stopper->isTriggered() && !this->up->isMoving() &&
         !this->down->isMoving()) {
         this->stopper->reset();
     }
+}
 
+void CoverUpdate::emitStateChange(
+    int movementDirection, int newPosition, Actions& action) {
     if (newPosition != this->state.position || this->state.stateChanged) {
         this->state.position = newPosition;
         this->state.rtc.set(this->state.positionId, this->state.position + 1);
@@ -114,41 +140,45 @@ void CoverUpdate::update(Actions& action) {
 
         this->state.stateChanged = false;
     }
+}
 
-    if (this->state.targetPosition != noPosition) {
-        enum class Action { Nothing, Restart, Reset };
-        Action restartAction = Action::Nothing;
+void CoverUpdate::handleTargetPosition() {
+    if (this->state.targetPosition == noPosition) {
+        return;
+    }
 
-        if (this->state.position == this->state.targetPosition) {
+    enum class Action { Nothing, Restart, Reset };
+    Action restartAction = Action::Nothing;
+
+    if (this->state.position == this->state.targetPosition) {
+        restartAction = Action::Reset;
+    } else if (!this->up->isStarted() && !this->down->isStarted()) {
+        if (this->state.hasPositionSensors() && this->state.position != 0 &&
+            this->state.position != 100) {
             restartAction = Action::Reset;
-        } else if (!this->up->isStarted() && !this->down->isStarted()) {
-            if (this->state.hasPositionSensors() && this->state.position != 0 &&
-                this->state.position != 100) {
-                restartAction = Action::Reset;
-            } else if (this->state.restartCount < 3) {
-                restartAction = Action::Restart;
-            } else {
-                restartAction = Action::Reset;
-            }
+        } else if (this->state.restartCount < 3) {
+            restartAction = Action::Restart;
+        } else {
+            restartAction = Action::Reset;
         }
+    }
 
-        switch (restartAction) {
-        case Action::Restart:
-            ++this->state.restartCount;
-            if (this->state.targetPosition < this->state.position) {
-                this->startDirection(*this->down, *this->up);
-            } else {
-                this->startDirection(*this->up, *this->down);
-            }
-            break;
-        case Action::Reset:
-            this->state.targetPosition = noPosition;
-            this->state.restartCount = 0;
-            this->stopAll();
-            break;
-        case Action::Nothing:
-            break;
+    switch (restartAction) {
+    case Action::Restart:
+        ++this->state.restartCount;
+        if (this->state.targetPosition < this->state.position) {
+            this->startDirection(*this->down, *this->up);
+        } else {
+            this->startDirection(*this->up, *this->down);
         }
+        break;
+    case Action::Reset:
+        this->state.targetPosition = noPosition;
+        this->state.restartCount = 0;
+        this->stopAll();
+        break;
+    case Action::Nothing:
+        break;
     }
 }
 
