@@ -87,22 +87,18 @@ void Cover::start() {
 
 void Cover::execute(const std::string& command) {
     if (command == "STOP") {
-        this->context.targetPosition = noPosition;
-        this->stop();
+        this->updateImpl.requestStop();
     } else if (command == "OPEN") {
-        this->context.targetPosition = noPosition;
-        this->beginOpening();
+        this->updateImpl.requestOpen();
     } else if (command == "CLOSE") {
-        this->context.targetPosition = noPosition;
-        this->beginClosing();
+        this->updateImpl.requestClose();
     } else {
         auto pos = tools::fromString<int>(command);
         if (!pos.has_value()) {
             this->log("Invalid command: " + command);
             return;
         }
-        this->context.restartCount = 0;
-        this->setPosition(*pos);
+        this->updateImpl.requestSetPosition(*pos);
     }
 }
 
