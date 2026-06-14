@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -71,14 +72,12 @@ public:
     // Context (state + config + services). Owns all mutable state.
     CoverState ctx;
 
-    // Test doubles
-    FakeCoverMovement up;
-    FakeCoverMovement down;
+    // Raw pointers to fakes (owned by unique_ptrs inside update)
+    FakeCoverMovement* upPtr;
+    FakeCoverMovement* downPtr;
+    FakeCoverStop* stopperPtr;
 
-    // Stopper (fake, tracks calls and state)
-    FakeCoverStop stopper;
-
-    CoverUpdate updateImpl{this->ctx, this->up, this->down, this->stopper};
+    std::unique_ptr<CoverUpdate> update;
     InterfaceConfig config;
     Actions actions{this->config};
 
@@ -102,6 +101,14 @@ public:
               this->debug,  // debug
               "[test] ",    // debugPrefix
           } {
+        auto up = std::make_unique<FakeCoverMovement>();
+        auto down = std::make_unique<FakeCoverMovement>();
+        auto stopper = std::make_unique<FakeCoverStop>();
+        this->upPtr = up.get();
+        this->downPtr = down.get();
+        this->stopperPtr = stopper.get();
+        this->update = std::make_unique<CoverUpdate>(
+            this->ctx, std::move(up), std::move(down), std::move(stopper));
     }
 
     // Helper: check that storedValue has at least n entries, then return ref
@@ -120,7 +127,7 @@ TEST_F(CoverUpdateTest, UpdateReadsPositionSensors) {
     this->esp.digitalWrite(5, 1);
     this->esp.delay(10);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.activePositionSensor, 0);
     EXPECT_EQ(this->ctx.position, 50);
@@ -130,7 +137,7 @@ TEST_F(CoverUpdateTest, UpdateDetectsSensorDeactivation) {
     this->ctx.positionSensors.push_back({50, 5, false});
     this->ctx.activePositionSensor = 0;
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.activePositionSensor, -1);
     EXPECT_EQ(this->ctx.previouslyActivePositionSensor, 0);
@@ -142,7 +149,7 @@ TEST_F(CoverUpdateTest, UpdateHandlesInvertedSensors) {
     this->esp.digitalWrite(5, 0);
     this->esp.delay(10);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.activePositionSensor, 0);
     EXPECT_EQ(this->ctx.position, 50);
@@ -152,14 +159,14 @@ TEST_F(CoverUpdateTest, UpdateHandlesInvertedSensors) {
 
 TEST_F(CoverUpdateTest, UpdateResolvesConflictingMovements) {
     this->ctx.position = 0;
-    this->up.setUpdateReturn(10);
-    this->down.setUpdateReturn(20);
+    this->upPtr->setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(20);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.position, -1);
-    EXPECT_EQ(this->up.stopCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
     // With position=-1, only state name is fired (no position value)
     ASSERT_EQ(this->config.storedValue.size(), 1u);
     // -1 <= closedPosition (10) → CLOSED
@@ -168,18 +175,18 @@ TEST_F(CoverUpdateTest, UpdateResolvesConflictingMovements) {
 
 TEST_F(CoverUpdateTest, UpdateUsesUpPosition) {
     this->ctx.position = 0;
-    this->up.setUpdateReturn(10);
+    this->upPtr->setUpdateReturn(10);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.position, 10);
 }
 
 TEST_F(CoverUpdateTest, UpdateUsesDownPosition) {
     this->ctx.position = 0;
-    this->down.setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(10);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.position, 10);
 }
@@ -190,9 +197,9 @@ TEST_F(CoverUpdateTest, UpdateOverridesPositionFromSensor) {
     this->esp.digitalWrite(5, 1);
     this->esp.delay(10);
     // up returns a different position, but sensor should override
-    this->up.setUpdateReturn(10);
+    this->upPtr->setUpdateReturn(10);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.position, 75);
 }
@@ -201,11 +208,11 @@ TEST_F(CoverUpdateTest, UpdateOverridesPositionFromSensor) {
 
 TEST_F(CoverUpdateTest, UpdateDetectsOpeningDirection) {
     this->ctx.position = 0;
-    this->up.setMoving(true);
-    this->up.setUpdateReturn(10);
-    this->down.setUpdateReturn(0);
+    this->upPtr->setMoving(true);
+    this->upPtr->setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(0);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.previousMovementDirection, 1);
     // stateChanged is cleared after action fires; check it via the fact that
@@ -216,12 +223,12 @@ TEST_F(CoverUpdateTest, UpdateDetectsOpeningDirection) {
 
 TEST_F(CoverUpdateTest, UpdateDetectsClosingDirection) {
     this->ctx.position = 100;
-    this->down.setMoving(true);
-    this->down.setUpdateReturn(50);
+    this->downPtr->setMoving(true);
+    this->downPtr->setUpdateReturn(50);
     // Keep up.update() returning same as position to avoid conflict
-    this->up.setUpdateReturn(100);
+    this->upPtr->setUpdateReturn(100);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.previousMovementDirection, -1);
     EXPECT_EQ(this->valueAt(0), "CLOSING");
@@ -231,10 +238,10 @@ TEST_F(CoverUpdateTest, UpdateDetectsStopped) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 0;
     this->ctx.stateChanged = false;
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.previousMovementDirection, 0);
     EXPECT_FALSE(this->ctx.stateChanged);
@@ -244,11 +251,11 @@ TEST_F(CoverUpdateTest, UpdateDetectsStopped) {
 TEST_F(CoverUpdateTest, UpdateSetsStateChangedOnDirectionChange) {
     this->ctx.previousMovementDirection = -1;  // Was closing
     this->ctx.position = 0;
-    this->up.setMoving(true);
-    this->up.setUpdateReturn(10);
-    this->down.setUpdateReturn(0);
+    this->upPtr->setMoving(true);
+    this->upPtr->setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(0);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     // After update(), stateChanged is cleared by the emission block. But the
     // fact that an action fired despite position not changing shows
@@ -262,11 +269,11 @@ TEST_F(CoverUpdateTest, UpdateSetsStateChangedOnDirectionChange) {
 
 TEST_F(CoverUpdateTest, UpdateFiresOpeningState) {
     this->ctx.position = 0;
-    this->up.setMoving(true);
-    this->up.setUpdateReturn(10);
-    this->down.setUpdateReturn(0);
+    this->upPtr->setMoving(true);
+    this->upPtr->setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(0);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->valueAt(0), "OPENING");
     EXPECT_EQ(this->valueAt(1), "10");
@@ -274,11 +281,11 @@ TEST_F(CoverUpdateTest, UpdateFiresOpeningState) {
 
 TEST_F(CoverUpdateTest, UpdateFiresClosingState) {
     this->ctx.position = 100;
-    this->down.setMoving(true);
-    this->down.setUpdateReturn(50);
-    this->up.setUpdateReturn(100);
+    this->downPtr->setMoving(true);
+    this->downPtr->setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(100);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->valueAt(0), "CLOSING");
     EXPECT_EQ(this->valueAt(1), "50");
@@ -288,10 +295,10 @@ TEST_F(CoverUpdateTest, UpdateFiresClosedState) {
     this->ctx.position = 0;
     this->ctx.closedPosition = 10;
     // Movement returns new position 5 (<= closedPosition 10)
-    this->up.setUpdateReturn(5);
-    this->down.setUpdateReturn(0);  // Same as old position, not conflicting
+    this->upPtr->setUpdateReturn(5);
+    this->downPtr->setUpdateReturn(0);  // Same as old position, not conflicting
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->valueAt(0), "CLOSED");
     EXPECT_EQ(this->valueAt(1), "5");
@@ -301,10 +308,10 @@ TEST_F(CoverUpdateTest, UpdateFiresOpenState) {
     this->ctx.position = 10;
     this->ctx.closedPosition = 10;
     // Movement returns new position 50 (> closedPosition 10)
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(10);  // Same as old position, not conflicting
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(10);  // Same as old position, not conflicting
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->valueAt(0), "OPEN");
     EXPECT_EQ(this->valueAt(1), "50");
@@ -312,10 +319,10 @@ TEST_F(CoverUpdateTest, UpdateFiresOpenState) {
 
 TEST_F(CoverUpdateTest, UpdateOmitsPositionWhenNoPosition) {
     this->ctx.position = 0;
-    this->up.setUpdateReturn(10);
-    this->down.setUpdateReturn(20);
+    this->upPtr->setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(20);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.position, -1);
     // Only state name, no position value
@@ -326,10 +333,10 @@ TEST_F(CoverUpdateTest, UpdateDoesNotFireWhenUnchanged) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 0;
     this->ctx.stateChanged = false;
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_TRUE(this->config.storedValue.empty());
     EXPECT_EQ(this->ctx.position, 50);
@@ -340,26 +347,26 @@ TEST_F(CoverUpdateTest, UpdateDoesNotFireWhenUnchanged) {
 
 TEST_F(CoverUpdateTest, UpdateResetsStopperWhenStopped) {
     // Manually trigger the stopper
-    this->stopper.stop();
-    EXPECT_TRUE(this->stopper.isTriggered());
+    this->stopperPtr->stop();
+    EXPECT_TRUE(this->stopperPtr->isTriggered());
 
     // Neither moving → stopper.reset() will be called during update
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
-    EXPECT_FALSE(this->stopper.isTriggered());
+    EXPECT_FALSE(this->stopperPtr->isTriggered());
 }
 
 TEST_F(CoverUpdateTest, UpdateKeepsStopperActive) {
-    this->up.setMoving(true);
-    this->up.setUpdateReturn(10);
-    this->down.setUpdateReturn(0);
-    this->stopper.stop();
-    EXPECT_TRUE(this->stopper.isTriggered());
+    this->upPtr->setMoving(true);
+    this->upPtr->setUpdateReturn(10);
+    this->downPtr->setUpdateReturn(0);
+    this->stopperPtr->stop();
+    EXPECT_TRUE(this->stopperPtr->isTriggered());
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     // Still moving, so stopper should remain triggered
-    EXPECT_TRUE(this->stopper.isTriggered());
+    EXPECT_TRUE(this->stopperPtr->isTriggered());
 }
 
 // ===== 6. Target position handling =====
@@ -369,11 +376,11 @@ TEST_F(CoverUpdateTest, UpdateClearsTargetWhenReached) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 1;
     // Keep moving so stopper reset logic doesn't interact
-    this->up.setMoving(true);
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setMoving(true);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.targetPosition, -1);
     EXPECT_EQ(this->ctx.restartCount, 0u);
@@ -384,17 +391,17 @@ TEST_F(CoverUpdateTest, UpdateRestartsWhenBothMovementsIdle) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.clear();
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
     // targetPosition(75) > position(50) → up.start(), down.stop()
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.restartCount, 1u);
-    EXPECT_EQ(this->up.startCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
-    EXPECT_EQ(this->up.stopCount(), 0);
-    EXPECT_EQ(this->down.startCount(), 0);
+    EXPECT_EQ(this->upPtr->startCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 0);
+    EXPECT_EQ(this->downPtr->startCount(), 0);
 }
 
 TEST_F(CoverUpdateTest, UpdateStopsRestartingAfterMaxAttempts) {
@@ -403,15 +410,15 @@ TEST_F(CoverUpdateTest, UpdateStopsRestartingAfterMaxAttempts) {
     this->ctx.restartCount = 3;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.clear();
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.targetPosition, -1);
     EXPECT_EQ(this->ctx.restartCount, 0u);
-    EXPECT_EQ(this->up.stopCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, UpdateSkipsRestartWithPositionSensors) {
@@ -419,16 +426,16 @@ TEST_F(CoverUpdateTest, UpdateSkipsRestartWithPositionSensors) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.push_back({50, 5, false});
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     // Has position sensors and position != 0/100 → Action::Reset
     EXPECT_EQ(this->ctx.targetPosition, -1);
     EXPECT_EQ(this->ctx.restartCount, 0u);
-    EXPECT_EQ(this->up.stopCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, UpdateIncrementsRestartCount) {
@@ -436,10 +443,10 @@ TEST_F(CoverUpdateTest, UpdateIncrementsRestartCount) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.clear();
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.restartCount, 1u);
 }
@@ -451,13 +458,13 @@ TEST_F(CoverUpdateTest, UpdateAllowsRestartWithSensorsAtBounds) {
     this->ctx.position = 0;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.push_back({0, 5, false});
-    this->up.setUpdateReturn(0);
-    this->down.setUpdateReturn(0);
+    this->upPtr->setUpdateReturn(0);
+    this->downPtr->setUpdateReturn(0);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.restartCount, 1u);
-    EXPECT_EQ(this->up.startCount(), 1);
+    EXPECT_EQ(this->upPtr->startCount(), 1);
     EXPECT_EQ(this->ctx.targetPosition, 75);  // Not cleared
 }
 
@@ -468,13 +475,13 @@ TEST_F(CoverUpdateTest, UpdateAllowsRestartWithSensorsAtOpenBoundary) {
     this->ctx.position = 100;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.push_back({100, 5, false});
-    this->up.setUpdateReturn(100);
-    this->down.setUpdateReturn(100);
+    this->upPtr->setUpdateReturn(100);
+    this->downPtr->setUpdateReturn(100);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     EXPECT_EQ(this->ctx.restartCount, 1u);
-    EXPECT_EQ(this->down.startCount(), 1);
+    EXPECT_EQ(this->downPtr->startCount(), 1);
     EXPECT_EQ(this->ctx.targetPosition, 50);  // Not cleared
 }
 
@@ -484,58 +491,58 @@ TEST_F(CoverUpdateTest, UpdateRestartsInCorrectDirectionDown) {
     this->ctx.position = 50;
     this->ctx.previousMovementDirection = 0;
     this->ctx.positionSensors.clear();
-    this->up.setUpdateReturn(50);
-    this->down.setUpdateReturn(50);
+    this->upPtr->setUpdateReturn(50);
+    this->downPtr->setUpdateReturn(50);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
-    EXPECT_EQ(this->down.startCount(), 1);
-    EXPECT_EQ(this->up.stopCount(), 1);
-    EXPECT_EQ(this->up.startCount(), 0);
-    EXPECT_EQ(this->down.stopCount(), 0);
+    EXPECT_EQ(this->downPtr->startCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
+    EXPECT_EQ(this->upPtr->startCount(), 0);
+    EXPECT_EQ(this->downPtr->stopCount(), 0);
 }
 
 // ===== 8. requestOpen =====
 
 TEST_F(CoverUpdateTest, RequestOpenStartsUpAndStopsDown) {
-    this->updateImpl.requestOpen();
-    EXPECT_EQ(this->up.startCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
+    this->update->requestOpen();
+    EXPECT_EQ(this->upPtr->startCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
     EXPECT_TRUE(this->ctx.stateChanged);
     EXPECT_EQ(this->ctx.targetPosition, -1);
 }
 
 TEST_F(CoverUpdateTest, RequestOpenIsIdempotentWhenUpAlreadyStarted) {
-    this->up.setStarted(true);
-    this->updateImpl.requestOpen();
-    EXPECT_EQ(this->up.startCount(), 0);
+    this->upPtr->setStarted(true);
+    this->update->requestOpen();
+    EXPECT_EQ(this->upPtr->startCount(), 0);
     EXPECT_FALSE(this->ctx.stateChanged);
 }
 
 // ===== 9. requestClose =====
 
 TEST_F(CoverUpdateTest, RequestCloseStartsDownAndStopsUp) {
-    this->updateImpl.requestClose();
-    EXPECT_EQ(this->down.startCount(), 1);
-    EXPECT_EQ(this->up.stopCount(), 1);
+    this->update->requestClose();
+    EXPECT_EQ(this->downPtr->startCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
     EXPECT_TRUE(this->ctx.stateChanged);
     EXPECT_EQ(this->ctx.targetPosition, -1);
 }
 
 TEST_F(CoverUpdateTest, RequestCloseIsIdempotentWhenDownAlreadyStarted) {
-    this->down.setStarted(true);
-    this->updateImpl.requestClose();
-    EXPECT_EQ(this->down.startCount(), 0);
+    this->downPtr->setStarted(true);
+    this->update->requestClose();
+    EXPECT_EQ(this->downPtr->startCount(), 0);
     EXPECT_FALSE(this->ctx.stateChanged);
 }
 
 // ===== 10. requestStop =====
 
 TEST_F(CoverUpdateTest, RequestStopStopsAll) {
-    this->updateImpl.requestStop();
-    EXPECT_EQ(this->up.stopCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
-    EXPECT_EQ(this->stopper.stopCount(), 1);
+    this->update->requestStop();
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
+    EXPECT_EQ(this->stopperPtr->stopCount(), 1);
     EXPECT_EQ(this->ctx.targetPosition, -1);
 }
 
@@ -543,60 +550,60 @@ TEST_F(CoverUpdateTest, RequestStopStopsAll) {
 
 TEST_F(CoverUpdateTest, RequestSetPositionRejectsOutOfRange) {
     this->ctx.position = 50;
-    this->updateImpl.requestSetPosition(-1);
+    this->update->requestSetPosition(-1);
     EXPECT_EQ(this->ctx.targetPosition, -1);
-    EXPECT_EQ(this->up.startCount(), 0);
-    EXPECT_EQ(this->down.startCount(), 0);
+    EXPECT_EQ(this->upPtr->startCount(), 0);
+    EXPECT_EQ(this->downPtr->startCount(), 0);
 
     this->ctx.targetPosition = -1;
-    this->updateImpl.requestSetPosition(101);
+    this->update->requestSetPosition(101);
     EXPECT_EQ(this->ctx.targetPosition, -1);
-    EXPECT_EQ(this->up.startCount(), 0);
-    EXPECT_EQ(this->down.startCount(), 0);
+    EXPECT_EQ(this->upPtr->startCount(), 0);
+    EXPECT_EQ(this->downPtr->startCount(), 0);
 }
 
 TEST_F(CoverUpdateTest, RequestSetPositionGreaterThanCurrentOpens) {
     this->ctx.position = 30;
-    this->updateImpl.requestSetPosition(70);
+    this->update->requestSetPosition(70);
     EXPECT_EQ(this->ctx.targetPosition, 70);
     EXPECT_EQ(this->ctx.restartCount, 0u);
-    EXPECT_EQ(this->up.startCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
+    EXPECT_EQ(this->upPtr->startCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, RequestSetPositionLessThanCurrentCloses) {
     this->ctx.position = 70;
-    this->updateImpl.requestSetPosition(30);
+    this->update->requestSetPosition(30);
     EXPECT_EQ(this->ctx.targetPosition, 30);
-    EXPECT_EQ(this->down.startCount(), 1);
-    EXPECT_EQ(this->up.stopCount(), 1);
+    EXPECT_EQ(this->downPtr->startCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, RequestSetPositionEqualToCurrentStops) {
     this->ctx.position = 50;
-    this->updateImpl.requestSetPosition(50);
+    this->update->requestSetPosition(50);
     EXPECT_EQ(this->ctx.targetPosition, 50);
-    EXPECT_EQ(this->up.stopCount(), 1);
-    EXPECT_EQ(this->down.stopCount(), 1);
-    EXPECT_EQ(this->stopper.stopCount(), 1);
+    EXPECT_EQ(this->upPtr->stopCount(), 1);
+    EXPECT_EQ(this->downPtr->stopCount(), 1);
+    EXPECT_EQ(this->stopperPtr->stopCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, RequestSetPositionAtBoundaryOpen) {
     this->ctx.position = 30;
-    this->updateImpl.requestSetPosition(100);
-    EXPECT_EQ(this->up.startCount(), 1);
+    this->update->requestSetPosition(100);
+    EXPECT_EQ(this->upPtr->startCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, RequestSetPositionAtBoundaryClosed) {
     this->ctx.position = 30;
-    this->updateImpl.requestSetPosition(0);
-    EXPECT_EQ(this->down.startCount(), 1);
+    this->update->requestSetPosition(0);
+    EXPECT_EQ(this->downPtr->startCount(), 1);
 }
 
 TEST_F(CoverUpdateTest, RequestSetPositionResetsRestartCount) {
     this->ctx.position = 30;
     this->ctx.restartCount = 2;
-    this->updateImpl.requestSetPosition(70);
+    this->update->requestSetPosition(70);
     EXPECT_EQ(this->ctx.restartCount, 0u);
 }
 
@@ -604,10 +611,10 @@ TEST_F(CoverUpdateTest, RequestSetPositionResetsRestartCount) {
 
 TEST_F(CoverUpdateTest, UpdatePersistsPositionToRtc) {
     this->ctx.position = 0;
-    this->up.setUpdateReturn(42);
-    this->down.setUpdateReturn(0);
+    this->upPtr->setUpdateReturn(42);
+    this->downPtr->setUpdateReturn(0);
 
-    this->updateImpl.update(this->actions);
+    this->update->update(this->actions);
 
     // rtc.set(positionId, position + 1)
     EXPECT_EQ(this->rtc.get(this->ctx.positionId), 43u);

@@ -13,10 +13,7 @@
 
 class CoverMovement;
 
-// Full includes for direct member instances
 #include "CoverState.hpp"
-#include "CoverMovementImpl.hpp"
-#include "CoverStopImpl.hpp"
 #include "CoverUpdate.hpp"
 
 /**
@@ -96,17 +93,13 @@ private:
     void beginMoving(CoverMovement& direction, CoverMovement& reverse);
     void setPosition(int value);
 
-    std::ostream& debug;
-    EspApi& esp;
-    Rtc& rtc;
+    static CoverUpdate makeUpdateImpl(
+        CoverState& state, EspApi& esp, uint8_t upMovementPin,
+        uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
+        uint8_t stopPin, bool latching, bool invertOutput,
+        std::ostream& debug);
 
-    const std::string debugPrefix;
-    const bool invertOutput;
-
-    CoverState context;
-    CoverStopImpl stopper;
-    CoverMovementImpl up;
-    CoverMovementImpl down;
+    CoverState state;
     CoverUpdate updateImpl;
 };
 

@@ -16,9 +16,14 @@ constexpr int downDirection = -1;
 }  // namespace
 
 CoverUpdate::CoverUpdate(
-    CoverState& context, CoverMovement& up, CoverMovement& down,
-    CoverStop& stopper)
-    : context(context), up(up), down(down), stopper(stopper) {}
+    CoverState& state,
+    std::unique_ptr<CoverMovement> up,
+    std::unique_ptr<CoverMovement> down,
+    std::unique_ptr<CoverStop> stopper)
+    : context(state)
+    , up(std::move(up))
+    , down(std::move(down))
+    , stopper(std::move(stopper)) {}
 
 void CoverUpdate::update(Actions& action) {
     int newPositionSensor = noPositionSensor;
@@ -50,16 +55,16 @@ void CoverUpdate::update(Actions& action) {
         this->context.previouslyActivePositionSensor = papsNoChange;
     }
 
-    int newPositionUp = this->up.update();
-    int newPositionDown = this->down.update();
+    int newPositionUp = this->up->update();
+    int newPositionDown = this->down->update();
     int newPosition = this->context.position;
     if (newPositionUp != this->context.position &&
         newPositionDown != this->context.position) {
         this->log("Inconsistent moving state.");
         newPosition = noPosition;
-        this->up.stop();
-        this->down.stop();
-        this->stopper.stop();
+        this->up->stop();
+        this->down->stop();
+        this->stopper->stop();
     } else if (newPositionUp != this->context.position) {
         newPosition = newPositionUp;
     } else {
@@ -67,9 +72,9 @@ void CoverUpdate::update(Actions& action) {
     }
 
     int movementDirection = 0;
-    if (this->up.isMoving()) {
+    if (this->up->isMoving()) {
         movementDirection = upDirection;
-    } else if (this->down.isMoving()) {
+    } else if (this->down->isMoving()) {
         movementDirection = downDirection;
     }
 
@@ -84,9 +89,9 @@ void CoverUpdate::update(Actions& action) {
                 .position;
     }
 
-    if (this->stopper.isTriggered() && !this->up.isMoving() &&
-        !this->down.isMoving()) {
-        this->stopper.reset();
+    if (this->stopper->isTriggered() && !this->up->isMoving() &&
+        !this->down->isMoving()) {
+        this->stopper->reset();
     }
 
     if (newPosition != this->context.position || this->context.stateChanged) {
@@ -124,7 +129,7 @@ void CoverUpdate::update(Actions& action) {
 
         if (this->context.position == this->context.targetPosition) {
             restartAction = Action::Reset;
-        } else if (!this->up.isStarted() && !this->down.isStarted()) {
+        } else if (!this->up->isStarted() && !this->down->isStarted()) {
             if (this->context.hasPositionSensors() &&
                 this->context.position != 0 && this->context.position != 100) {
                 restartAction = Action::Reset;
@@ -139,20 +144,20 @@ void CoverUpdate::update(Actions& action) {
         case Action::Restart:
             ++this->context.restartCount;
             if (this->context.targetPosition < this->context.position) {
-                this->up.stop();
-                this->down.start();
+                this->up->stop();
+                this->down->start();
             } else {
-                this->down.stop();
-                this->up.start();
+                this->down->stop();
+                this->up->start();
             }
             this->context.stateChanged = true;
             break;
         case Action::Reset:
             this->context.targetPosition = noPosition;
             this->context.restartCount = 0;
-            this->up.stop();
-            this->down.stop();
-            this->stopper.stop();
+            this->up->stop();
+            this->down->stop();
+            this->stopper->stop();
             break;
         case Action::Nothing:
             break;
@@ -162,25 +167,25 @@ void CoverUpdate::update(Actions& action) {
 
 void CoverUpdate::requestOpen() {
     this->context.targetPosition = -1;
-    if (!this->up.isStarted()) {
-        this->down.stop();
-        this->up.start();
+    if (!this->up->isStarted()) {
+        this->down->stop();
+        this->up->start();
         this->context.stateChanged = true;
     }
 }
 
 void CoverUpdate::requestStop() {
     this->context.targetPosition = -1;
-    this->up.stop();
-    this->down.stop();
-    this->stopper.stop();
+    this->up->stop();
+    this->down->stop();
+    this->stopper->stop();
 }
 
 void CoverUpdate::requestClose() {
     this->context.targetPosition = -1;
-    if (!this->down.isStarted()) {
-        this->up.stop();
-        this->down.start();
+    if (!this->down->isStarted()) {
+        this->up->stop();
+        this->down->start();
         this->context.stateChanged = true;
     }
 }
@@ -199,21 +204,21 @@ void CoverUpdate::requestSetPosition(int value) {
     this->context.restartCount = 0;
 
     if (value < this->context.position) {
-        if (!this->down.isStarted()) {
-            this->up.stop();
-            this->down.start();
+        if (!this->down->isStarted()) {
+            this->up->stop();
+            this->down->start();
             this->context.stateChanged = true;
         }
     } else if (value > this->context.position) {
-        if (!this->up.isStarted()) {
-            this->down.stop();
-            this->up.start();
+        if (!this->up->isStarted()) {
+            this->down->stop();
+            this->up->start();
             this->context.stateChanged = true;
         }
     } else {
-        this->up.stop();
-        this->down.stop();
-        this->stopper.stop();
+        this->up->stop();
+        this->down->stop();
+        this->stopper->stop();
     }
 }
 
