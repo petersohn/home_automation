@@ -13,6 +13,7 @@ public:
         CoverStop& stopper);
 
     void update(Actions& action);
+    void requestOpen();
 
 private:
     void log(const std::string& msg);
