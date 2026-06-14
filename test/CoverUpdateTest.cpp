@@ -43,25 +43,25 @@ private:
 class FakeCoverStop : public CoverStop {
 public:
     void stop() override {
-        ++this->stopCount;
-        this->triggered = true;
+        ++this->stopCount_;
+        this->triggered_ = true;
     }
     void reset() override {
-        ++this->resetCount;
-        this->triggered = false;
+        ++this->resetCount_;
+        this->triggered_ = false;
     }
-    bool isTriggered() const override { return this->triggered; }
-    bool isLatching() const override { return this->latching; }
+    bool isTriggered() const override { return this->triggered_; }
+    bool isLatching() const override { return this->latching_; }
 
-    void setLatching(bool v) { this->latching = v; }
-    int getStopCount() const { return this->stopCount; }
-    int getResetCount() const { return this->resetCount; }
+    void setLatching(bool v) { this->latching_ = v; }
+    int stopCount() const { return this->stopCount_; }
+    int resetCount() const { return this->resetCount_; }
 
 private:
-    bool triggered = false;
-    bool latching = false;
-    int stopCount = 0;
-    int resetCount = 0;
+    bool triggered_ = false;
+    bool latching_ = false;
+    int stopCount_ = 0;
+    int resetCount_ = 0;
 };
 
 class CoverUpdateTest : public EspTestBase {
