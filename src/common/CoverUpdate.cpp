@@ -185,6 +185,38 @@ void CoverUpdate::requestClose() {
     }
 }
 
+void CoverUpdate::requestSetPosition(int value) {
+    if (value < 0 || value > 100) {
+        this->log("Position out of range: " + tools::intToString(value));
+        return;
+    }
+
+    if (this->context.position == -1) {
+        this->log("Position is not known, calibrating.");
+    }
+
+    this->context.targetPosition = value;
+    this->context.restartCount = 0;
+
+    if (value < this->context.position) {
+        if (!this->down.isStarted()) {
+            this->up.stop();
+            this->down.start();
+            this->context.stateChanged = true;
+        }
+    } else if (value > this->context.position) {
+        if (!this->up.isStarted()) {
+            this->down.stop();
+            this->up.start();
+            this->context.stateChanged = true;
+        }
+    } else {
+        this->up.stop();
+        this->down.stop();
+        this->stopper.stop();
+    }
+}
+
 void CoverUpdate::log(const std::string& msg) {
     this->context.debug << this->context.debugPrefix << msg << std::endl;
 }

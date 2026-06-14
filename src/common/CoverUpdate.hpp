@@ -16,6 +16,7 @@ public:
     void requestOpen();
     void requestClose();
     void requestStop();
+    void requestSetPosition(int value);
 
 private:
     void log(const std::string& msg);

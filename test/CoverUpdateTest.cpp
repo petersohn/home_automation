@@ -539,6 +539,67 @@ TEST_F(CoverUpdateTest, RequestStopStopsAll) {
     EXPECT_EQ(this->ctx.targetPosition, -1);
 }
 
+// ===== 11. requestSetPosition =====
+
+TEST_F(CoverUpdateTest, RequestSetPositionRejectsOutOfRange) {
+    this->ctx.position = 50;
+    this->updateImpl.requestSetPosition(-1);
+    EXPECT_EQ(this->ctx.targetPosition, -1);
+    EXPECT_EQ(this->up.startCount(), 0);
+    EXPECT_EQ(this->down.startCount(), 0);
+
+    this->ctx.targetPosition = -1;
+    this->updateImpl.requestSetPosition(101);
+    EXPECT_EQ(this->ctx.targetPosition, -1);
+    EXPECT_EQ(this->up.startCount(), 0);
+    EXPECT_EQ(this->down.startCount(), 0);
+}
+
+TEST_F(CoverUpdateTest, RequestSetPositionGreaterThanCurrentOpens) {
+    this->ctx.position = 30;
+    this->updateImpl.requestSetPosition(70);
+    EXPECT_EQ(this->ctx.targetPosition, 70);
+    EXPECT_EQ(this->ctx.restartCount, 0u);
+    EXPECT_EQ(this->up.startCount(), 1);
+    EXPECT_EQ(this->down.stopCount(), 1);
+}
+
+TEST_F(CoverUpdateTest, RequestSetPositionLessThanCurrentCloses) {
+    this->ctx.position = 70;
+    this->updateImpl.requestSetPosition(30);
+    EXPECT_EQ(this->ctx.targetPosition, 30);
+    EXPECT_EQ(this->down.startCount(), 1);
+    EXPECT_EQ(this->up.stopCount(), 1);
+}
+
+TEST_F(CoverUpdateTest, RequestSetPositionEqualToCurrentStops) {
+    this->ctx.position = 50;
+    this->updateImpl.requestSetPosition(50);
+    EXPECT_EQ(this->ctx.targetPosition, 50);
+    EXPECT_EQ(this->up.stopCount(), 1);
+    EXPECT_EQ(this->down.stopCount(), 1);
+    EXPECT_EQ(this->stopper.stopCount(), 1);
+}
+
+TEST_F(CoverUpdateTest, RequestSetPositionAtBoundaryOpen) {
+    this->ctx.position = 30;
+    this->updateImpl.requestSetPosition(100);
+    EXPECT_EQ(this->up.startCount(), 1);
+}
+
+TEST_F(CoverUpdateTest, RequestSetPositionAtBoundaryClosed) {
+    this->ctx.position = 30;
+    this->updateImpl.requestSetPosition(0);
+    EXPECT_EQ(this->down.startCount(), 1);
+}
+
+TEST_F(CoverUpdateTest, RequestSetPositionResetsRestartCount) {
+    this->ctx.position = 30;
+    this->ctx.restartCount = 2;
+    this->updateImpl.requestSetPosition(70);
+    EXPECT_EQ(this->ctx.restartCount, 0u);
+}
+
 // ===== 7. RTC persistence =====
 
 TEST_F(CoverUpdateTest, UpdatePersistsPositionToRtc) {
