@@ -27,7 +27,8 @@ void CoverStopImpl::reset() {
     }
 
     this->state.log("Reset stop");
-    this->esp.digitalWrite(this->pin, getActualValue(false, this->invertOutput));
+    this->esp.digitalWrite(
+        this->pin, getActualValue(false, this->invertOutput));
     this->triggered = false;
 }
 
