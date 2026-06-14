@@ -99,121 +99,181 @@ bool CoverMovementImpl::isReallyMoving() const {
 }
 
 int CoverMovementImpl::update() {
+    const auto now = this->state.esp.millis();
+    const bool moving = this->isMoving();
     int newPosition = this->state.position;
-    auto now = this->state.esp.millis();
-    bool moving = this->isMoving();
 
-    if (this->state.latching) {
-        if (moving && this->startTriggered) {
-            this->log("Reset start");
-            this->resetStart();
-        }
-    }
+    this->resetLatchingStartIfMoving(moving);
 
-    const auto paps = this->state.previouslyActivePositionSensor;
     const bool hasActivePositionSensor = this->state.activePositionSensor >= 0;
     if (hasActivePositionSensor) {
-        if (paps == noPositionSensor) {
-            this->calculateMoveTimeIfNeeded();
-        }
-        this->moveStartTime = 0;
+        this->updateWithActivePositionSensor();
     } else {
-        if (this->state.position != noPosition && this->moveTimeIndex < 0) {
-            for (size_t i = 0; i < this->state.positionSensors.size(); ++i) {
-                size_t j = this->state.positionSensors.size() - 1 - i;
-                if (this->state.position >=
-                    this->state.positionSensors[j].position) {
-                    if (j < this->state.positionSensors.size() - 1) {
-                        this->log(
-                            "Found position index: " + tools::intToString(j));
-                        this->moveTimeIndex = j;
-                        this->calculateBeginAndEndPosition();
-                    }
-                    break;
-                }
-            }
-        }
-
-        if (moving) {
-            if (paps >= 0) {
-                this->log(
-                    "Just left position sensor " + tools::intToString(paps));
-                this->moveTimeIndex = this->direction > 0 ? paps : paps - 1;
-                if (this->moveTimeIndex >=
-                    static_cast<int>(this->moveTimes.size())) {
-                    this->moveTimeIndex = noPositionSensor;
-                }
-                if (this->moveTimeIndex >= 0) {
-                    this->moveStartTime = now;
-                    this->calculateBeginAndEndPosition();
-                    newPosition = this->beginPosition + this->direction;
-                    this->moveStartPosition = this->beginPosition;
-                }
-            } else {
-                if (this->moveStartTime == 0) {
-                    this->moveStartTime = now;
-                } else if (
-                    !this->isReallyMoving() &&
-                    now - this->moveStartTime >= debounceTime) {
-                    this->moveStartPosition = this->state.position;
-                    this->log("Started moving");
-                }
-
-                if (this->state.position == this->endPosition) {
-                    newPosition = this->endPosition - this->direction;
-                }
-            }
-        }
+        newPosition =
+            this->updateWithoutActivePositionSensor(moving, now, newPosition);
     }
 
-    if (this->isReallyMoving()) {
-        if (moving) {
-            if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
-                const auto& moveTime =
-                    this->moveTimes[this->moveTimeIndex].time;
-                if (this->state.position != noPosition && moveTime != 0) {
-                    const int a = (this->endPosition - this->beginPosition) *
-                                  (now - this->moveStartTime);
-                    const auto d =
-                        static_cast<int>(static_cast<double>(a) / moveTime);
-                    newPosition = this->moveStartPosition + d;
-                    if (this->direction * newPosition >= this->endPosition) {
-                        newPosition = this->endPosition - this->direction;
-                    }
-                } else {
-                    newPosition = this->beginPosition + this->direction;
-                }
-            }
-        } else if (this->isStarted()) {
-            if (!this->state.hasPositionSensors()) {
-                this->log("End position reached.");
-                newPosition = this->endPosition;
-                this->calculateMoveTimeIfNeeded();
-            }
-            this->handleStopped();
-        }
-    } else if (
-        !moving && this->isStarted() &&
-        now - this->startedTime > startTimeout) {
-        if (this->state.hasPositionSensors()) {
-            this->log("Did not start.");
-        } else {
-            this->log("Was at end position.");
-            newPosition = this->endPosition;
-        }
-        this->handleStopped();
-    }
-
-    if (!moving) {
-        if (this->isReallyMoving()) {
-            this->log("Stopped moving");
-        }
-
-        this->moveStartTime = 0;
-        this->moveStartPosition = mspNotMoving;
-    }
+    newPosition =
+        this->trackMovement(hasActivePositionSensor, moving, now, newPosition);
+    newPosition = this->checkStartTimeout(moving, now, newPosition);
+    this->resetStateIfStopped(moving);
 
     return newPosition;
+}
+
+void CoverMovementImpl::resetLatchingStartIfMoving(bool moving) {
+    if (this->state.latching && moving && this->startTriggered) {
+        this->log("Reset start");
+        this->resetStart();
+    }
+}
+
+void CoverMovementImpl::updateWithActivePositionSensor() {
+    if (this->state.previouslyActivePositionSensor == noPositionSensor) {
+        this->calculateMoveTimeIfNeeded();
+    }
+    this->moveStartTime = 0;
+}
+
+int CoverMovementImpl::updateWithoutActivePositionSensor(
+    bool moving, unsigned long now, int newPosition) {
+    this->findPositionIndexIfNeeded();
+    if (moving) {
+        newPosition = this->handleMovingWithoutSensor(now, newPosition);
+    }
+    return newPosition;
+}
+
+void CoverMovementImpl::findPositionIndexIfNeeded() {
+    if (this->state.position == noPosition || this->moveTimeIndex >= 0) {
+        return;
+    }
+    for (size_t i = 0; i < this->state.positionSensors.size(); ++i) {
+        size_t j = this->state.positionSensors.size() - 1 - i;
+        if (this->state.position >= this->state.positionSensors[j].position) {
+            if (j < this->state.positionSensors.size() - 1) {
+                this->log("Found position index: " + tools::intToString(j));
+                this->moveTimeIndex = j;
+                this->calculateBeginAndEndPosition();
+            }
+            break;
+        }
+    }
+}
+
+int CoverMovementImpl::handleMovingWithoutSensor(
+    unsigned long now, int newPosition) {
+    const auto paps = this->state.previouslyActivePositionSensor;
+    if (paps >= 0) {
+        return this->handleLeavingSensor(paps, now, newPosition);
+    }
+    return this->handleDebounceAndEndPosition(now, newPosition);
+}
+
+int CoverMovementImpl::handleLeavingSensor(
+    int paps, unsigned long now, int newPosition) {
+    this->log("Just left position sensor " + tools::intToString(paps));
+    this->moveTimeIndex = this->direction > 0 ? paps : paps - 1;
+    if (this->moveTimeIndex >= static_cast<int>(this->moveTimes.size())) {
+        this->moveTimeIndex = noPositionSensor;
+    }
+    if (this->moveTimeIndex >= 0) {
+        this->moveStartTime = now;
+        this->calculateBeginAndEndPosition();
+        newPosition = this->beginPosition + this->direction;
+        this->moveStartPosition = this->beginPosition;
+    }
+    return newPosition;
+}
+
+int CoverMovementImpl::handleDebounceAndEndPosition(
+    unsigned long now, int newPosition) {
+    if (this->moveStartTime == 0) {
+        this->moveStartTime = now;
+    } else if (
+        !this->isReallyMoving() && now - this->moveStartTime >= debounceTime) {
+        this->moveStartPosition = this->state.position;
+        this->log("Started moving");
+    }
+
+    if (this->state.position == this->endPosition) {
+        newPosition = this->endPosition - this->direction;
+    }
+    return newPosition;
+}
+
+int CoverMovementImpl::trackMovement(
+    bool hasActivePositionSensor, bool moving, unsigned long now,
+    int newPosition) {
+    if (!this->isReallyMoving()) {
+        return newPosition;
+    }
+    if (moving) {
+        return this->interpolatePosition(
+            hasActivePositionSensor, now, newPosition);
+    }
+    if (this->isStarted()) {
+        newPosition = this->handleEndOfMovement(newPosition);
+    }
+    return newPosition;
+}
+
+int CoverMovementImpl::interpolatePosition(
+    bool hasActivePositionSensor, unsigned long now, int newPosition) {
+    if (hasActivePositionSensor || this->moveTimeIndex < 0) {
+        return newPosition;
+    }
+    const auto& moveTime = this->moveTimes[this->moveTimeIndex].time;
+    if (this->state.position == noPosition || moveTime == 0) {
+        return this->beginPosition + this->direction;
+    }
+    const int a =
+        (this->endPosition - this->beginPosition) * (now - this->moveStartTime);
+    const auto d = static_cast<int>(static_cast<double>(a) / moveTime);
+    newPosition = this->moveStartPosition + d;
+    if (this->direction * newPosition >= this->endPosition) {
+        newPosition = this->endPosition - this->direction;
+    }
+    return newPosition;
+}
+
+int CoverMovementImpl::handleEndOfMovement(int newPosition) {
+    if (!this->state.hasPositionSensors()) {
+        this->log("End position reached.");
+        newPosition = this->endPosition;
+        this->calculateMoveTimeIfNeeded();
+    }
+    this->handleStopped();
+    return newPosition;
+}
+
+int CoverMovementImpl::checkStartTimeout(
+    bool moving, unsigned long now, int newPosition) {
+    if (this->isReallyMoving() || moving || !this->isStarted()) {
+        return newPosition;
+    }
+    if (now - this->startedTime <= startTimeout) {
+        return newPosition;
+    }
+    if (this->state.hasPositionSensors()) {
+        this->log("Did not start.");
+    } else {
+        this->log("Was at end position.");
+        newPosition = this->endPosition;
+    }
+    this->handleStopped();
+    return newPosition;
+}
+
+void CoverMovementImpl::resetStateIfStopped(bool moving) {
+    if (moving) {
+        return;
+    }
+    if (this->isReallyMoving()) {
+        this->log("Stopped moving");
+    }
+    this->moveStartTime = 0;
+    this->moveStartPosition = mspNotMoving;
 }
 
 void CoverMovementImpl::calculateBeginAndEndPosition() {

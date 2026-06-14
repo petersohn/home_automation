@@ -35,6 +35,22 @@ private:
     bool isReallyMoving() const;
     void calculateMoveTimeIfNeeded();
     void calculateBeginAndEndPosition();
+    void resetLatchingStartIfMoving(bool moving);
+    void updateWithActivePositionSensor();
+    int updateWithoutActivePositionSensor(
+        bool moving, unsigned long now, int newPosition);
+    void findPositionIndexIfNeeded();
+    int handleMovingWithoutSensor(unsigned long now, int newPosition);
+    int handleLeavingSensor(int paps, unsigned long now, int newPosition);
+    int handleDebounceAndEndPosition(unsigned long now, int newPosition);
+    int trackMovement(
+        bool hasActivePositionSensor, bool moving, unsigned long now,
+        int newPosition);
+    int interpolatePosition(
+        bool hasActivePositionSensor, unsigned long now, int newPosition);
+    int handleEndOfMovement(int newPosition);
+    int checkStartTimeout(bool moving, unsigned long now, int newPosition);
+    void resetStateIfStopped(bool moving);
 
     CoverState& state;
     CoverStop& stopper;
