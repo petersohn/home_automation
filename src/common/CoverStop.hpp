@@ -7,7 +7,6 @@ public:
     virtual void stop() = 0;
     virtual void reset() = 0;
     virtual bool isTriggered() const = 0;
-    virtual bool isLatching() const = 0;
 };
 
 #endif  // COVER_STOP_HPP

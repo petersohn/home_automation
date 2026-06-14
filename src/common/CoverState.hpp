@@ -24,6 +24,7 @@ struct CoverState {
     bool invertInput;
     bool invertOutput;
     bool invertPositionSensors;
+    bool latching;
     int closedPosition;
     unsigned positionId;
 

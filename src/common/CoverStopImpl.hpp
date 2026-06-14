@@ -5,27 +5,24 @@
 #include <ostream>
 #include <string>
 
+#include "CoverState.hpp"
 #include "CoverStop.hpp"
 #include "EspApi.hpp"
 
 class CoverStopImpl : public CoverStop {
 public:
     CoverStopImpl(
-        EspApi& esp, uint8_t pin, bool latching, bool invertOutput,
-        std::ostream& debug, std::string debugPrefix);
+        EspApi& esp, CoverState& state, uint8_t pin, bool invertOutput);
     void stop() override;
     void reset() override;
     bool isTriggered() const override;
-    bool isLatching() const override;
 
 private:
     EspApi& esp;
+    CoverState& state;
     const uint8_t pin;
-    const bool latching;
     const bool invertOutput;
     bool triggered = false;
-    std::ostream& debug;
-    std::string debugPrefix;
 };
 
 #endif  // COVER_STOP_IMPL_HPP

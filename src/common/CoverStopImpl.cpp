@@ -1,44 +1,37 @@
 #include "CoverStopImpl.hpp"
 
 CoverStopImpl::CoverStopImpl(
-    EspApi& esp, uint8_t pin, bool latching, bool invertOutput,
-    std::ostream& debug, std::string debugPrefix)
+    EspApi& esp, CoverState& state, uint8_t pin, bool invertOutput)
     : esp(esp)
+    , state(state)
     , pin(pin)
-    , latching(latching)
-    , invertOutput(invertOutput)
-    , debug(debug)
-    , debugPrefix(std::move(debugPrefix)) {
-    if (this->isLatching()) {
+    , invertOutput(invertOutput) {
+    if (this->state.latching) {
         this->esp.pinMode(this->pin, GpioMode::output);
         this->stop();
     }
 }
 
 void CoverStopImpl::stop() {
-    if (!this->isLatching()) {
+    if (!this->state.latching) {
         return;
     }
 
-    this->debug << this->debugPrefix << "stop" << std::endl;
+    this->state.log("stop");
     this->triggered = true;
     this->esp.digitalWrite(this->pin, this->invertOutput ? 0 : 1);
 }
 
 void CoverStopImpl::reset() {
-    if (!this->isLatching()) {
+    if (!this->state.latching) {
         return;
     }
 
-    this->debug << this->debugPrefix << "Reset stop" << std::endl;
+    this->state.log("Reset stop");
     this->esp.digitalWrite(this->pin, this->invertOutput ? 1 : 0);
     this->triggered = false;
 }
 
 bool CoverStopImpl::isTriggered() const {
     return this->triggered;
-}
-
-bool CoverStopImpl::isLatching() const {
-    return this->latching;
 }

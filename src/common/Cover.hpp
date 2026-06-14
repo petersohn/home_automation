@@ -88,7 +88,7 @@ private:
     static CoverUpdate makeUpdateImpl(
         CoverState& state, EspApi& esp, uint8_t upMovementPin,
         uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        uint8_t stopPin, bool latching, bool invertOutput, std::ostream& debug);
+        uint8_t stopPin, bool invertOutput);
 
     CoverState state;
     CoverUpdate updateImpl;

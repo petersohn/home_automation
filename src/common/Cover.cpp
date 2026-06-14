@@ -26,6 +26,7 @@ Cover::Cover(
           invertInput,
           invertOutput,
           invertPositionSensors,
+          latching,
           closedPosition,
           rtc.next(),    // positionId
           esp,           // esp
@@ -36,7 +37,7 @@ Cover::Cover(
       },
       updateImpl(makeUpdateImpl(
           state, esp, upMovementPin, downMovementPin, upPin, downPin, stopPin,
-          latching, invertOutput, debug)) {
+          invertOutput)) {
     if (this->state.positionSensors.size() == 1) {
         this->state.debug
             << "Invalid position sensors: there should be zero or at least 2."
@@ -66,9 +67,9 @@ Cover::Cover(
 CoverUpdate Cover::makeUpdateImpl(
     CoverState& state, EspApi& esp, uint8_t upMovementPin,
     uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
-    bool latching, bool invertOutput, std::ostream& debug) {
+    bool invertOutput) {
     auto stopper = std::make_unique<CoverStopImpl>(
-        esp, stopPin, latching, invertOutput, debug, state.debugPrefix);
+        esp, state, stopPin, invertOutput);
     auto up = std::make_unique<CoverMovementImpl>(
         state, *stopper, upMovementPin, upPin, 100, 1, "up");
     auto down = std::make_unique<CoverMovementImpl>(

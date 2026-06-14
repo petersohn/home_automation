@@ -52,15 +52,12 @@ public:
         this->triggered_ = false;
     }
     bool isTriggered() const override { return this->triggered_; }
-    bool isLatching() const override { return this->latching_; }
 
-    void setLatching(bool v) { this->latching_ = v; }
     int stopCount() const { return this->stopCount_; }
     int resetCount() const { return this->resetCount_; }
 
 private:
     bool triggered_ = false;
-    bool latching_ = false;
     int stopCount_ = 0;
     int resetCount_ = 0;
 };
@@ -94,6 +91,7 @@ public:
               false,        // invertInput
               false,        // invertOutput
               false,        // invertPositionSensors
+              false,        // latching
               10,           // closedPosition
               1,            // positionId
               this->esp,    // esp

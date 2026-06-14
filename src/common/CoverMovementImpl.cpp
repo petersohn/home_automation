@@ -77,7 +77,7 @@ void CoverMovementImpl::resetStart() {
 }
 
 void CoverMovementImpl::handleStopped() {
-    if (!this->stopper.isLatching() || this->startTriggered) {
+    if (!this->state.latching || this->startTriggered) {
         this->stop();
     } else {
         this->resetStarted();
@@ -107,7 +107,7 @@ int CoverMovementImpl::update() {
     auto now = this->state.esp.millis();
     bool moving = this->isMoving();
 
-    if (this->stopper.isLatching()) {
+    if (this->state.latching) {
         if (moving && this->startTriggered) {
             this->log("Reset start");
             this->resetStart();
