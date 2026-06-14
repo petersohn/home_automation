@@ -512,6 +512,23 @@ TEST_F(CoverUpdateTest, RequestOpenIsIdempotentWhenUpAlreadyStarted) {
     EXPECT_FALSE(this->ctx.stateChanged);
 }
 
+// ===== 9. requestClose =====
+
+TEST_F(CoverUpdateTest, RequestCloseStartsDownAndStopsUp) {
+    this->updateImpl.requestClose();
+    EXPECT_EQ(this->down.startCount(), 1);
+    EXPECT_EQ(this->up.stopCount(), 1);
+    EXPECT_TRUE(this->ctx.stateChanged);
+    EXPECT_EQ(this->ctx.targetPosition, -1);
+}
+
+TEST_F(CoverUpdateTest, RequestCloseIsIdempotentWhenDownAlreadyStarted) {
+    this->down.setStarted(true);
+    this->updateImpl.requestClose();
+    EXPECT_EQ(this->down.startCount(), 0);
+    EXPECT_FALSE(this->ctx.stateChanged);
+}
+
 // ===== 7. RTC persistence =====
 
 TEST_F(CoverUpdateTest, UpdatePersistsPositionToRtc) {

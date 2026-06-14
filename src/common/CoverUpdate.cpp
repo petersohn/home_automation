@@ -169,6 +169,15 @@ void CoverUpdate::requestOpen() {
     }
 }
 
+void CoverUpdate::requestClose() {
+    this->context.targetPosition = -1;
+    if (!this->down.isStarted()) {
+        this->up.stop();
+        this->down.start();
+        this->context.stateChanged = true;
+    }
+}
+
 void CoverUpdate::log(const std::string& msg) {
     this->context.debug << this->context.debugPrefix << msg << std::endl;
 }
