@@ -2,6 +2,7 @@
 #define TEST_FAKEESPAPI_HPP
 
 #include <map>
+#include <optional>
 
 #include "common/EspApi.hpp"
 
@@ -25,9 +26,14 @@ public:
 
     bool restarted = false;
 
+    // Returns the mode a pin was last set to via pinMode(), or nullopt if the
+    // pin was never configured.
+    std::optional<GpioMode> getPinMode(uint8_t pin) const;
+
 private:
     unsigned long time = 0;
     std::map<uint8_t, bool> pinValues;
+    std::map<uint8_t, GpioMode> pinModes;
 };
 
 #endif  // TEST_FAKEESPAPI_HPP

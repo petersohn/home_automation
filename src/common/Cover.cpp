@@ -68,8 +68,8 @@ CoverUpdate Cover::makeUpdateImpl(
     CoverState& state, EspApi& esp, uint8_t upMovementPin,
     uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
     bool invertOutput) {
-    auto stopper = std::make_unique<CoverStopImpl>(
-        esp, state, stopPin, invertOutput);
+    auto stopper =
+        std::make_unique<CoverStopImpl>(esp, state, stopPin, invertOutput);
     auto up = std::make_unique<CoverMovementImpl>(
         state, *stopper, upMovementPin, upPin, 100, 1, "up");
     auto down = std::make_unique<CoverMovementImpl>(

@@ -2,7 +2,17 @@
 
 #include <iostream>
 
-void FakeEspApi::pinMode(uint8_t /* pin */, GpioMode /* mode */) {}
+void FakeEspApi::pinMode(uint8_t pin, GpioMode mode) {
+    this->pinModes[pin] = mode;
+}
+
+std::optional<GpioMode> FakeEspApi::getPinMode(uint8_t pin) const {
+    auto it = this->pinModes.find(pin);
+    if (it == this->pinModes.end()) {
+        return std::nullopt;
+    }
+    return it->second;
+}
 
 void FakeEspApi::digitalWrite(uint8_t pin, uint8_t val) {
     const bool value = val != 0;

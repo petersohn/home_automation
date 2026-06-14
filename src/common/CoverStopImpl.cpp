@@ -2,10 +2,7 @@
 
 CoverStopImpl::CoverStopImpl(
     EspApi& esp, CoverState& state, uint8_t pin, bool invertOutput)
-    : esp(esp)
-    , state(state)
-    , pin(pin)
-    , invertOutput(invertOutput) {
+    : esp(esp), state(state), pin(pin), invertOutput(invertOutput) {
     if (this->state.latching) {
         this->esp.pinMode(this->pin, GpioMode::output);
         this->stop();

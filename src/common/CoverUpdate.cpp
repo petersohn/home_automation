@@ -92,8 +92,7 @@ void CoverUpdate::update(Actions& action) {
 
     if (newPosition != this->state.position || this->state.stateChanged) {
         this->state.position = newPosition;
-        this->state.rtc.set(
-            this->state.positionId, this->state.position + 1);
+        this->state.rtc.set(this->state.positionId, this->state.position + 1);
         std::string stateName;
 
         if (movementDirection == upDirection) {
@@ -126,8 +125,8 @@ void CoverUpdate::update(Actions& action) {
         if (this->state.position == this->state.targetPosition) {
             restartAction = Action::Reset;
         } else if (!this->up->isStarted() && !this->down->isStarted()) {
-            if (this->state.hasPositionSensors() &&
-                this->state.position != 0 && this->state.position != 100) {
+            if (this->state.hasPositionSensors() && this->state.position != 0 &&
+                this->state.position != 100) {
                 restartAction = Action::Reset;
             } else if (this->state.restartCount < 3) {
                 restartAction = Action::Restart;
@@ -193,7 +192,8 @@ void CoverUpdate::requestSetPosition(int value) {
     }
 }
 
-void CoverUpdate::startDirection(CoverMovement& forward, CoverMovement& reverse) {
+void CoverUpdate::startDirection(
+    CoverMovement& forward, CoverMovement& reverse) {
     if (!forward.isStarted()) {
         reverse.stop();
         forward.start();

@@ -90,8 +90,7 @@ void CoverMovementImpl::log(const std::string& msg) {
 
 bool CoverMovementImpl::isMoving() const {
     return getActualValue(
-        this->state.esp.digitalRead(this->inputPin),
-        this->state.invertInput);
+        this->state.esp.digitalRead(this->inputPin), this->state.invertInput);
 }
 
 bool CoverMovementImpl::isStarted() const {
@@ -115,8 +114,7 @@ int CoverMovementImpl::update() {
     }
 
     const auto paps = this->state.previouslyActivePositionSensor;
-    const bool hasActivePositionSensor =
-        this->state.activePositionSensor >= 0;
+    const bool hasActivePositionSensor = this->state.activePositionSensor >= 0;
     if (hasActivePositionSensor) {
         if (paps == noPositionSensor) {
             this->calculateMoveTimeIfNeeded();
