@@ -113,33 +113,35 @@ void CoverUpdate::resetStopperIfStopped() {
 
 void CoverUpdate::emitStateChange(
     int movementDirection, int newPosition, Actions& action) {
-    if (newPosition != this->state.position || this->state.stateChanged) {
-        this->state.position = newPosition;
-        this->state.rtc.set(this->state.positionId, this->state.position + 1);
-        std::string stateName;
-
-        if (movementDirection == upDirection) {
-            stateName = "OPENING";
-        } else if (movementDirection == downDirection) {
-            stateName = "CLOSING";
-        } else if (this->state.position <= this->state.closedPosition) {
-            stateName = "CLOSED";
-        } else {
-            stateName = "OPEN";
-        }
-
-        this->state.log(
-            "state=" + stateName +
-            " position=" + tools::intToString(this->state.position));
-
-        std::vector<std::string> values{std::move(stateName)};
-        if (this->state.position != noPosition) {
-            values.push_back(tools::intToString(this->state.position));
-        }
-        action.fire(values);
-
-        this->state.stateChanged = false;
+    if (newPosition == this->state.position && !this->state.stateChanged) {
+        return;
     }
+
+    this->state.position = newPosition;
+    this->state.rtc.set(this->state.positionId, this->state.position + 1);
+    std::string stateName;
+
+    if (movementDirection == upDirection) {
+        stateName = "OPENING";
+    } else if (movementDirection == downDirection) {
+        stateName = "CLOSING";
+    } else if (this->state.position <= this->state.closedPosition) {
+        stateName = "CLOSED";
+    } else {
+        stateName = "OPEN";
+    }
+
+    this->state.log(
+        "state=" + stateName +
+        " position=" + tools::intToString(this->state.position));
+
+    std::vector<std::string> values{std::move(stateName)};
+    if (this->state.position != noPosition) {
+        values.push_back(tools::intToString(this->state.position));
+    }
+    action.fire(values);
+
+    this->state.stateChanged = false;
 }
 
 void CoverUpdate::handleTargetPosition() {
