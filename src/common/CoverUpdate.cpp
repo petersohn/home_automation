@@ -41,12 +41,12 @@ void CoverUpdate::update(Actions& action) {
         this->state.previouslyActivePositionSensor =
             this->state.activePositionSensor;
         if (newPositionSensor >= 0) {
-            this->log(
+            this->state.log(
                 "Position sensor activated: " +
                 tools::intToString(
                     this->state.positionSensors[newPositionSensor].position));
         } else {
-            this->log("Position sensor deactivated");
+            this->state.log("Position sensor deactivated");
         }
         this->state.activePositionSensor = newPositionSensor;
     } else {
@@ -58,11 +58,9 @@ void CoverUpdate::update(Actions& action) {
     int newPosition = this->state.position;
     if (newPositionUp != this->state.position &&
         newPositionDown != this->state.position) {
-        this->log("Inconsistent moving state.");
+        this->state.log("Inconsistent moving state.");
         newPosition = noPosition;
-        this->up->stop();
-        this->down->stop();
-        this->stopper->stop();
+        this->stopAll();
     } else if (newPositionUp != this->state.position) {
         newPosition = newPositionUp;
     } else {
@@ -108,7 +106,7 @@ void CoverUpdate::update(Actions& action) {
             stateName = "OPEN";
         }
 
-        this->log(
+        this->state.log(
             "state=" + stateName +
             " position=" + tools::intToString(this->state.position));
 
@@ -142,20 +140,15 @@ void CoverUpdate::update(Actions& action) {
         case Action::Restart:
             ++this->state.restartCount;
             if (this->state.targetPosition < this->state.position) {
-                this->up->stop();
-                this->down->start();
+                this->startDirection(*this->down, *this->up);
             } else {
-                this->down->stop();
-                this->up->start();
+                this->startDirection(*this->up, *this->down);
             }
-            this->state.stateChanged = true;
             break;
         case Action::Reset:
             this->state.targetPosition = noPosition;
             this->state.restartCount = 0;
-            this->up->stop();
-            this->down->stop();
-            this->stopper->stop();
+            this->stopAll();
             break;
         case Action::Nothing:
             break;
@@ -165,61 +158,51 @@ void CoverUpdate::update(Actions& action) {
 
 void CoverUpdate::requestOpen() {
     this->state.targetPosition = -1;
-    if (!this->up->isStarted()) {
-        this->down->stop();
-        this->up->start();
-        this->state.stateChanged = true;
-    }
+    this->startDirection(*this->up, *this->down);
 }
 
 void CoverUpdate::requestStop() {
     this->state.targetPosition = -1;
-    this->up->stop();
-    this->down->stop();
-    this->stopper->stop();
+    this->stopAll();
 }
 
 void CoverUpdate::requestClose() {
     this->state.targetPosition = -1;
-    if (!this->down->isStarted()) {
-        this->up->stop();
-        this->down->start();
-        this->state.stateChanged = true;
-    }
+    this->startDirection(*this->down, *this->up);
 }
 
 void CoverUpdate::requestSetPosition(int value) {
     if (value < 0 || value > 100) {
-        this->log("Position out of range: " + tools::intToString(value));
+        this->state.log("Position out of range: " + tools::intToString(value));
         return;
     }
 
     if (this->state.position == -1) {
-        this->log("Position is not known, calibrating.");
+        this->state.log("Position is not known, calibrating.");
     }
 
     this->state.targetPosition = value;
     this->state.restartCount = 0;
 
     if (value < this->state.position) {
-        if (!this->down->isStarted()) {
-            this->up->stop();
-            this->down->start();
-            this->state.stateChanged = true;
-        }
+        this->startDirection(*this->down, *this->up);
     } else if (value > this->state.position) {
-        if (!this->up->isStarted()) {
-            this->down->stop();
-            this->up->start();
-            this->state.stateChanged = true;
-        }
+        this->startDirection(*this->up, *this->down);
     } else {
-        this->up->stop();
-        this->down->stop();
-        this->stopper->stop();
+        this->stopAll();
     }
 }
 
-void CoverUpdate::log(const std::string& msg) {
-    this->state.debug << this->state.debugPrefix << msg << std::endl;
+void CoverUpdate::startDirection(CoverMovement& forward, CoverMovement& reverse) {
+    if (!forward.isStarted()) {
+        reverse.stop();
+        forward.start();
+        this->state.stateChanged = true;
+    }
+}
+
+void CoverUpdate::stopAll() {
+    this->up->stop();
+    this->down->stop();
+    this->stopper->stop();
 }

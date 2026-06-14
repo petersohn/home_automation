@@ -103,5 +103,5 @@ void Cover::update(Actions action) {
 }
 
 void Cover::log(const std::string& msg) {
-    this->state.debug << this->state.debugPrefix << msg << std::endl;
+    this->state.log(msg);
 }

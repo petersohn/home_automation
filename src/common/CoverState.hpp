@@ -34,6 +34,10 @@ struct CoverState {
     std::string debugPrefix;
 
     bool hasPositionSensors() const { return !this->positionSensors.empty(); }
+
+    void log(const std::string& msg) const {
+        this->debug << this->debugPrefix << msg << std::endl;
+    }
 };
 
 #endif  // COVER_STATE_HPP

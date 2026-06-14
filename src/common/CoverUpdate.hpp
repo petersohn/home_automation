@@ -22,7 +22,8 @@ public:
     void requestSetPosition(int value);
 
 private:
-    void log(const std::string& msg);
+    void startDirection(CoverMovement& forward, CoverMovement& reverse);
+    void stopAll();
 
     CoverState& state;
     std::unique_ptr<CoverMovement> up;
