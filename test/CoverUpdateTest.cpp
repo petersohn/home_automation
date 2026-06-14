@@ -8,7 +8,7 @@
 #include "common/Actions.hpp"
 #include "common/CoverMovement.hpp"
 #include "common/CoverState.hpp"
-#include "common/CoverStopImpl.hpp"
+#include "common/CoverStop.hpp"
 #include "common/CoverUpdate.hpp"
 #include "common/InterfaceConfig.hpp"
 #include "common/PositionSensor.hpp"
@@ -38,6 +38,32 @@ private:
     int updateReturn_ = 0;
 };
 
+// Hand-rolled test double for CoverStop.
+// Tracks stop/reset calls and allows configuring behavior.
+class FakeCoverStop : public CoverStop {
+public:
+    void stop() override {
+        ++this->stopCount;
+        this->triggered = true;
+    }
+    void reset() override {
+        ++this->resetCount;
+        this->triggered = false;
+    }
+    bool isTriggered() const override { return this->triggered; }
+    bool isLatching() const override { return this->latching; }
+
+    void setLatching(bool v) { this->latching = v; }
+    int getStopCount() const { return this->stopCount; }
+    int getResetCount() const { return this->resetCount; }
+
+private:
+    bool triggered = false;
+    bool latching = false;
+    int stopCount = 0;
+    int resetCount = 0;
+};
+
 class CoverUpdateTest : public EspTestBase {
 public:
     static constexpr uint8_t stopPin = 50;
@@ -49,9 +75,8 @@ public:
     FakeCoverMovement up;
     FakeCoverMovement down;
 
-    // Stopper (real, using FakeEspApi from base)
-    CoverStopImpl stopper{this->esp, this->stopPin, true,
-                      false,     this->debug,   "[test] "};
+    // Stopper (fake, tracks calls and state)
+    FakeCoverStop stopper;
 
     CoverUpdate updateImpl{this->ctx, this->up, this->down, this->stopper};
     InterfaceConfig config;
@@ -77,8 +102,6 @@ public:
               this->debug,  // debug
               "[test] ",    // debugPrefix
           } {
-        // Latching CoverStop constructor calls stop(), so reset it
-        this->stopper.reset();
     }
 
     // Helper: check that storedValue has at least n entries, then return ref
