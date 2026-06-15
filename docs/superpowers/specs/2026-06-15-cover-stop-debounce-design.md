@@ -28,15 +28,20 @@ int CoverMovementImpl::handleDebounceAndEndPosition(
 
 - `moveStartTime` records the first time the input pin reports `moving=true`.
 - The cover is marked "really moving" (`moveStartPosition` set) only after `debounceTime` of stable `moving=true`.
-- During the window, `interpolatePosition` returns `beginPosition + direction`, so the position is effectively frozen at the begin point.
+- During the debounce window, `moveStartPosition` is still `mspNotMoving`, so `isReallyMoving()` is false, so `trackMovement` is not called, and the position reported to the caller is just `state.position` (the unchanged value carried in from `update()`). No position interpolation, no end-of-movement side effects.
 
 The symmetric stop debounce needs an analogous gate on the `!moving` -> end-of-movement path.
 
 ---
 
-## Approach: new `stopStartTime` field, gate inside `trackMovement`
+## Approach: new `stopStartTime` field, gate inside `update()` and `trackMovement`
 
-Add a single new field `unsigned long stopStartTime = 0` to `CoverMovementImpl`. The debounce is applied inside `trackMovement` immediately before the `handleEndOfMovement` call. The field is reset in two places: when the input reports `moving=true` (cover bounced back to moving, restart debounce), and in `resetStateIfStopped` (normal cleanup).
+Add a single new field `unsigned long stopStartTime = 0` to `CoverMovementImpl`. The debounce is applied in two places, both inside `update()`:
+
+1. `trackMovement` only calls `handleEndOfMovement` after the debounce elapses (gates the position/state change to "stopped").
+2. The `resetStateIfStopped()` call at the end of `update()` is also gated by the debounce (otherwise the cover is treated as "really stopped" on the very first call where `moving=false`, which would leave `startedTime` set and could trigger a false-positive `checkStartTimeout` on the next call).
+
+The field is set once when `!moving` is first observed while `isReallyMoving()` is true. It is reset to 0 in three places: when `moving` becomes true (bounce reset), inside `resetStateIfStopped()` (after the debounce elapses), and in `CoverMovementImpl`'s constructor (default-initialized).
 
 This is a direct mirror of the start debounce structure: `moveStartTime` / `moveStartPosition` for start, `stopStartTime` for stop. No reuse of `moveStartTime` for both — the two debounces are independent state machines and should remain independent.
 
@@ -75,7 +80,7 @@ int moveStartPosition = -2;
 bool startTriggered = false;
 ```
 
-### 2. `CoverMovementImpl.cpp` — gate in `trackMovement`
+### 2. `CoverMovementImpl.cpp` — gate in `trackMovement` and `update()`
 
 Current `trackMovement` (`src/common/CoverMovementImpl.cpp:214-228`):
 
@@ -110,36 +115,61 @@ int CoverMovementImpl::trackMovement(
             return newPosition;
         }
     }
-    if (this->isStarted()) {
-        if (this->stopStartTime == 0) {
-            this->stopStartTime = now;
-        } else if (now - this->stopStartTime >= debounceTime) {
-            newPosition = this->handleEndOfMovement(newPosition);
-        }
-        // else: still in stop debounce window, hold position
+    if (this->isStarted() && this->stopStartTime != 0 &&
+        now - this->stopStartTime >= debounceTime) {
+        newPosition = this->handleEndOfMovement(newPosition);
     }
     return newPosition;
 }
 ```
 
-### 3. `CoverMovementImpl.cpp` — reset on bounce in `update()`
-
-In `update()` (`src/common/CoverMovementImpl.cpp:101-131`), add a reset of `stopStartTime` when `moving=true`. Place it next to the other state-mutation calls in the function:
+New `update()` (only the changed portions shown; unchanged lines elided):
 
 ```cpp
-this->resetLatchingStartIfMoving(moving);
+int CoverMovementImpl::update() {
+    const auto now = this->state.esp.millis();
+    const bool moving = this->isMoving();
+    int newPosition = this->state.position;
 
-if (moving) {
-    this->stopStartTime = 0;   // cover bounced back to moving; restart debounce next time it stops
+    this->resetLatchingStartIfMoving(moving);
+
+    // Stop debounce: record when "really moving" first transitioned to "not moving";
+    // clear it on bounce (moving went back to true).
+    if (moving) {
+        this->stopStartTime = 0;
+    } else if (this->isReallyMoving() && this->stopStartTime == 0) {
+        this->stopStartTime = now;
+    }
+
+    const bool hasActivePositionSensor = this->state.activePositionSensor >= 0;
+    // ... existing position update branches unchanged ...
+
+    if (isReallyMoving()) {
+        newPosition = this->trackMovement(
+            hasActivePositionSensor, moving, now, newPosition);
+    }
+
+    if (!this->isReallyMoving() && !moving && this->isStarted() &&
+        now - this->startedTime > startTimeout) {
+        newPosition = this->checkStartTimeout(newPosition);
+    }
+
+    // State reset is also debounced: if we just observed "not moving" and the
+    // debounce window hasn't elapsed, the cover is still considered "really
+    // moving" (moveStartPosition kept), so the checkStartTimeout branch above
+    // does not fire on the next call with stale startedTime.
+    if (!moving && this->stopStartTime != 0 &&
+        now - this->stopStartTime >= debounceTime) {
+        this->resetStateIfStopped();
+    }
+
+    return newPosition;
 }
-
-const bool hasActivePositionSensor = this->state.activePositionSensor >= 0;
-...
 ```
 
-### 4. `CoverMovementImpl.cpp` — reset in `resetStateIfStopped()`
+### 3. `CoverMovementImpl.cpp` — reset in `resetStateIfStopped()`
 
-`resetStateIfStopped` (`src/common/CoverMovementImpl.cpp:266-272`) currently resets `moveStartTime` and `moveStartPosition`. Add `stopStartTime = 0` to the same block.
+`resetStateIfStopped` (`src/common/CoverMovementImpl.cpp:266-272`) currently resets `moveStartTime` and `moveStartPosition`. Add `stopStartTime = 0` to the same block so the debounce does not retrigger on subsequent calls.
 
 ```cpp
 void CoverMovementImpl::resetStateIfStopped() {
@@ -152,16 +182,18 @@ void CoverMovementImpl::resetStateIfStopped() {
 }
 ```
 
-### 5. Symmetry recap
+### 4. Symmetry recap
 
 | State | Start debounce | Stop debounce |
 |-------|---------------|---------------|
 | Field that records first detection | `moveStartTime` | `stopStartTime` |
 | Threshold | `debounceTime` (20ms) | `debounceTime` (20ms) |
 | Constant location | `src/common/CoverMovementImpl.cpp:7` | (same) |
-| Reset on detection of the opposite | n/a — start debounce runs only on `moving=true`; no opposite to reset | `moving=true` resets `stopStartTime = 0` in `update()` |
-| Reset in cleanup | `resetStateIfStopped` already does this for `moveStartTime` | Same — add `stopStartTime = 0` |
-| Position during debounce | `interpolatePosition` returns `beginPosition + direction` | `trackMovement` returns `newPosition` (last state.position) unchanged |
+| Set in | `handleDebounceAndEndPosition` (no sensors, `moving=true`) | `update()` (`!moving && isReallyMoving() && stopStartTime == 0`) |
+| Reset on detection of the opposite | n/a — start debounce runs only on `moving=true` | `moving=true` resets `stopStartTime = 0` in `update()` |
+| Reset in cleanup | `resetStateIfStopped` already does this for `moveStartTime` | `resetStateIfStopped` also resets `stopStartTime` |
+| Position during debounce | returned value is `state.position` (unchanged) | returned value is `state.position` (unchanged) |
+| Other side effects during debounce | `moveStartPosition` not set yet | `handleEndOfMovement` not called, `moveStartPosition`/`moveStartTime` not reset |
 
 ---
 
@@ -194,8 +226,10 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounce) {
     this->esp.digitalWrite(this->inputPin, 1);
 
     // Get the cover "really moving" past the start debounce
+    this->advanceMs(5);
+    movement.update();   // first update sets moveStartTime
     this->advanceMs(20);
-    movement.update();
+    movement.update();   // past start debounce, moveStartPosition = 0
 
     // Motor stops
     this->esp.digitalWrite(this->inputPin, 0);
@@ -204,7 +238,7 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounce) {
     // movement still considered started
     this->debug.str("");
     int pos = movement.update();
-    EXPECT_EQ(pos, 0);             // not at endPosition yet
+    EXPECT_EQ(pos, 0);                  // not at endPosition yet
     EXPECT_TRUE(movement.isStarted());  // not stopped yet
 
     // Advance past debounce and update: end of movement fires
@@ -234,6 +268,8 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
     movement.start();
     this->esp.digitalWrite(this->inputPin, 1);
 
+    this->advanceMs(5);
+    movement.update();
     this->advanceMs(20);
     movement.update();  // past start debounce
 
