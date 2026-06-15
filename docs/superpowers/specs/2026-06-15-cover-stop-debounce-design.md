@@ -41,7 +41,7 @@ Add a single new field `unsigned long stopStartTime = 0` to `CoverMovementImpl`.
 1. `trackMovement` only calls `handleEndOfMovement` after the debounce elapses (gates the position/state change to "stopped").
 2. The `resetStateIfStopped()` call at the end of `update()` is also gated by the debounce (otherwise the cover is treated as "really stopped" on the very first call where `moving=false`, which would leave `startedTime` set and could trigger a false-positive `checkStartTimeout` on the next call).
 
-The field is set once when `!moving` is first observed while `isReallyMoving()` is true. It is reset to 0 in three places: when `moving` becomes true (bounce reset), inside `resetStateIfStopped()` (after the debounce elapses), and in `CoverMovementImpl`'s constructor (default-initialized).
+The field is set once when `!moving` is first observed while `isReallyMoving()` is true. It is reset to 0 in two places at runtime: when `moving` becomes true (bounce reset), and inside `resetStateIfStopped()` (after the debounce elapses). The default value of 0 comes from the field's in-class initializer in the header.
 
 This is a direct mirror of the start debounce structure: `moveStartTime` / `moveStartPosition` for start, `stopStartTime` for stop. No reuse of `moveStartTime` for both — the two debounces are independent state machines and should remain independent.
 
