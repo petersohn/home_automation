@@ -85,8 +85,7 @@ private:
     int trackMovement(
         bool hasActivePositionSensor, bool moving, unsigned long now,
         int newPosition);
-    int interpolatePosition(
-        bool hasActivePositionSensor, unsigned long now, int newPosition);
+    int interpolatePosition(unsigned long now, int newPosition);
     int handleEndOfMovement(int newPosition);
     int checkStartTimeout(int newPosition);
     void resetStateIfStopped();

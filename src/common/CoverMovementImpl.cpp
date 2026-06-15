@@ -113,8 +113,10 @@ int CoverMovementImpl::update() {
             this->updateWithoutActivePositionSensor(moving, now, newPosition);
     }
 
-    newPosition =
-        this->trackMovement(hasActivePositionSensor, moving, now, newPosition);
+    if (isReallyMoving()) {
+        newPosition = this->trackMovement(
+            hasActivePositionSensor, moving, now, newPosition);
+    }
 
     if (!this->isReallyMoving() && !moving && this->isStarted() &&
         now - this->startedTime > startTimeout) {
@@ -212,12 +214,12 @@ int CoverMovementImpl::handleDebounceAndEndPosition(
 int CoverMovementImpl::trackMovement(
     bool hasActivePositionSensor, bool moving, unsigned long now,
     int newPosition) {
-    if (!this->isReallyMoving()) {
-        return newPosition;
-    }
     if (moving) {
-        return this->interpolatePosition(
-            hasActivePositionSensor, now, newPosition);
+        if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
+            return this->interpolatePosition(now, newPosition);
+        } else {
+            return newPosition;
+        }
     }
     if (this->isStarted()) {
         newPosition = this->handleEndOfMovement(newPosition);
@@ -225,11 +227,7 @@ int CoverMovementImpl::trackMovement(
     return newPosition;
 }
 
-int CoverMovementImpl::interpolatePosition(
-    bool hasActivePositionSensor, unsigned long now, int newPosition) {
-    if (hasActivePositionSensor || this->moveTimeIndex < 0) {
-        return newPosition;
-    }
+int CoverMovementImpl::interpolatePosition(unsigned long now, int newPosition) {
     const auto& moveTime = this->moveTimes[this->moveTimeIndex].time;
     if (this->state.position == noPosition || moveTime == 0) {
         return this->beginPosition + this->direction;
