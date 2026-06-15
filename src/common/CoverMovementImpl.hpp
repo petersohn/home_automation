@@ -88,8 +88,8 @@ private:
     int interpolatePosition(
         bool hasActivePositionSensor, unsigned long now, int newPosition);
     int handleEndOfMovement(int newPosition);
-    int checkStartTimeout(bool moving, unsigned long now, int newPosition);
-    void resetStateIfStopped(bool moving);
+    int checkStartTimeout(int newPosition);
+    void resetStateIfStopped();
 
     CoverState& state;
     CoverStop& stopper;

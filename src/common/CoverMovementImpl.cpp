@@ -115,8 +115,15 @@ int CoverMovementImpl::update() {
 
     newPosition =
         this->trackMovement(hasActivePositionSensor, moving, now, newPosition);
-    newPosition = this->checkStartTimeout(moving, now, newPosition);
-    this->resetStateIfStopped(moving);
+
+    if (!this->isReallyMoving() && !moving && this->isStarted() &&
+        now - this->startedTime > startTimeout) {
+        newPosition = this->checkStartTimeout(newPosition);
+    }
+
+    if (!moving) {
+        this->resetStateIfStopped();
+    }
 
     return newPosition;
 }
@@ -247,14 +254,7 @@ int CoverMovementImpl::handleEndOfMovement(int newPosition) {
     return newPosition;
 }
 
-int CoverMovementImpl::checkStartTimeout(
-    bool moving, unsigned long now, int newPosition) {
-    if (this->isReallyMoving() || moving || !this->isStarted()) {
-        return newPosition;
-    }
-    if (now - this->startedTime <= startTimeout) {
-        return newPosition;
-    }
+int CoverMovementImpl::checkStartTimeout(int newPosition) {
     if (this->state.hasPositionSensors()) {
         this->log("Did not start.");
     } else {
@@ -265,10 +265,7 @@ int CoverMovementImpl::checkStartTimeout(
     return newPosition;
 }
 
-void CoverMovementImpl::resetStateIfStopped(bool moving) {
-    if (moving) {
-        return;
-    }
+void CoverMovementImpl::resetStateIfStopped() {
     if (this->isReallyMoving()) {
         this->log("Stopped moving");
     }
