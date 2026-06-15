@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a debounce on cover stop detection, symmetric to the existing start debounce in `CoverMovementImpl::handleDebounceAndEndPosition`. The same `debounceTime` constant (20ms) is reused. Behavior during the debounce window: the position is held at its last value (no jump to `endPosition`, no `handleEndOfMovement` side effects). After the debounce elapses, end-of-movement logic runs as it does today.
+Add a debounce on cover stop detection, symmetric to the existing start debounce in `CoverMovementImpl::handleDebounceAndEndPosition`. The same `debounceTime` constant (20ms) is reused. Behavior during the debounce window: the cover is treated as if still in motion — `interpolatePosition` continues to advance the reported position, and no `handleEndOfMovement` side effects fire. After the debounce elapses, end-of-movement logic runs as it does today. The measured move time in `calculateMoveTimeIfNeeded` is computed from `stopStartTime` (not `esp.millis()`) so the new debounce does not inflate the calibrated travel time.
 
 This protects against noise/bounce on the movement input pin: a brief `moving=false` blip while the cover is still in motion should not be treated as a real stop.
 
@@ -70,21 +70,28 @@ The CoverStop and CoverUpdate classes do not need changes. The latching vs conti
 
 The integration test in `test/CoverTest.cpp` simulates a real cover by setting the input pins (`UpInput`/`DownInput`) based on simulated motion and calling `updateInterface()`. Loop delays are `delays1[] = {10, 50, 100, 500}` and `delays2[] = {10, 50, 100}` ms.
 
-With the new debounce, the cover's `handleEndOfMovement` (and therefore the output-pin deactivation) is delayed by `debounceTime` (20ms) after the simulated motion stops. This affects only `delay=10` runs (the others are >= 20ms and clear the debounce in a single loop iteration). For `delay=10`, the cover's output stays HIGH for one extra loop iteration after reaching the end position, and the cover cannot start a new direction for that extra iteration either (because `startedTime` is not yet reset).
+The new stop debounce adds **at least one full `update()` round** between the moment the simulated motion stops and the moment `handleEndOfMovement` fires:
 
-Concretely, for `delay=10` the following test families need either:
+- **Round N (cover just stopped):** `update()` sees `moving=false, isReallyMoving=true`, records `stopStartTime = now`. The debounce check `now - stopStartTime >= debounceTime` is false (elapsed is 0), so `handleEndOfMovement` is not called. Output pin stays HIGH, `startedTime` not reset.
+- **Round N+1:** the elapsed since `stopStartTime` is at least one loop delay. For `delay >= 20ms`, the debounce has elapsed and `handleEndOfMovement` fires this round. For `delay < 20ms` (i.e. `delay=10`), the debounce has NOT elapsed and `handleEndOfMovement` still doesn't fire; it will fire in round N+2.
+
+Concretely:
+- For `delay=10`, `handleEndOfMovement` is **two full loop iterations late** after the cover reaches the end. The output pin stays HIGH for two extra iterations, and the cover cannot start a new direction for those two iterations either (because `startedTime` is not yet reset).
+- For `delay >= 50`, `handleEndOfMovement` is **one full loop iteration late** after the cover reaches the end. The output pin stays HIGH for one extra iteration, and the cover cannot start a new direction for that one iteration. (This is the "single round debounce" the user mentioned: even when the delay comfortably exceeds `debounceTime`, the debounce still consumes one full `update()` round, because the debounce clock starts during the round where the stop is first detected and only completes in the next round.)
+
+For `delay=10` the following test families need either:
 1. A one-iteration buffer (advance time by at least 20ms after the cover reaches the end), or
 2. A loosened expectation in the iteration that lands in the debounce window.
 
-Affected parameterized tests (all under `CoverTest.cpp`):
-- `BasicFixture.Open` (line ~351) — at `time == 10000` the cover should be fully open. With debounce, `isMovingUp()` is still true at the first `delay=10` iteration after reaching 100. Fix: allow `isMovingUp()` to be true for one extra iteration (or skip the first post-end assertion).
-- `BasicFixture.Close` (line ~428) — symmetric: at `time == 10000` the cover should be fully closed. Same fix.
-- `BasicFixture.StopWhileOpening` / `StopWhileClosing` (lines ~460, ~482) — the post-stop `loop()` call is one iteration at `delay=10`. The test checks `isMovingUp()/isMovingDown()` are false; with debounce, the output pin is still HIGH for 20ms after `stop()`. Fix: add a second `loop()` call (or `advanceMs(20)`) before asserting.
-- `BasicFixture.StopEarlyWhileCalibrating` (line ~978) — same issue: one `loop()` after `stop()`, then `loopFor(delay * 3, delay, checkNotMoving)`. The `delay * 3 = 30ms` window covers the 20ms debounce, so the second assertion in the loop should pass. But the FIRST `checkNotMoving` iteration is at `delay=10` after the stop and will see the output still HIGH. Fix: drop the first iteration's check or start the `loopFor` after `advanceMs(20)`.
-- `StopMomentarilyWhileCalibratingFixture.StopMomentarilyWhileCalibrating` (line ~1010) — `this->movingUp = false; this->loop();` then `loopFor(delay * 3, delay, checkNotMoving)`. Same pattern: the first `checkNotMoving` iteration lands in the debounce window. Fix: same as above.
-- `CalibrateFixture.Calibrate` (line ~505) — uses `loopFor` to run a full open-close-open cycle. With `delay=10`, every direction changeover is delayed by 20ms. The post-direction-change `loopFor(delay, delay, ...)` blocks run for 10ms only and will land inside the debounce window. Fix: extend those brief `loopFor` blocks to `loopFor(20 + delay, delay, ...)` (or to `delay * 3` for symmetry with existing patterns).
+For `delay >= 50`, every test that asserts a state transition in the round immediately after a stop also needs to account for the one-round delay. The pattern is the same as for `delay=10`: drop the first iteration's check, or shift the assertion window by one round.
 
-For `delay >= 50`, the debounce fits inside a single loop iteration, so no changes are needed.
+Affected parameterized tests (all under `CoverTest.cpp`):
+- `BasicFixture.Open` (line ~351) — at `time == 10000` the cover should be fully open. With debounce, `isMovingUp()` is still true for one extra iteration after the cover reaches 100 (any delay). Fix: allow `isMovingUp()` to be true for one extra iteration, or skip the first post-end assertion.
+- `BasicFixture.Close` (line ~428) — symmetric: at `time == 10000` the cover should be fully closed. Same fix.
+- `BasicFixture.StopWhileOpening` / `StopWhileClosing` (lines ~460, ~482) — the post-stop `loop()` call is one iteration. The test checks `isMovingUp()/isMovingDown()` are false; with debounce, the output pin is still HIGH for one round after `stop()`. Fix: add a second `loop()` call (or `advanceMs(20)`) before asserting.
+- `BasicFixture.StopEarlyWhileCalibrating` (line ~978) — one `loop()` after `stop()`, then `loopFor(delay * 3, delay, checkNotMoving)`. The first `checkNotMoving` iteration lands in the debounce window. Fix: drop the first iteration's check or start the `loopFor` after `advanceMs(20)`.
+- `StopMomentarilyWhileCalibratingFixture.StopMomentarilyWhileCalibrating` (line ~1010) — `this->movingUp = false; this->loop();` then `loopFor(delay * 3, delay, checkNotMoving)`. Same pattern. Fix: same as above.
+- `CalibrateFixture.Calibrate` (line ~505) — uses `loopFor` to run a full open-close-open cycle. Every direction changeover is delayed by one round. The post-direction-change `loopFor(delay, delay, ...)` blocks run for `delay` ms only and the first iteration of each lands in the debounce window. Fix: extend those brief `loopFor` blocks to `loopFor(delay * 3, delay, ...)` (or to `20 + delay` to be explicit about why).
 
 ---
 
@@ -135,9 +142,17 @@ int CoverMovementImpl::trackMovement(
             return newPosition;
         }
     }
-    if (this->isStarted() && this->stopStartTime != 0 &&
-        now - this->stopStartTime >= debounceTime) {
-        newPosition = this->handleEndOfMovement(newPosition);
+    if (this->isStarted()) {
+        if (this->stopStartTime != 0 &&
+            now - this->stopStartTime >= debounceTime) {
+            newPosition = this->handleEndOfMovement(newPosition);
+        } else if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
+            // Continue interpolating during the stop debounce window,
+            // as if the cover were still moving. This mirrors the start
+            // debounce semantics: the cover hasn't "really" stopped yet,
+            // so the position is treated as if motion is ongoing.
+            newPosition = this->interpolatePosition(now, newPosition);
+        }
     }
     return newPosition;
 }
@@ -202,7 +217,30 @@ void CoverMovementImpl::resetStateIfStopped() {
 }
 ```
 
-### 4. Symmetry recap
+### 4. `CoverMovementImpl.cpp` — use `stopStartTime` in `calculateMoveTimeIfNeeded`
+
+`calculateMoveTimeIfNeeded` (`src/common/CoverMovementImpl.cpp:292-303`) currently uses `this->state.esp.millis() - this->moveStartTime` to compute the measured move time. With the new stop debounce, `esp.millis()` is the time when `handleEndOfMovement` fires (i.e., 20ms after the cover actually stopped), so the measured time is inflated by `debounceTime`.
+
+Use `this->stopStartTime` instead — it records the moment the cover first transitioned from "really moving" to "not moving", so `stopStartTime - moveStartTime` is the actual wall-clock movement time without the debounce overhead. This is only correct in the no-position-sensor path; the existing call site in `handleEndOfMovement` is unchanged.
+
+```cpp
+void CoverMovementImpl::calculateMoveTimeIfNeeded() {
+    if (this->moveTimeIndex < 0) {
+        return;
+    }
+
+    auto& moveTime = this->moveTimes[this->moveTimeIndex];
+    if (this->moveStartPosition == this->beginPosition) {
+        moveTime.time = this->stopStartTime - this->moveStartTime;
+        this->state.rtc.set(moveTime.rtcId, moveTime.time);
+        this->log("Move time: " + tools::intToString(moveTime.time));
+    }
+}
+```
+
+`stopStartTime` is guaranteed to be set when `handleEndOfMovement` is called (it was set in the prior `update()` when the cover first went "not moving") and is not yet reset (it is reset in `resetStateIfStopped`, which runs after `handleEndOfMovement` returns). The new `Move time:` log line will therefore show the un-inflated travel time.
+
+### 5. Symmetry recap
 
 | State | Start debounce | Stop debounce |
 |-------|---------------|---------------|
@@ -212,8 +250,9 @@ void CoverMovementImpl::resetStateIfStopped() {
 | Set in | `handleDebounceAndEndPosition` (no sensors, `moving=true`) | `update()` (`!moving && isReallyMoving() && stopStartTime == 0`) |
 | Reset on detection of the opposite | n/a — start debounce runs only on `moving=true` | `moving=true` resets `stopStartTime = 0` in `update()` |
 | Reset in cleanup | `resetStateIfStopped` already does this for `moveStartTime` | `resetStateIfStopped` also resets `stopStartTime` |
-| Position during debounce | returned value is `state.position` (unchanged) | returned value is `state.position` (unchanged) |
+| Position during debounce | returned value is `state.position` (unchanged) | `interpolatePosition` continues, as if still moving |
 | Other side effects during debounce | `moveStartPosition` not set yet | `handleEndOfMovement` not called, `moveStartPosition`/`moveStartTime` not reset |
+| Move-time measurement | unaffected (start) | `calculateMoveTimeIfNeeded` now uses `stopStartTime` (not `esp.millis()`) so the measured time is not inflated by `debounceTime` |
 
 ---
 
@@ -273,13 +312,12 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounce) {
 
 ### New test: `UpdateMovementStopDebounceBounce`
 
-Verify that bouncing (stop → move within debounce) restarts the debounce, and assert position at each step. No pre-set RTC move time, so `interpolatePosition` is never active and the position stays at `state.position` (0) until `handleEndOfMovement` fires.
+Verify that bouncing (stop → move within debounce) restarts the debounce, and assert that interpolation continues during the debounce window. Uses a pre-set RTC move time so `interpolatePosition` is active.
 
 ```cpp
 TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
-    // No RTC pre-set: moveTime stays 0, so interpolatePosition is never
-    // called and position stays at state.position (0) until
-    // handleEndOfMovement fires.
+    // Pre-set RTC so moveTime is known and interpolatePosition is active
+    this->rtc.set(0, 1000);
 
     CoverStopImpl stopper(this->esp, this->state, this->stopPin, false);
     CoverMovementImpl movement(
@@ -294,25 +332,36 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
     this->advanceMs(5);
     movement.update();
     this->advanceMs(20);
-    movement.update();
+    movement.update();  // past start debounce, moveStartPosition = 0
+
+    // Move for 500ms so we have a non-trivial interpolated position
+    this->advanceMs(500);
+    this->debug.str("");
+    int pos = movement.update();
+    // position = 0 + 100 * 500 / 1000 = 50
+    EXPECT_EQ(pos, 50);
     EXPECT_TRUE(movement.isStarted());
 
-    // Brief stop blip (10ms < 20ms debounce)
+    // Brief stop blip (10ms < 20ms debounce). During the debounce window,
+    // interpolation should continue as if the cover were still moving.
     this->esp.digitalWrite(this->inputPin, 0);
     this->advanceMs(10);
     this->debug.str("");
-    int pos = movement.update();
-    EXPECT_EQ(pos, 0);                  // not at endPosition yet
-    EXPECT_TRUE(movement.isStarted());  // not stopped yet
-    // No "Stopped moving" log: resetStateIfStopped is debounced-gated
+    pos = movement.update();
+    // Interpolation continued: position advanced by 10ms of "motion"
+    // = 0 + 100 * (500+10) / 1000 = 51
+    EXPECT_EQ(pos, 51);
+    EXPECT_TRUE(movement.isStarted());
 
-    // Bounce back to moving within debounce window
+    // Bounce back to moving within debounce window: bounce reset
     this->esp.digitalWrite(this->inputPin, 1);
     this->advanceMs(5);
     this->debug.str("");
     pos = movement.update();
-    EXPECT_EQ(pos, 0);                  // still not at endPosition
-    EXPECT_TRUE(movement.isStarted());  // still not stopped
+    // Still interpolating as if still moving: position advances
+    // = 0 + 100 * (510+5) / 1000 = 51 (rounded down from 51.5)
+    EXPECT_EQ(pos, 51);
+    EXPECT_TRUE(movement.isStarted());
 
     // Now stop for real, well past total debounce
     this->esp.digitalWrite(this->inputPin, 0);
