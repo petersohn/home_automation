@@ -772,15 +772,19 @@ TEST_P(BasicFixture, OpenAfterCalibrate) {
             } else {
                 EXPECT_EQ(this->getValue(1), "99");
             }
-        } else if (this->isStopDebouncing(time, round, 4000, delay)) {
-            // Stop debounce window: don't assert too strictly.
+        } else if (this->isStopDebouncing(
+                       time, round, 4000 + delay, delay)) {
+            // Stop debounce window: don't assert too strictly. The endTime
+            // is extended by `delay` to account for the loop-timing
+            // granularity with larger delay values, where the physical
+            // position may reach the end later than the logical position.
         } else {
             EXPECT_FALSE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPEN");
             EXPECT_EQ(this->getValue(1), "100");
         }
     };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(4200, delay, func));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(4200 + delay, delay, func));
 }
 
 TEST_P(BasicFixture, CloseAfterCalibrate) {
