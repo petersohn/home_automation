@@ -339,6 +339,8 @@ TEST_F(CoverMovementTest, UpdateMovementEndReached) {
 
     // Motor reaches end stop and stops
     this->esp.digitalWrite(this->inputPin, 0);
+    movement.update();  // records stopStartTime, enters stop debounce
+    this->advanceMs(20);
 
     this->debug.str("");
     int pos = movement.update();
@@ -385,6 +387,8 @@ TEST_F(CoverMovementTest, UpdateDownDirection) {
 
     // Motor stops
     this->esp.digitalWrite(this->inputPin, 0);
+    movement.update();  // records stopStartTime, enters stop debounce
+    this->advanceMs(20);
     this->debug.str("");
     pos = movement.update();
 
@@ -577,11 +581,14 @@ TEST_F(CoverMovementTest, CalculateMoveTimeSavesToRtc) {
 
     // Motor stops at end
     this->esp.digitalWrite(this->inputPin, 0);
+    movement.update();  // records stopStartTime, enters stop debounce
+    this->advanceMs(20);
     this->debug.str("");
     movement.update();
 
     // calculateMoveTimeIfNeeded should have called rtc.set() for id 0
-    // The move time should now be non-zero (~325ms)
+    // The move time should now be non-zero (~300ms, not ~325ms —
+    // see Task 5 for the calculateMoveTimeIfNeeded change)
     auto moveTime = this->rtc.get(0);
     EXPECT_GT(moveTime, 0u);
     this->expectLogContains("Move time:");
