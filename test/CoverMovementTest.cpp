@@ -637,4 +637,68 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounce) {
     this->expectLogContains("End position reached.");
 }
 
+TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
+    // Pre-set RTC so moveTime is known and interpolatePosition is active
+    this->rtc.set(0, 1000);
+
+    CoverStopImpl stopper(this->esp, this->state, this->stopPin, false);
+    CoverMovementImpl movement(
+        this->state, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
+
+    this->advanceMs(1);
+    movement.start();
+    this->esp.digitalWrite(this->inputPin, 1);
+
+    // Advance past start debounce in one step so moveStartTime and the
+    // debounce completion share the same baseline (time = 26).
+    this->advanceMs(25);  // time = 1 + 25 = 26
+    this->debug.str("");
+    movement.update();  // first moving=true update: moveStartTime = 26
+
+    // Move for 500ms so we have a non-trivial interpolated position
+    this->advanceMs(500);  // time = 526
+    this->debug.str("");
+    int pos = movement.update();
+    // moveStartTime = 26, debounce fires (526-26 = 500 >= 20),
+    // moveStartPosition = 0, then interpolate:
+    // position = 0 + 100 * 500 / 1000 = 50
+    EXPECT_EQ(pos, 50);
+    EXPECT_TRUE(movement.isStarted());
+
+    // Brief stop blip (10ms < 20ms debounce). During the debounce window,
+    // interpolation should continue as if the cover were still moving.
+    this->esp.digitalWrite(this->inputPin, 0);
+    this->advanceMs(10);  // time = 536
+    this->debug.str("");
+    pos = movement.update();
+    // Interpolation continued: position advanced by 10ms of "motion"
+    // = 0 + 100 * (536-26) / 1000 = 0 + 100 * 510 / 1000 = 51
+    EXPECT_EQ(pos, 51);
+    EXPECT_TRUE(movement.isStarted());
+
+    // Bounce back to moving within debounce window: bounce reset
+    this->esp.digitalWrite(this->inputPin, 1);
+    this->advanceMs(5);  // time = 541
+    this->debug.str("");
+    pos = movement.update();
+    // Still interpolating as if still moving: position advances
+    // = 0 + 100 * (541-26) / 1000 = 0 + 100 * 515 / 1000 = 51 (truncated)
+    EXPECT_EQ(pos, 51);
+    EXPECT_TRUE(movement.isStarted());
+
+    // Now stop for real. First record the stopStartTime, then advance
+    // past debounce.
+    this->esp.digitalWrite(this->inputPin, 0);
+    movement.update();    // records stopStartTime = 541, enters stop debounce
+    this->advanceMs(20);  // time = 561
+    this->debug.str("");
+    pos = movement.update();
+
+    // End of movement fires: position is endPosition, movement stopped
+    EXPECT_EQ(pos, this->endPositionUp);
+    EXPECT_FALSE(movement.isStarted());
+    this->expectLogContains("End position reached.");
+}
+
 }  // namespace
