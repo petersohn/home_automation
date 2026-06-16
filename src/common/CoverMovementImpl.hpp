@@ -102,6 +102,7 @@ private:
     int moveTimeIndex = -1;
     unsigned long moveStartTime = 0;
     unsigned long startedTime = 0;
+    unsigned long stopStartTime = 0;
     int moveStartPosition = -2;
     bool startTriggered = false;
 };
