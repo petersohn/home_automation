@@ -588,7 +588,8 @@ TEST_F(CoverMovementTest, CalculateMoveTimeSavesToRtc) {
 
     // calculateMoveTimeIfNeeded should have called rtc.set() for id 0
     // The move time should now be non-zero (~300ms, not ~325ms —
-    // see Task 5 for the calculateMoveTimeIfNeeded change)
+    // calculateMoveTimeIfNeeded uses stopStartTime, so the 20ms stop
+    // debounce is not included in the measurement)
     auto moveTime = this->rtc.get(0);
     EXPECT_GT(moveTime, 0u);
     this->expectLogContains("Move time:");

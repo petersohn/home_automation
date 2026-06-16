@@ -619,9 +619,8 @@ TEST_P(CalibrateFixture, Calibrate) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
     ASSERT_NO_FAILURE();
 
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(delay + 20 + delay, delay, [&](
-                         unsigned long time, size_t round) {
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(
+        delay + 20 + delay, delay, [&](unsigned long time, size_t round) {
         if (!this->isStopDebouncing(time, round, 0, delay)) {
             EXPECT_TRUE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPENING");
@@ -644,9 +643,8 @@ TEST_P(CalibrateFixture, Calibrate) {
         ASSERT_NO_FATAL_FAILURE(this->loopFor(4000, delay, func4));
         ASSERT_NO_FAILURE();
 
-        ASSERT_NO_FATAL_FAILURE(
-            this->loopFor(delay + 20 + delay, delay, [&](
-                             unsigned long time, size_t round) {
+        ASSERT_NO_FATAL_FAILURE(this->loopFor(
+            delay + 20 + delay, delay, [&](unsigned long time, size_t round) {
             if (!this->isStopDebouncing(time, round, 0, delay)) {
                 EXPECT_FALSE(this->isMovingUp());
                 EXPECT_FALSE(this->isMovingDown());
@@ -680,9 +678,8 @@ TEST_P(CalibrateFixture, Calibrate) {
 
         std::cout << "Calibration is done, set position." << std::endl;
 
-        ASSERT_NO_FATAL_FAILURE(
-            this->loopFor(delay + 20 + delay, delay, [&](
-                             unsigned long time, size_t round) {
+        ASSERT_NO_FATAL_FAILURE(this->loopFor(
+            delay + 20 + delay, delay, [&](unsigned long time, size_t round) {
             if (!this->isStopDebouncing(time, round, 0, delay)) {
                 EXPECT_TRUE(this->isMovingDown());
                 EXPECT_EQ(this->getValue(0), "CLOSING");
@@ -914,8 +911,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
             EXPECT_FALSE(this->isMovingDown());
         }
     };
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(delay + 20 + delay, delay, funcOpen));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay + 20 + delay, delay, funcOpen));
     ASSERT_NO_FAILURE();
 
     this->close();
@@ -983,8 +979,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
     ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(delay + 20 + delay, delay, funcOpen));
+    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay + 20 + delay, delay, funcOpen));
     ASSERT_NO_FAILURE();
 
     this->close();
