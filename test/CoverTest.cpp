@@ -502,6 +502,19 @@ TEST_P(BasicFixture, StopWhileClosing) {
     EXPECT_EQ(this->position, 8000);
 }
 
+/**
+ * Calibration phases:
+ * - Phase 1: start from unknown position, fully open.
+ * - After phase 1, neither open nor close time is known. (*)
+ * - Phase 2: start from known fully open position, fully close.
+ * - After phase 2, close time is known.
+ * - Phase 3: start from known fully closed position, fully open. (*)
+ * - After phase 3, both open and close times are known.
+ * - Phase 4: close to correct position.
+ *
+ * (*) If the starting position is 0 and there are position sensors, open time
+ * is known after phase 1, so phase 3 is skipped and phase 4 opens instead.
+ */
 TEST_P(CalibrateFixture, Calibrate) {
     GET_PARAM(delay, 0);
     GET_PARAM(isLatching, 1);
