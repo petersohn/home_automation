@@ -317,7 +317,7 @@ void CoverMovementImpl::calculateMoveTimeIfNeeded() {
 
     auto& moveTime = this->moveTimes[this->moveTimeIndex];
     if (this->moveStartPosition == this->beginPosition) {
-        moveTime.time = this->state.esp.millis() - this->moveStartTime;
+        moveTime.time = this->stopStartTime - this->moveStartTime;
         this->state.rtc.set(moveTime.rtcId, moveTime.time);
         this->log("Move time: " + tools::intToString(moveTime.time));
     }
