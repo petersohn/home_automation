@@ -587,4 +587,47 @@ TEST_F(CoverMovementTest, CalculateMoveTimeSavesToRtc) {
     this->expectLogContains("Move time:");
 }
 
+// ============= update() — stop debounce =============
+
+TEST_F(CoverMovementTest, UpdateMovementStopDebounce) {
+    // Pre-set RTC so moveTime is known and interpolatePosition is active
+    this->rtc.set(0, 1000);
+
+    CoverStopImpl stopper(this->esp, this->state, this->stopPin, false);
+    CoverMovementImpl movement(
+        this->state, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
+
+    this->advanceMs(1);
+    movement.start();
+    this->esp.digitalWrite(this->inputPin, 1);
+
+    // Get the cover "really moving" past the start debounce
+    this->advanceMs(5);
+    movement.update();  // first update sets moveStartTime
+    this->advanceMs(20);
+    movement.update();  // past start debounce, moveStartPosition = 0
+
+    // Motor stops
+    this->esp.digitalWrite(this->inputPin, 0);
+
+    // Immediately after stop: still in stop debounce, position interpolated
+    // as if still moving (now = moveStartTime + 26, position advances)
+    this->debug.str("");
+    int pos = movement.update();
+    // Stop debounce: position is interpolated as if still moving.
+    // moveStartTime = 6, now = 26, moveTime = 1000
+    // a = 100 * 20 = 2000, d = 2000/1000 = 2, newPosition = 0 + 2 = 2
+    EXPECT_EQ(pos, 2);
+    EXPECT_TRUE(movement.isStarted());  // not stopped yet
+
+    // Advance past debounce and update: end of movement fires
+    this->advanceMs(20);
+    this->debug.str("");
+    pos = movement.update();
+    EXPECT_EQ(pos, this->endPositionUp);
+    EXPECT_FALSE(movement.isStarted());
+    this->expectLogContains("End position reached.");
+}
+
 }  // namespace
