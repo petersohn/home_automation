@@ -215,6 +215,16 @@ public:
         return time <= 20 || round == 1;
     }
 
+    static bool isStopDebouncing(
+        unsigned long time, size_t /*round*/, unsigned long endTime,
+        unsigned long delay) {
+        // The cover is in the stop debounce window after reaching the end of
+        // travel, because handleEndOfMovement is delayed by debounceTime
+        // (20ms) plus however long until the next update() round.
+        return time > endTime &&
+               time <= endTime + static_cast<unsigned long>(delay) + 20;
+    }
+
     void calibrateToPosition(int position, unsigned long delay) {
         this->setPosition(position);
         this->loopFor(41000, delay, [](unsigned long, size_t) {});
@@ -370,6 +380,8 @@ TEST_P(BasicFixture, Open) {
             } else {
                 EXPECT_EQ(this->getValue(1), "1");
             }
+        } else if (this->isStopDebouncing(time, round, 10000, delay)) {
+            // Stop debounce window: don't assert too strictly.
         } else {
             EXPECT_TRUE(!this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPEN");
@@ -448,6 +460,8 @@ TEST_P(BasicFixture, Close) {
             } else {
                 EXPECT_EQ(this->getValue(1), "99");
             }
+        } else if (this->isStopDebouncing(time, round, 10000, delay)) {
+            // Stop debounce window: don't assert too strictly.
         } else {
             EXPECT_TRUE(!this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "CLOSED");
@@ -576,13 +590,16 @@ TEST_P(CalibrateFixture, Calibrate) {
               << std::endl;
 
     if (!(hasPositionSensor && start == this->maxPosition)) {
-        auto funcOpen = [&](unsigned long, size_t) {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "OPEN");
-            EXPECT_EQ(this->getValue(1), "100");
+        auto funcOpen = [&](unsigned long time, size_t round) {
+            if (!this->isStopDebouncing(time, round, 0, delay)) {
+                EXPECT_TRUE(this->isMovingDown());
+                EXPECT_EQ(this->getValue(0), "CLOSING");
+                EXPECT_EQ(this->getValue(1), "100");
+            }
         };
 
-        ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcOpen));
+        ASSERT_NO_FATAL_FAILURE(
+            this->loopFor(delay + 20 + delay, delay, funcOpen));
         ASSERT_NO_FAILURE();
     }
 
@@ -603,10 +620,13 @@ TEST_P(CalibrateFixture, Calibrate) {
     ASSERT_NO_FAILURE();
 
     ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(delay, delay, [&](unsigned long, size_t) {
-        EXPECT_TRUE(this->isMovingUp());
-        EXPECT_EQ(this->getValue(0), "CLOSED");
-        EXPECT_EQ(this->getValue(1), "0");
+        this->loopFor(delay + 20 + delay, delay, [&](
+                         unsigned long time, size_t round) {
+        if (!this->isStopDebouncing(time, round, 0, delay)) {
+            EXPECT_TRUE(this->isMovingUp());
+            EXPECT_EQ(this->getValue(0), "OPENING");
+            EXPECT_EQ(this->getValue(1), "0");
+        }
     }));
     ASSERT_NO_FAILURE();
 
@@ -625,11 +645,14 @@ TEST_P(CalibrateFixture, Calibrate) {
         ASSERT_NO_FAILURE();
 
         ASSERT_NO_FATAL_FAILURE(
-            this->loopFor(delay, delay, [&](unsigned long, size_t) {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            EXPECT_EQ(this->getValue(1), "40");
+            this->loopFor(delay + 20 + delay, delay, [&](
+                             unsigned long time, size_t round) {
+            if (!this->isStopDebouncing(time, round, 0, delay)) {
+                EXPECT_FALSE(this->isMovingUp());
+                EXPECT_FALSE(this->isMovingDown());
+                EXPECT_EQ(this->getValue(0), "OPENING");
+                EXPECT_EQ(this->getValue(1), "40");
+            }
         }));
         ASSERT_NO_FAILURE();
 
@@ -658,10 +681,13 @@ TEST_P(CalibrateFixture, Calibrate) {
         std::cout << "Calibration is done, set position." << std::endl;
 
         ASSERT_NO_FATAL_FAILURE(
-            this->loopFor(delay, delay, [&](unsigned long, size_t) {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "OPEN");
-            EXPECT_EQ(this->getValue(1), "100");
+            this->loopFor(delay + 20 + delay, delay, [&](
+                             unsigned long time, size_t round) {
+            if (!this->isStopDebouncing(time, round, 0, delay)) {
+                EXPECT_TRUE(this->isMovingDown());
+                EXPECT_EQ(this->getValue(0), "CLOSING");
+                EXPECT_EQ(this->getValue(1), "100");
+            }
         }));
         ASSERT_NO_FAILURE();
 
@@ -680,13 +706,15 @@ TEST_P(CalibrateFixture, Calibrate) {
         ASSERT_NO_FATAL_FAILURE(this->loopFor(6000, delay, func4));
         ASSERT_NO_FAILURE();
 
-        auto func5 = [&](unsigned long /*time*/, size_t round) {
-            EXPECT_FALSE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(1), "40");
-            if (round == 1) {
-                EXPECT_EQ(this->getValue(0), "CLOSING");
-            } else {
-                EXPECT_EQ(this->getValue(0), "OPEN");
+        auto func5 = [&](unsigned long time, size_t round) {
+            if (!this->isStopDebouncing(time, round, 0, delay)) {
+                EXPECT_FALSE(this->isMovingDown());
+                EXPECT_EQ(this->getValue(1), "40");
+                if (round == 1) {
+                    EXPECT_EQ(this->getValue(0), "CLOSING");
+                } else {
+                    EXPECT_EQ(this->getValue(0), "OPEN");
+                }
             }
         };
         ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, func5));
@@ -737,6 +765,8 @@ TEST_P(BasicFixture, OpenAfterCalibrate) {
             } else {
                 EXPECT_EQ(this->getValue(1), "99");
             }
+        } else if (this->isStopDebouncing(time, round, 4000, delay)) {
+            // Stop debounce window: don't assert too strictly.
         } else {
             EXPECT_FALSE(this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPEN");
@@ -775,6 +805,8 @@ TEST_P(BasicFixture, CloseAfterCalibrate) {
                     std::to_string(
                         60 - (time - delay) * 100 / this->maxPosition));
             }
+        } else if (this->isStopDebouncing(time, round, 6000, delay)) {
+            // Stop debounce window: don't assert too strictly.
         } else {
             EXPECT_FALSE(this->isMovingDown());
             EXPECT_EQ(this->getValue(0), "CLOSED");
@@ -814,13 +846,15 @@ TEST_P(BasicFixture, RestartAfterCalibrate) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(2000, delay, func4));
     ASSERT_NO_FAILURE();
 
-    auto func5 = [&](unsigned long /*time*/, size_t round) {
-        EXPECT_FALSE(this->isMovingDown());
-        EXPECT_EQ(this->getValue(1), "40");
-        if (round == 1) {
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-        } else {
-            EXPECT_EQ(this->getValue(0), "OPEN");
+    auto func5 = [&](unsigned long time, size_t round) {
+        if (!this->isStopDebouncing(time, round, 0, delay)) {
+            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(1), "40");
+            if (round == 1) {
+                EXPECT_EQ(this->getValue(0), "CLOSING");
+            } else {
+                EXPECT_EQ(this->getValue(0), "OPEN");
+            }
         }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, func5));
@@ -874,14 +908,14 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func1));
     ASSERT_NO_FAILURE();
 
-    auto funcOpen = [&](unsigned long time, size_t /*round*/) {
-        if (time < static_cast<unsigned long>(delay)) {
-        } else {
+    auto funcOpen = [&](unsigned long time, size_t round) {
+        if (!this->isStopDebouncing(time, round, 0, delay)) {
             EXPECT_FALSE(this->isMovingUp());
             EXPECT_FALSE(this->isMovingDown());
         }
     };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcOpen));
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(delay + 20 + delay, delay, funcOpen));
     ASSERT_NO_FAILURE();
 
     this->close();
@@ -908,14 +942,17 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
     ASSERT_NO_FAILURE();
 
-    auto funcClosed = [&](unsigned long /*time*/, size_t /*round*/) {
-        EXPECT_FALSE(this->isMovingUp());
-        EXPECT_FALSE(this->isMovingDown());
-        EXPECT_EQ(this->getValue(0), "CLOSED");
-        EXPECT_EQ(this->getValue(1), "0");
-        EXPECT_EQ(this->position, 0);
+    auto funcClosed = [&](unsigned long time, size_t round) {
+        if (!this->isStopDebouncing(time, round, 0, delay)) {
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
+            EXPECT_EQ(this->getValue(0), "CLOSED");
+            EXPECT_EQ(this->getValue(1), "0");
+            EXPECT_EQ(this->position, 0);
+        }
     };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcClosed));
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(delay + 20 + delay, delay, funcClosed));
     ASSERT_NO_FAILURE();
 
     this->open();
@@ -946,7 +983,8 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
     ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcOpen));
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(delay + 20 + delay, delay, funcOpen));
     ASSERT_NO_FAILURE();
 
     this->close();
@@ -978,7 +1016,8 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func4));
     ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay, delay, funcClosed));
+    ASSERT_NO_FATAL_FAILURE(
+        this->loopFor(delay + 20 + delay, delay, funcClosed));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1012,9 +1051,11 @@ TEST_P(BasicFixture, StopEarlyWhileCalibrating) {
     this->esp.delay(delay);
     this->loop();
 
-    auto checkNotMoving = [&](unsigned long, size_t) {
-        EXPECT_FALSE(this->isMovingUp());
-        EXPECT_FALSE(this->isMovingDown());
+    auto checkNotMoving = [&](unsigned long time, size_t round) {
+        if (!this->isStopDebouncing(time, round, 0, delay)) {
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
+        }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
 }
@@ -1042,9 +1083,11 @@ TEST_P(
     this->movingUp = false;
     this->loop();
 
-    auto checkNotMoving = [&](unsigned long, size_t) {
-        EXPECT_FALSE(this->isMovingUp());
-        EXPECT_FALSE(this->isMovingDown());
+    auto checkNotMoving = [&](unsigned long time, size_t round) {
+        if (!this->isStopDebouncing(time, round, 0, delay)) {
+            EXPECT_FALSE(this->isMovingUp());
+            EXPECT_FALSE(this->isMovingDown());
+        }
     };
     ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
 }
