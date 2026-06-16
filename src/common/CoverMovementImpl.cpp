@@ -105,6 +105,14 @@ int CoverMovementImpl::update() {
 
     this->resetLatchingStartIfMoving(moving);
 
+    // Stop debounce: record when "really moving" first transitioned to
+    // "not moving"; clear it on bounce (moving went back to true).
+    if (moving) {
+        this->stopStartTime = 0;
+    } else if (this->isReallyMoving() && this->stopStartTime == 0) {
+        this->stopStartTime = now;
+    }
+
     const bool hasActivePositionSensor = this->state.activePositionSensor >= 0;
     if (hasActivePositionSensor) {
         this->updateWithActivePositionSensor();
@@ -123,7 +131,12 @@ int CoverMovementImpl::update() {
         newPosition = this->checkStartTimeout(newPosition);
     }
 
-    if (!moving) {
+    // State reset is also debounced: if we just observed "not moving" and
+    // the debounce window hasn't elapsed, the cover is still considered
+    // "really moving" (moveStartPosition kept), so the checkStartTimeout
+    // branch above does not fire on the next call with stale startedTime.
+    if (!moving && this->stopStartTime != 0 &&
+        now - this->stopStartTime >= debounceTime) {
         this->resetStateIfStopped();
     }
 
@@ -222,7 +235,14 @@ int CoverMovementImpl::trackMovement(
         }
     }
     if (this->isStarted()) {
-        newPosition = this->handleEndOfMovement(newPosition);
+        if (this->stopStartTime != 0 &&
+            now - this->stopStartTime >= debounceTime) {
+            newPosition = this->handleEndOfMovement(newPosition);
+        } else if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
+            // Continue interpolating during the stop debounce window,
+            // as if the cover were still moving.
+            newPosition = this->interpolatePosition(now, newPosition);
+        }
     }
     return newPosition;
 }
@@ -269,6 +289,7 @@ void CoverMovementImpl::resetStateIfStopped() {
     }
     this->moveStartTime = 0;
     this->moveStartPosition = mspNotMoving;
+    this->stopStartTime = 0;
 }
 
 void CoverMovementImpl::calculateBeginAndEndPosition() {
