@@ -72,6 +72,7 @@ private:
     void handleStopped();
     void log(const std::string& msg);
     bool isReallyMoving() const;
+    bool isStopDebounceElapsed(unsigned long now) const;
     void calculateMoveTimeIfNeeded();
     void calculateBeginAndEndPosition();
     void resetLatchingStartIfMoving(bool moving);

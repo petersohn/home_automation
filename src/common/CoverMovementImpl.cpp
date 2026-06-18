@@ -94,6 +94,11 @@ bool CoverMovementImpl::isStarted() const {
     return this->startedTime != 0;
 }
 
+bool CoverMovementImpl::isStopDebounceElapsed(unsigned long now) const {
+    return this->stopStartTime != 0 &&
+           now - this->stopStartTime >= debounceTime;
+}
+
 bool CoverMovementImpl::isReallyMoving() const {
     return this->moveStartPosition != mspNotMoving;
 }
@@ -135,8 +140,7 @@ int CoverMovementImpl::update() {
     // the debounce window hasn't elapsed, the cover is still considered
     // "really moving" (moveStartPosition kept), so the checkStartTimeout
     // branch above does not fire on the next call with stale startedTime.
-    if (!moving && this->stopStartTime != 0 &&
-        now - this->stopStartTime >= debounceTime) {
+    if (!moving && this->isStopDebounceElapsed(now)) {
         this->resetStateIfStopped();
     }
 
@@ -235,8 +239,7 @@ int CoverMovementImpl::trackMovement(
         }
     }
     if (this->isStarted()) {
-        if (this->stopStartTime != 0 &&
-            now - this->stopStartTime >= debounceTime) {
+        if (this->isStopDebounceElapsed(now)) {
             newPosition = this->handleEndOfMovement(newPosition);
         } else if (!hasActivePositionSensor && this->moveTimeIndex >= 0) {
             // Continue interpolating during the stop debounce window,
