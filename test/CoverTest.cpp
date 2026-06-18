@@ -226,7 +226,8 @@ public:
         // time >= endTime covers the iteration where the end is first reached.
         return round == 1 ||
                (time >= endTime &&
-                time <= endTime + static_cast<unsigned long>(delay) + 20);
+                time <= endTime +
+                            std::max(static_cast<unsigned long>(delay), 20UL));
     }
 
     void calibrateToPosition(int position, unsigned long delay) {
@@ -385,7 +386,13 @@ TEST_P(BasicFixture, Open) {
                 EXPECT_EQ(this->getValue(1), "1");
             }
         } else if (this->isStopDebouncing(time, round, 10000, delay)) {
-            // Stop debounce window: don't assert too strictly.
+            if (hasPositionSensor) {
+                EXPECT_EQ(this->getValue(1), "100");
+                EXPECT_EQ(this->getValue(0), "OPEN");
+            } else {
+                EXPECT_EQ(this->getValue(1), "1");
+                EXPECT_EQ(this->getValue(0), "CLOSED");
+            }
         } else {
             EXPECT_TRUE(!this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "OPEN");
@@ -465,7 +472,13 @@ TEST_P(BasicFixture, Close) {
                 EXPECT_EQ(this->getValue(1), "99");
             }
         } else if (this->isStopDebouncing(time, round, 10000, delay)) {
-            // Stop debounce window: don't assert too strictly.
+            if (hasPositionSensor) {
+                EXPECT_EQ(this->getValue(1), "0");
+                EXPECT_EQ(this->getValue(0), "CLOSED");
+            } else {
+                EXPECT_EQ(this->getValue(1), "99");
+                EXPECT_EQ(this->getValue(0), "OPEN");
+            }
         } else {
             EXPECT_TRUE(!this->isMovingUp());
             EXPECT_EQ(this->getValue(0), "CLOSED");
@@ -593,20 +606,52 @@ TEST_P(CalibrateFixture, Calibrate) {
               << std::endl;
 
     if (!(hasPositionSensor && start == this->maxPosition)) {
+        size_t nonDebounceRounds = 0;
         auto funcOpen = [&](unsigned long time, size_t round) {
-            if (!this->isStopDebouncing(time, round, 0, delay)) {
+            if (this->isStopDebouncing(time, round, 0, delay)) {
+                // During the stop debounce window, the Cover is still
+                // finishing the previous movement. The state and position
+                // depend on the previous state.
+                if (hasPositionSensor) {
+                    EXPECT_EQ(this->getValue(0), "OPEN");
+                    EXPECT_EQ(this->getValue(1), "100");
+                } else if (start == this->maxPosition) {
+                    // Up movement was skipped; cover is at top with OPEN.
+                    // For delay=10, the second debouncing round observes
+                    // the down movement already detected (CLOSING).
+                    if (delay == 10 && round == 2) {
+                        EXPECT_EQ(this->getValue(0), "CLOSING");
+                        EXPECT_EQ(this->getValue(1), "100");
+                    } else {
+                        EXPECT_EQ(this->getValue(0), "OPEN");
+                        EXPECT_EQ(this->getValue(1), "100");
+                    }
+                } else {
+                    EXPECT_EQ(this->getValue(0), "CLOSED");
+                    EXPECT_EQ(this->getValue(1), "1");
+                }
+            } else {
+                ++nonDebounceRounds;
                 EXPECT_TRUE(this->isMovingDown());
-                // State may be CLOSING or OPEN at the first non-debouncing
-                // round, depending on whether the direction change has
-                // been processed by updateMovementDirection yet.
-                EXPECT_TRUE(
-                    this->getValue(0) == "CLOSING" ||
-                    this->getValue(0) == "OPEN");
-                // Position may be 100 (just started) or 99 (interpolating
-                // with uncalibrated moveTime), depending on how quickly the
-                // direction change completed in the preceding phase.
-                auto v = this->getValue(1);
-                EXPECT_TRUE(v == "100" || v == "99");
+                // For start == maxPosition without position sensors, the
+                // up movement was skipped, so by the time we reach the
+                // first non-debouncing round, the down movement has
+                // already been detected and the state is CLOSING.
+                const bool isFirstRound =
+                    nonDebounceRounds == 1 &&
+                    !(start == this->maxPosition && !hasPositionSensor);
+                if (isFirstRound) {
+                    EXPECT_EQ(this->getValue(0), "OPEN");
+                    EXPECT_EQ(this->getValue(1), "100");
+                } else {
+                    EXPECT_EQ(this->getValue(0), "CLOSING");
+                    if (hasPositionSensor ||
+                        (start == this->maxPosition && nonDebounceRounds > 1)) {
+                        EXPECT_EQ(this->getValue(1), "99");
+                    } else {
+                        EXPECT_EQ(this->getValue(1), "100");
+                    }
+                }
             }
         };
 
@@ -617,17 +662,24 @@ TEST_P(CalibrateFixture, Calibrate) {
 
     auto func2 = [&](unsigned long /*time*/, size_t round) {
         if (this->position <= 0) {
-            // End of travel reached; skip assertions during debounce.
+            // End of travel reached: the Cover has finished the down
+            // movement. The state is being updated through the stop
+            // debounce window, so the reported state may still be
+            // CLOSING or already transitioned to CLOSED/OPEN depending
+            // on timing.
         } else {
             EXPECT_TRUE(this->isMovingDown());
             EXPECT_EQ(this->getValue(0), "CLOSING");
-            if (!hasPositionSensor && round == 1) {
-                // Position may be 100 or 99 at the first round, depending
-                // on whether the start debounce timed the interpolation
-                // to cross the threshold during or before this round.
-                EXPECT_TRUE(
-                    this->getValue(1) == "99" ||
-                    this->getValue(1) == "100");
+            if (round == 1) {
+                // At the first round, position is 100 only when the
+                // start debounce has not yet elapsed (delay==10 with
+                // no position sensors and start not at max).
+                if (delay == 10 && !hasPositionSensor &&
+                    start != this->maxPosition) {
+                    EXPECT_EQ(this->getValue(1), "100");
+                } else {
+                    EXPECT_EQ(this->getValue(1), "99");
+                }
             } else {
                 EXPECT_EQ(this->getValue(1), "99");
             }
@@ -640,18 +692,15 @@ TEST_P(CalibrateFixture, Calibrate) {
         delay + 20 + delay, delay, [&](unsigned long time, size_t round) {
         if (!this->isStopDebouncing(time, round, 0, delay)) {
             EXPECT_TRUE(this->isMovingUp());
-            // State may be OPENING or CLOSED at the first non-debouncing
-            // round, depending on whether the direction change has
-            // been processed by updateMovementDirection yet.
+            // The exact state and position at this transition depend
+            // on the timing of the up movement start relative to the
+            // stop debounce window of the down movement.
             EXPECT_TRUE(
                 this->getValue(0) == "OPENING" ||
-                this->getValue(0) == "CLOSED" ||
-                this->getValue(0) == "OPEN");
-            // Position may be 0 or 1 depending on how quickly the up
-            // movement starts after the direction change.
+                this->getValue(0) == "CLOSED" || this->getValue(0) == "OPEN");
             auto v = this->getValue(1);
-            EXPECT_TRUE(v == "0" || v == "1" ||
-                        (hasPositionSensor && v == "100"));
+            EXPECT_TRUE(
+                v == "0" || v == "1" || (hasPositionSensor && v == "100"));
         }
     }));
     ASSERT_NO_FAILURE();
@@ -673,32 +722,31 @@ TEST_P(CalibrateFixture, Calibrate) {
         ASSERT_NO_FATAL_FAILURE(this->loopFor(4000, delay, func4));
         ASSERT_NO_FAILURE();
         ASSERT_NO_FATAL_FAILURE(this->loopFor(
-            delay + 20 + delay, delay,
-            [&](unsigned long time, size_t round) {
-            if (!this->isStopDebouncing(time, round, 0, delay)) {
+            delay + 20 + delay, delay, [&](unsigned long time, size_t round) {
+            if (this->isStopDebouncing(time, round, 0, delay)) {
+                // Stop debounce window: the Cover is processing the
+                // stop after reaching the target position. The state
+                // may be OPENING (still in movement) or OPEN (stopped).
+            } else {
                 EXPECT_FALSE(this->isMovingUp());
                 EXPECT_FALSE(this->isMovingDown());
-                EXPECT_TRUE(
-                    this->getValue(0) == "OPENING" ||
-                    this->getValue(0) == "OPEN");
+                EXPECT_EQ(this->getValue(0), "OPEN");
                 EXPECT_EQ(this->getValue(1), "40");
             }
         }));
         ASSERT_NO_FAILURE();
 
         EXPECT_EQ(
-            this->position,
-            static_cast<int>(4000 + (delay > 10 ? 20 : delay)));
+            this->position, static_cast<int>(4000 + (delay > 10 ? 20 : delay)));
     } else {
         std::cout
             << "Phase 3: move from fully closed to fully open, calculating "
                "opening time."
             << std::endl;
         auto func3 = [&](unsigned long time, size_t /*round*/) {
-            if (this->position >= this->maxPosition ||
-                !this->isMovingUp()) {
+            if (this->position >= this->maxPosition || !this->isMovingUp()) {
                 // End of travel reached or movement stopped early due to
-                // debounce timing; skip assertions during debounce.
+                // debounce timing; the Cover state is being updated.
             } else {
                 EXPECT_TRUE(this->isMovingUp());
                 EXPECT_EQ(this->getValue(0), "OPENING");
@@ -727,15 +775,17 @@ TEST_P(CalibrateFixture, Calibrate) {
                 // Position may be 100 or 99 depending on how quickly the
                 // down movement starts after the direction change.
                 auto v = this->getValue(1);
-                EXPECT_TRUE(v == "100" || v == "99" ||
-                            (hasPositionSensor && v == "100"));
+                EXPECT_TRUE(
+                    v == "100" || v == "99" ||
+                    (hasPositionSensor && v == "100"));
             }
         }));
         ASSERT_NO_FAILURE();
 
         auto func4 = [&](unsigned long /*time*/, size_t /*round*/) {
             if (this->position <= 0 || !this->isMovingDown()) {
-                // End of travel reached or target reached; skip assertions.
+                // End of travel reached or target reached; the Cover
+                // state is being updated.
             } else {
                 EXPECT_TRUE(this->isMovingDown());
                 EXPECT_EQ(this->getValue(0), "CLOSING");
@@ -752,7 +802,11 @@ TEST_P(CalibrateFixture, Calibrate) {
         ASSERT_NO_FAILURE();
 
         auto func5 = [&](unsigned long time, size_t round) {
-            if (!this->isStopDebouncing(time, round, 0, delay)) {
+            if (this->isStopDebouncing(time, round, 0, delay)) {
+                // Stop debounce window: the Cover has reached the
+                // target. The state may be CLOSING (still in movement)
+                // or OPEN (stopped).
+            } else {
                 EXPECT_FALSE(this->isMovingDown());
                 EXPECT_EQ(this->getValue(1), "40");
                 if (round == 1) {
@@ -778,8 +832,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         } else {
             EXPECT_EQ(
                 this->position,
-                static_cast<int>(4000 - delay -
-                                 (delay > 10 ? 20 : 0)));
+                static_cast<int>(4000 - delay - (delay > 10 ? 20 : 0)));
         }
     }
 
@@ -825,8 +878,7 @@ TEST_P(BasicFixture, OpenAfterCalibrate) {
             } else {
                 EXPECT_EQ(this->getValue(1), "99");
             }
-        } else if (this->isStopDebouncing(
-                       time, round, 4000 + delay, delay)) {
+        } else if (this->isStopDebouncing(time, round, 4000 + delay, delay)) {
             // Stop debounce window: don't assert too strictly. The endTime
             // is extended by `delay` to account for the loop-timing
             // granularity with larger delay values, where the physical
@@ -1064,7 +1116,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     this->close();
 
     std::cerr << "Phase 4: closing time is known, positions are interpolated "
-                  "between position sensos."
+                 "between position sensos."
               << std::endl;
 
     auto func4 = [&](unsigned long time, size_t /*round*/) {
