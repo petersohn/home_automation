@@ -688,11 +688,20 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
     EXPECT_EQ(pos, 51);
     EXPECT_TRUE(movement.isStarted());
 
+    // Continue moving after the bounce: interpolation must still use the
+    // original moveStartTime (26), not be reset by the bounce.
+    this->advanceMs(200);  // time = 741
+    this->debug.str("");
+    pos = movement.update();
+    // position = 0 + 100 * (741-26) / 1000 = 0 + 100 * 715 / 1000 = 71
+    EXPECT_EQ(pos, 71);
+    EXPECT_TRUE(movement.isStarted());
+
     // Now stop for real. First record the stopStartTime, then advance
     // past debounce.
     this->esp.digitalWrite(this->inputPin, 0);
-    movement.update();    // records stopStartTime = 541, enters stop debounce
-    this->advanceMs(20);  // time = 561
+    movement.update();    // records stopStartTime = 741, enters stop debounce
+    this->advanceMs(20);  // time = 761
     this->debug.str("");
     pos = movement.update();
 
