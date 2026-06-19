@@ -50,19 +50,32 @@ Unchanged.
 
 - [ ] **Step 1: Add the three helpers to the anonymous namespace**
 
-In `test/CoverTest.cpp`, after the `#include` block and before `#define GET_PARAM`, add:
+First, add the required includes. The current file has `<algorithm>`, `<iostream>`, `<tuple>`. Add:
+
+```cpp
+#include <optional>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+```
+
+Then, after the `#include` block and before `#define GET_PARAM`, add:
 
 ```cpp
 namespace {
 
+using CoverState = std::pair<std::string, std::string>;
+using CoverSequence = std::vector<CoverState>;
+
 void addState(
-    std::vector<std::pair<std::string, std::string>>& out,
+    CoverSequence& out,
     const std::string& state, const std::string& value = "") {
     out.emplace_back(state, value);
 }
 
 void createSequence(
-    std::vector<std::pair<std::string, std::string>>& out,
+    CoverSequence& out,
     const std::string& state, int from, int to, int step = 1) {
     if (step == 0) {
         return;
@@ -79,8 +92,8 @@ void createSequence(
 }
 
 std::string diff(
-    const std::vector<std::pair<std::string, std::string>>& actual,
-    const std::vector<std::pair<std::string, std::string>>& expected) {
+    const CoverSequence& actual,
+    const CoverSequence& expected) {
     if (actual == expected) {
         return "";
     }
@@ -140,16 +153,7 @@ git commit -m "test(CoverTest): add addState/createSequence/diff helpers"
 
 - [ ] **Step 1: Add `loopFor2` to the class**
 
-Insert after the existing `loopFor` method (after line 212 in current file, just before `static bool isDebouncing`):
-
-In the anonymous namespace at the top of the file (with the helpers from Task 1), add:
-
-```cpp
-using CoverState = std::pair<std::string, std::string>;
-using CoverSequence = std::vector<CoverState>;
-```
-
-Then insert after the existing `loopFor` method:
+The `CoverState` and `CoverSequence` type aliases are already defined in the anonymous namespace from Task 1. Insert the new method after the existing `loopFor` method (after line 212 in current file, just before `static bool isDebouncing`):
 
 ```cpp
 CoverSequence loopFor2(unsigned long time, unsigned long delay) {
@@ -528,14 +532,60 @@ TEST_P(CalibrateFixture, Calibrate) {
     auto actual = this->loopFor2(41000, delay);
 
     CoverSequence expected;
-    // Build based on the four phases; see spec section "Calibrate test".
-    // Verify per-variant during implementation.
+    if (hasPositionSensor && start == 0) {
+        // Phase 1: open to sensor 100. Phase 2: close full. Phase 3 skipped.
+        // Phase 4: open to 40.
+        addState(expected, "OPENING", "0");
+        addState(expected, "OPENING", "1");
+        addState(expected, "OPENING", "100");
+        addState(expected, "OPEN", "100");
+        addState(expected, "CLOSING", "100");
+        createSequence(expected, "CLOSING", 99, 1, -1);
+        addState(expected, "CLOSING", "0");
+        addState(expected, "CLOSED", "0");
+        addState(expected, "OPENING", "0");
+        createSequence(expected, "OPENING", 1, 39);
+        addState(expected, "OPENING", "40");
+        addState(expected, "OPEN", "40");
+    } else if (hasPositionSensor && start == this->maxPosition) {
+        // Phase 1 skipped. Phase 2: close. Phase 3: open. Phase 4: close to 40.
+        addState(expected, "CLOSING", "100");
+        createSequence(expected, "CLOSING", 99, 1, -1);
+        addState(expected, "CLOSING", "0");
+        addState(expected, "CLOSED", "0");
+        addState(expected, "OPENING", "0");
+        createSequence(expected, "OPENING", 1, 99);
+        addState(expected, "OPENING", "100");
+        addState(expected, "OPEN", "100");
+        addState(expected, "CLOSING", "100");
+        createSequence(expected, "CLOSING", 99, 41, -1);
+        addState(expected, "CLOSING", "40");
+        addState(expected, "OPEN", "40");
+    } else if (!hasPositionSensor && start == 0) {
+        // All four phases; intermediate values stay at 1 (or 99).
+        addState(expected, "OPENING", "0");
+        addState(expected, "OPENING", "1");
+        addState(expected, "CLOSED", "1");
+        addState(expected, "OPEN", "100");
+        addState(expected, "CLOSING", "100");
+        addState(expected, "CLOSING", "99");
+        addState(expected, "OPEN", "99");
+        addState(expected, "OPENING", "99");
+        addState(expected, "OPENING", "1");
+        addState(expected, "CLOSING", "1");
+        addState(expected, "OPEN", "40");
+    } else {
+        // Other variants: build expected per observation. See Step 2.
+        // Placeholder kept; will be filled in by iteration.
+    }
 
     EXPECT_EQ(actual, expected) << diff(actual, expected);
     EXPECT_FALSE(this->isMovingUp());
     EXPECT_FALSE(this->isMovingDown());
 }
 ```
+
+The exact expected sequences above are best-guesses derived from the current test's assertions. Some intermediate values (especially for `!hasPositionSensor` with mid-start positions) may differ. Use the `diff()` output in failures to refine.
 
 - [ ] **Step 2: Run, observe actual sequence for the first variant, fill in expected**
 
