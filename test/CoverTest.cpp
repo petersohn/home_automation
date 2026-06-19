@@ -12,8 +12,8 @@
 
 namespace {
 
-using CoverState = std::pair<std::string, std::string>;
-using CoverSequence = std::vector<CoverState>;
+using CoverObservation = std::pair<std::string, std::string>;
+using CoverSequence = std::vector<CoverObservation>;
 
 void addState(
     CoverSequence& out, const std::string& state,
@@ -104,11 +104,6 @@ struct TestPositionSensor {
 
 class CoverTest : public InterfaceTestBase {
 public:
-    // Shadows the anonymous-namespace `CoverState` alias inside this class
-    // to avoid ambiguity with `struct CoverState` from `common/CoverState.hpp`
-    // (included via `common/Cover.hpp`). The underlying type is the same.
-    using CoverState = std::pair<std::string, std::string>;
-
     const int maxPosition = 10000;
     bool latching = false;
     int position = 0;
@@ -295,18 +290,18 @@ public:
         auto beginTime = this->esp.millis();
         std::cout << "---- loopFor2 " << time << "----" << std::endl;
 
-        auto getCurrent = [this]() -> std::optional<CoverState> {
+        auto getCurrent = [this]() -> std::optional<CoverObservation> {
             const auto& v = this->interface.storedValue;
             if (v.empty()) {
                 return std::nullopt;
             }
             if (v.size() == 1) {
-                return CoverState{v.back(), ""};
+                return CoverObservation{v.back(), ""};
             }
-            return CoverState{v[v.size() - 2], v.back()};
+            return CoverObservation{v[v.size() - 2], v.back()};
         };
 
-        std::optional<CoverState> last = getCurrent();
+        std::optional<CoverObservation> last = getCurrent();
         CoverSequence result;
         this->delayUntil(beginTime + time, delay, [&]() {
             this->loop();
