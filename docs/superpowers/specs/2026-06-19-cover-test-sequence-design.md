@@ -95,7 +95,7 @@ Single `loopFor` (most tests):
 
 ```cpp
 this->open();
-auto actual = this->loopFor(10100, delay);
+auto actual = this->loopFor(11000, delay);  // 10000ms travel + 1000ms buffer
 std::vector<std::pair<std::string, std::string>> expected;
 addState(expected, "OPENING");
 addState(expected, "OPENING", "1");
@@ -131,6 +131,39 @@ EXPECT_EQ(a2, e2) << diff(a2, e2);
 observes the full calibration flow continuously). Tests like
 `StopMomentarilyWhileCalibrating` (which call `stop()` between observations)
 use separate `loopFor` calls with the expectation reset between them.
+
+### Timing buffer for automatic-stop tests
+
+When the expectation is that the cover stops automatically (reaches the end
+of travel, not stopped by a `stop()` command in the test), `loopFor` should be
+called with extra time beyond the expected travel time. Example: a full open
+from 0 to 100 takes ~10000 ms, so the test calls `loopFor(11000, delay)`
+instead of `loopFor(10100, delay)`.
+
+Rationale:
+- The sequence of `storedValue` updates does not change with the extra time.
+  The buffer just gives the cover enough iterations to fully settle into its
+  end state and emit the final transition.
+- Different `delay` values can cause the cover to reach the end at slightly
+  different times relative to the loop period. The buffer absorbs this
+  variability, so the same expected sequence works across all `delay`
+  variants without per-variant time adjustments.
+- The buffer must be at least one full stop debounce window (~20 ms) plus a
+  margin for loop granularity. A 1000 ms buffer (10% over a 10 s travel) is
+  the default for end-of-travel assertions; shorter buffers (e.g. 100–200 ms)
+  are fine for sub-second phases.
+
+Tests that do **not** need the buffer:
+- `StopWhileOpening` / `StopWhileClosing`: the cover is stopped manually; the
+  loopFor duration is the time before and after the manual stop, not the
+  full travel time.
+- `OpenAfterCalibrate` / `CloseAfterCalibrate`: the calibrated travel time
+  is short; the buffer should be calibrated to the test's actual phase
+  duration (≈ calibrated travel time + 200 ms).
+- `StopEarlyWhileCalibrating` / `StopMomentarilyWhileCalibrating`: the cover
+  is stopped manually after a short observation window.
+- `CalibrationFailsIfMovementCannotStart`: oscillation pattern is observed;
+  duration is `5 * t1` which is already generous.
 
 ### What stays
 
