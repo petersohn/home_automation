@@ -882,37 +882,18 @@ TEST_P(BasicFixture, OpenAfterCalibrate) {
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
     this->open();
-    auto func = [&](unsigned long time, size_t round) {
-        if (this->isDebouncing(time, round)) {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            EXPECT_EQ(this->getValue(1), "60");
-        } else if (time <= 4000) {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            EXPECT_EQ(
-                this->getValue(1),
-                std::to_string(60 + (time - delay) * 100 / this->maxPosition));
-        } else if (time <= static_cast<unsigned long>(4000 + delay)) {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            if (hasPositionSensor) {
-                EXPECT_EQ(this->getValue(1), "100");
-            } else {
-                EXPECT_EQ(this->getValue(1), "99");
-            }
-        } else if (this->isStopDebouncing(time, round, 4000 + delay, delay)) {
-            // Stop debounce window: don't assert too strictly. The endTime
-            // is extended by `delay` to account for the loop-timing
-            // granularity with larger delay values, where the physical
-            // position may reach the end later than the logical position.
-        } else {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPEN");
-            EXPECT_EQ(this->getValue(1), "100");
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(4200 + delay, delay, func));
+    auto actual = this->loopFor2(4200 + delay, delay);
+
+    CoverSequence expected;
+    addState(expected, "OPENING", "60");
+    if (hasPositionSensor) {
+        createSequence(expected, "OPENING", 61, 100);
+    } else {
+        createSequence(expected, "OPENING", 61, 99);
+        addState(expected, "OPEN", "99");
+    }
+    addState(expected, "OPEN", "100");
+    EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
 TEST_P(BasicFixture, CloseAfterCalibrate) {
