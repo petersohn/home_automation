@@ -45,14 +45,17 @@ pre-existing `storedValue` (e.g. initial `["CLOSED"]` from `init + loop()`) is
 not included in the returned sequence.
 
 Implementation notes:
-- Capture `storedValue` immediately before the first `loop()` to establish a
-  baseline.
-- After each `loop()` call, re-read the tail of `storedValue` to derive the
-  current `(state, value)`:
-  - `size() == 0`: no current state, nothing to add.
-  - `size() == 1`: `current = {storedValue[0], ""}`.
-  - `size() >= 2`: `current = {storedValue[size-2], storedValue[size-1]}`.
-- If `current` differs from the last entry in the result, append it.
+- Capture the pre-loopFor `(state, value)` derived from `storedValue` as the
+  baseline. Do **not** include it in the result.
+- Initialize a "last seen" variable to this baseline.
+- For each loop iteration:
+  1. Call `this->loop()`.
+  2. Re-read the tail of `storedValue` to derive the current `(state, value)`:
+     - `size() == 0`: no current state, skip.
+     - `size() == 1`: `current = {storedValue[0], ""}`.
+     - `size() >= 2`: `current = {storedValue[size-2], storedValue[size-1]}`.
+  3. If `current` differs from `last seen`, append it to the result and update
+     `last seen` to `current`.
 - The signature drops the per-iteration `func` callback.
 
 ### Helper functions (free, anonymous namespace, `test/CoverTest.cpp`)
@@ -141,7 +144,7 @@ use separate `loopFor` calls with the expectation reset between them.
   state that is not also represented in the sequence (e.g.
   `EXPECT_EQ(this->position, 2000)` after stopping mid-movement).
 - `reboot` test variation handling: unchanged.
-- The four test fixtures (`HasPositionSensorFixture`, `BasicFixture`,
+- The five test fixtures (`HasPositionSensorFixture`, `BasicFixture`,
   `CalibrateFixture`, `MultiplePositionSensorsFixture`,
   `StopMomentarilyWhileCalibratingFixture`): unchanged.
 
@@ -187,9 +190,25 @@ Mirror of `Open` with `CLOSING`/`CLOSED` swapped in.
 
 ### `OpenWhileFullyOpen` / `CloseWhileFullyClosed`
 
-No state change because the cover is already at the target. `loopFor` returns
-empty (or just the post-loop state if `execute` triggers an emission that
-gets canceled). Verified during implementation.
+No state change because the cover is already at the target. The cover is
+positioned at the boundary (`this->position = 10000` for `OpenWhileFullyOpen`,
+`this->position = 0` for `CloseWhileFullyClosed`) before `open()`/`close()`.
+The movement detection starts but the motor input never changes (boundary
+already reached), so the cover is stopped during the start timeout window.
+Expected sequence: no `OPENING`/`CLOSING` emission; the cover returns to the
+same end state. Implementation phase verifies the exact sequence (which may
+include a brief `OPENING` followed by `OPEN` if the start timeout fires after
+the boundary check).
+
+### `NormalMode` / `LatchingMode`
+
+These tests issue a sequence of commands (`open`, `close`, `stop`,
+combinations) and verify the resulting pin states. With pin-state checks
+dropped, the tests are restructured to observe the sequence of `storedValue`
+changes after each command. Each command is followed by `this->loop()` to
+trigger emission, then the new `(state, value)` is captured. The combined
+sequence across the command sequence is asserted against an expected list.
+The test name and parameterization are preserved.
 
 ### `StopWhileOpening` / `StopWhileClosing`
 
