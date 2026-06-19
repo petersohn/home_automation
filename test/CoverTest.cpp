@@ -719,17 +719,34 @@ TEST_P(BasicFixture, StopWhileClosing) {
     this->loop();
 
     this->close();
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(2000, delay, [](unsigned long, size_t) {}));
-    ASSERT_NO_FAILURE();
+    auto phase1 = this->loopFor2(2000, delay);
 
     this->stop();
     this->esp.delay(delay);
     this->loop();
+    auto phase2 = this->loopFor2(delay * 3, delay);
 
+    CoverSequence expected1;
+    // Mirror of StopWhileOpening: closing from a known position
+    // emits CLOSING with the interpolated value during the 2s
+    // window.
+    if (hasPositionSensor) {
+        addState(expected1, "CLOSING", "99");
+    } else {
+        addState(expected1, "CLOSING");
+        addState(expected1, "CLOSING", "99");
+    }
+    EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
+
+    // The manual loop() between phases catches the settle transition.
+    // Phase 2 captures the steady state, so no new transitions are
+    // observed.
+    CoverSequence expected2;
+    EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
+
+    EXPECT_EQ(this->position, 8000);
     EXPECT_FALSE(this->isMovingUp());
     EXPECT_FALSE(this->isMovingDown());
-    EXPECT_EQ(this->position, 8000);
 }
 
 /**
