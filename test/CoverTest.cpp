@@ -104,6 +104,11 @@ struct TestPositionSensor {
 
 class CoverTest : public InterfaceTestBase {
 public:
+    // Shadows the anonymous-namespace `CoverState` alias inside this class
+    // to avoid ambiguity with `struct CoverState` from `common/CoverState.hpp`
+    // (included via `common/Cover.hpp`). The underlying type is the same.
+    using CoverState = std::pair<std::string, std::string>;
+
     const int maxPosition = 10000;
     bool latching = false;
     int position = 0;
@@ -284,6 +289,35 @@ public:
             ASSERT_NO_FATAL_FAILURE(func(time, round));
         });
         std::cout << "---- loopFor done ----" << std::endl;
+    }
+
+    CoverSequence loopFor2(unsigned long time, unsigned long delay) {
+        auto beginTime = this->esp.millis();
+        std::cout << "---- loopFor2 " << time << "----" << std::endl;
+
+        auto getCurrent = [this]() -> std::optional<CoverState> {
+            const auto& v = this->interface.storedValue;
+            if (v.empty()) {
+                return std::nullopt;
+            }
+            if (v.size() == 1) {
+                return CoverState{v.back(), ""};
+            }
+            return CoverState{v[v.size() - 2], v.back()};
+        };
+
+        std::optional<CoverState> last = getCurrent();
+        CoverSequence result;
+        this->delayUntil(beginTime + time, delay, [&]() {
+            this->loop();
+            auto current = getCurrent();
+            if (current && (!last || *last != *current)) {
+                result.push_back(*current);
+                last = current;
+            }
+        });
+        std::cout << "---- loopFor2 done ----" << std::endl;
+        return result;
     }
 
     static bool isDebouncing(unsigned long time, size_t round) {
