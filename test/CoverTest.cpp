@@ -600,17 +600,17 @@ TEST_P(BasicFixture, OpenWhileFullyOpen) {
     this->loop();
 
     this->open();
+    auto actual = this->loopFor2(1100, delay);
 
-    auto func = [&](unsigned long time, size_t /*round*/) {
-        if (time <= 1000) {
-            EXPECT_EQ(this->esp.digitalRead(UpOutput), 1);
-            EXPECT_EQ(this->position, 10000);
-        } else {
-            EXPECT_EQ(this->esp.digitalRead(UpOutput), 0);
-            EXPECT_EQ(this->getValue(1), "100");
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(1100, delay, func));
+    CoverSequence expected;
+    if (!hasPositionSensor) {
+        // Without position sensors, position is unknown until the start
+        // timeout (1000ms) fires and the cover reports its end position.
+        addState(expected, "OPEN", "100");
+    }
+    // With position sensors, the cover is already OPEN/100 and the open()
+    // command is a no-op, so no state transitions are emitted.
+    EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
 TEST_P(BasicFixture, CloseWhileFullyClosed) {
