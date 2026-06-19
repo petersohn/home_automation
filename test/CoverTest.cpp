@@ -949,33 +949,19 @@ TEST_P(BasicFixture, RestartAfterCalibrate) {
     this->loop();
     this->setPosition(40);
 
-    auto func4 = [&](unsigned long time, size_t round) {
-        EXPECT_TRUE(this->isMovingDown());
-        EXPECT_EQ(this->getValue(0), "CLOSING");
-        if (this->isDebouncing(time, round)) {
-            EXPECT_EQ(this->getValue(1), "60");
-        } else {
-            EXPECT_EQ(
-                this->getValue(1),
-                std::to_string(60 - (time - delay) * 100 / this->maxPosition));
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(2000, delay, func4));
-    ASSERT_NO_FAILURE();
+    auto phase1 = this->loopFor2(2000, delay);
+    auto phase2 = this->loopFor2(delay * 3, delay);
 
-    auto func5 = [&](unsigned long time, size_t round) {
-        if (!this->isStopDebouncing(time, round, 0, delay)) {
-            EXPECT_FALSE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(1), "40");
-            if (round == 1) {
-                EXPECT_EQ(this->getValue(0), "CLOSING");
-            } else {
-                EXPECT_EQ(this->getValue(0), "OPEN");
-            }
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, func5));
-    ASSERT_NO_FAILURE();
+    CoverSequence expected1;
+    addState(expected1, "CLOSING", "60");
+    createSequence(expected1, "CLOSING", 59, 41, -1);
+    EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
+
+    CoverSequence expected2;
+    addState(expected2, "CLOSING", "40");
+    addState(expected2, "OPEN", "40");
+    EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
+
     EXPECT_EQ(this->position, 4000 - delay);
     EXPECT_FALSE(this->isMovingUp());
     EXPECT_FALSE(this->isMovingDown());
