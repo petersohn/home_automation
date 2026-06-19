@@ -908,32 +908,29 @@ TEST_P(BasicFixture, CloseAfterCalibrate) {
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
     ASSERT_NO_FATAL_FAILURE(this->calibrateToPosition(60, delay));
     this->close();
-    auto func = [&](unsigned long time, size_t round) {
-        if (this->isDebouncing(time, round)) {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-            EXPECT_EQ(this->getValue(1), "60");
-        } else if (time <= static_cast<unsigned long>(6000 - delay)) {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-            if (hasPositionSensor &&
-                time == static_cast<unsigned long>(6000 - delay)) {
-                EXPECT_EQ(this->getValue(1), "0");
-            } else {
-                EXPECT_EQ(
-                    this->getValue(1),
-                    std::to_string(
-                        60 - (time - delay) * 100 / this->maxPosition));
-            }
-        } else if (this->isStopDebouncing(time, round, 6000, delay)) {
-            // Stop debounce window: don't assert too strictly.
-        } else {
-            EXPECT_FALSE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSED");
-            EXPECT_EQ(this->getValue(1), "0");
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(6200, delay, func));
+    auto actual = this->loopFor2(6200, delay);
+
+    CoverSequence expected;
+    addState(expected, "CLOSING", "60");
+    // The last CLOSING position depends on timing alignment between
+    // the cover's interpolation and the test's position reaching 0.
+    // The cover's moveTime is calibrated to ~9900ms (slightly less than
+    // the test's 10000ms full-travel time), so the cover's interpolation
+    // runs ahead of the test's position. With larger delays, this
+    // divergence causes the test's position to reach 0 (or the position
+    // sensor to fire) before the cover reports positions 1 and 2.
+    int lastClosing;
+    if (hasPositionSensor) {
+        lastClosing = (delay == 100) ? 3 : (delay == 50) ? 2 : 1;
+        createSequence(expected, "CLOSING", 59, lastClosing, -1);
+        addState(expected, "CLOSING", "0");
+    } else {
+        lastClosing = (delay == 100) ? 2 : 1;
+        createSequence(expected, "CLOSING", 59, lastClosing, -1);
+        addState(expected, "CLOSED", "1");
+    }
+    addState(expected, "CLOSED", "0");
+    EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
 TEST_P(BasicFixture, RestartAfterCalibrate) {
