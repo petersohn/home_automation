@@ -71,10 +71,8 @@ std::string diff(const CoverSequence& actual, const CoverSequence& expected) {
 
 // Force ODR-use of the helpers to suppress unused-function warnings until
 // they are used by tests in subsequent tasks.
-static const auto _unused_helper_marker = []() {
-    (void)&addState;
+[[maybe_unused]] static const auto _unused_helper_marker = []() {
     (void)&createSequence;
-    (void)&diff;
     return 0;
 }();
 
@@ -379,43 +377,93 @@ const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
 
 TEST_P(HasPositionSensorFixture, NormalMode) {
     GET_PARAM(hasPositionSensor, 0);
-    auto check = [this](const std::string& name, int upValue, int downValue) {
-        SCOPED_TRACE(name);
-        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
-        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
-        this->esp.delay(10);
-        this->loop();
-        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
-        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
+
+    auto observe = [this]() {
+        return this->loopFor2(this->esp.millis() + 1, 1);
     };
 
     this->position = 5000;
     this->init(false, this->getPositionSensors(hasPositionSensor));
-    check("initial state", 0, 0);
+    this->loop();
+    EXPECT_EQ(observe(), CoverSequence{});
 
     this->open();
-    check("open at init", 1, 0);
+    {
+        SCOPED_TRACE("open at init");
+        CoverSequence expected;
+        addState(expected, "OPENING");
+        addState(expected, "OPENING", "1");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->stop();
-    check("stop after open", 0, 0);
+    {
+        SCOPED_TRACE("stop after open");
+        CoverSequence expected;
+        addState(expected, "CLOSED", "1");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->close();
-    check("close after stop", 0, 1);
+    {
+        SCOPED_TRACE("close after stop");
+        CoverSequence expected;
+        addState(expected, "CLOSING", "1");
+        addState(expected, "CLOSING", "99");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->stop();
-    check("stop after close", 0, 0);
+    {
+        SCOPED_TRACE("stop after close");
+        CoverSequence expected;
+        addState(expected, "OPEN", "99");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->open();
-    check("open after stop", 1, 0);
+    {
+        SCOPED_TRACE("open after stop");
+        CoverSequence expected;
+        addState(expected, "OPENING", "99");
+        addState(expected, "OPENING", "1");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->close();
-    check("close after open 1", 0, 1);
+    {
+        SCOPED_TRACE("close after open 1");
+        CoverSequence expected;
+        addState(expected, "CLOSING", "1");
+        addState(expected, "CLOSING", "99");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->open();
-    check("open after close", 1, 0);
+    {
+        SCOPED_TRACE("open after close");
+        CoverSequence expected;
+        addState(expected, "OPENING", "99");
+        addState(expected, "OPENING", "1");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->close();
-    check("close after open 2", 0, 1);
+    {
+        SCOPED_TRACE("close after open 2");
+        CoverSequence expected;
+        addState(expected, "CLOSING", "1");
+        addState(expected, "CLOSING", "99");
+        auto s = observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(
