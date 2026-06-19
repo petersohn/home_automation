@@ -568,34 +568,26 @@ TEST_P(BasicFixture, Open) {
     this->loop();
 
     this->open();
-    auto func = [&](unsigned long time, size_t round) {
-        if (!hasPositionSensor && (this->isDebouncing(time, round))) {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->interface.storedValue.size(), 1u);
-            EXPECT_EQ(this->getValue(0), "OPENING");
-        } else if (time <= 10000) {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            if (hasPositionSensor && time == 10000) {
-                EXPECT_EQ(this->getValue(1), "100");
-            } else {
-                EXPECT_EQ(this->getValue(1), "1");
-            }
-        } else if (this->isStopDebouncing(time, round, 10000, delay)) {
-            if (hasPositionSensor) {
-                EXPECT_EQ(this->getValue(1), "100");
-                EXPECT_EQ(this->getValue(0), "OPEN");
-            } else {
-                EXPECT_EQ(this->getValue(1), "1");
-                EXPECT_EQ(this->getValue(0), "CLOSED");
-            }
-        } else {
-            EXPECT_TRUE(!this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPEN");
-            EXPECT_EQ(this->getValue(1), "100");
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(10100, delay, func));
+    auto actual =
+        this->loopFor2(11000, delay);  // 10000ms travel + 1000ms buffer
+
+    CoverSequence expected;
+    if (hasPositionSensor) {
+        // With position sensor, the cover starts at position 0, so the
+        // first observed state change is already OPENING/1 (no empty-value
+        // OPENING transition is emitted because position is known).
+        addState(expected, "OPENING", "1");
+    } else {
+        addState(expected, "OPENING");
+        addState(expected, "OPENING", "1");
+    }
+    if (hasPositionSensor) {
+        addState(expected, "OPENING", "100");
+    } else {
+        addState(expected, "CLOSED", "1");
+    }
+    addState(expected, "OPEN", "100");
+    EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
 TEST_P(BasicFixture, OpenWhileFullyOpen) {
