@@ -1113,28 +1113,24 @@ TEST_P(BasicFixture, StopEarlyWhileCalibrating) {
     this->loop();
 
     this->setPosition(50);
-
-    auto openFunc = [&](unsigned long time, size_t round) {
-        if (hasPositionSensor || !this->isDebouncing(time, round)) {
-            EXPECT_EQ(this->getValue(1), "1");
-        }
-        EXPECT_TRUE(this->isMovingUp());
-        EXPECT_EQ(this->getValue(0), "OPENING");
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(1000, delay, openFunc));
-    ASSERT_NO_FAILURE();
+    auto phase1 = this->loopFor2(1000, delay);
 
     this->stop();
     this->esp.delay(delay);
     this->loop();
+    auto phase2 = this->loopFor2(delay * 3, delay);
 
-    auto checkNotMoving = [&](unsigned long time, size_t round) {
-        if (!this->isStopDebouncing(time, round, 0, delay)) {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay * 3, delay, checkNotMoving));
+    CoverSequence expected1;
+    if (hasPositionSensor) {
+        addState(expected1, "OPENING", "1");
+    } else {
+        addState(expected1, "OPENING");
+        addState(expected1, "OPENING", "1");
+    }
+    EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
+
+    CoverSequence expected2;
+    EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
 }
 
 TEST_P(
