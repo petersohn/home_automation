@@ -474,47 +474,89 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(HasPositionSensorFixture, LatchingMode) {
     GET_PARAM(hasPositionSensor, 0);
-    auto check = [this](
-                     const std::string& name, int upValue, int downValue,
-                     int stopValue) {
-        SCOPED_TRACE(name);
-        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
-        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
-        EXPECT_EQ(this->esp.digitalRead(StopOutput), stopValue);
-        this->esp.delay(10);
-        this->loop();
-        EXPECT_EQ(this->esp.digitalRead(UpOutput), 0);
-        EXPECT_EQ(this->esp.digitalRead(DownOutput), 0);
-        EXPECT_EQ(this->esp.digitalRead(StopOutput), 0);
-    };
 
     this->position = 5000;
     this->init(true, this->getPositionSensors(hasPositionSensor));
-    check("initial state", 0, 0, 1);
+    this->loop();
+    EXPECT_EQ(this->observe(), CoverSequence{});
 
     this->open();
-    check("open at init", 1, 0, 0);
+    {
+        SCOPED_TRACE("open at init");
+        CoverSequence expected;
+        addState(expected, "OPENING");
+        addState(expected, "OPENING", "1");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->stop();
-    check("stop after open", 0, 0, 1);
+    {
+        SCOPED_TRACE("stop after open");
+        CoverSequence expected;
+        addState(expected, "CLOSED", "1");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->close();
-    check("close after stop", 0, 1, 0);
+    {
+        SCOPED_TRACE("close after stop");
+        CoverSequence expected;
+        addState(expected, "CLOSING", "1");
+        addState(expected, "CLOSING", "99");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->stop();
-    check("stop after close", 0, 0, 1);
+    {
+        SCOPED_TRACE("stop after close");
+        CoverSequence expected;
+        addState(expected, "OPEN", "99");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->open();
-    check("open after stop", 1, 0, 0);
+    {
+        SCOPED_TRACE("open after stop");
+        CoverSequence expected;
+        addState(expected, "OPENING", "99");
+        addState(expected, "OPENING", "1");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->close();
-    check("close after open 1", 0, 1, 0);
+    {
+        SCOPED_TRACE("close after open 1");
+        CoverSequence expected;
+        addState(expected, "CLOSING", "1");
+        addState(expected, "CLOSING", "99");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->open();
-    check("open after close", 1, 0, 0);
+    {
+        SCOPED_TRACE("open after close");
+        CoverSequence expected;
+        addState(expected, "OPENING", "99");
+        addState(expected, "OPENING", "1");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 
     this->close();
-    check("close after open 2", 0, 1, 0);
+    {
+        SCOPED_TRACE("close after open 2");
+        CoverSequence expected;
+        addState(expected, "CLOSING", "1");
+        addState(expected, "CLOSING", "99");
+        auto s = this->observe();
+        EXPECT_EQ(s, expected) << diff(s, expected);
+    }
 }
 
 TEST_P(BasicFixture, Open) {
