@@ -677,17 +677,36 @@ TEST_P(BasicFixture, StopWhileOpening) {
     this->loop();
 
     this->open();
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(2000, delay, [](unsigned long, size_t) {}));
-    ASSERT_NO_FAILURE();
+    auto phase1 = this->loopFor2(2000, delay);
 
     this->stop();
     this->esp.delay(delay);
     this->loop();
+    auto phase2 = this->loopFor2(delay * 3, delay);
 
+    CoverSequence expected1;
+    if (hasPositionSensor) {
+        // With position sensor, the cover starts at a known position
+        // (0), so the first state already includes the position.
+        addState(expected1, "OPENING", "1");
+    } else {
+        // Without position sensor, the cover first emits OPENING with no
+        // position, then OPENING with the interpolated position.
+        addState(expected1, "OPENING");
+        addState(expected1, "OPENING", "1");
+    }
+    EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
+
+    // The stop transition is emitted by the manual loop() above (cover
+    // reports state at position 1, the only known position since move
+    // time is not yet calibrated). Phase 2 captures the steady state, so
+    // no new transitions are observed.
+    CoverSequence expected2;
+    EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
+
+    EXPECT_EQ(this->position, 2000);
     EXPECT_FALSE(this->isMovingUp());
     EXPECT_FALSE(this->isMovingDown());
-    EXPECT_EQ(this->position, 2000);
 }
 
 TEST_P(BasicFixture, StopWhileClosing) {
