@@ -130,7 +130,22 @@ std::string diff(
 - [ ] **Step 2: Build to verify the file still compiles**
 
 Run: `cd build && cmake --build . -j$(nproc) 2>&1 | tail -20`
-Expected: build succeeds (helpers are not used yet, so unused-function warnings are acceptable; do not add `[[maybe_unused]]` — they will be used in Task 2 onward).
+Expected: build succeeds.
+
+NOTE: The project has `-Werror` enabled in `CMakeLists.txt`, so unused-function warnings on the three new helpers will fail the build. Add a static lambda at the end of the anonymous namespace that takes the addresses of the three helpers, forcing ODR-use until they are referenced by tests:
+
+```cpp
+// Force ODR-use of the helpers to suppress unused-function warnings
+// (project uses -Werror) until they are used in subsequent tasks.
+static const auto _unused_helper_marker = []() {
+    (void)&addState;
+    (void)&createSequence;
+    (void)&diff;
+    return 0;
+}();
+```
+
+Task 2 removes this marker once `loopFor2` references the helpers.
 
 - [ ] **Step 3: Run existing tests to confirm no regression**
 
