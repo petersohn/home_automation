@@ -987,154 +987,114 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
     EXPECT_EQ(this->getValue(0), "CLOSED");
     EXPECT_EQ(this->getValue(1), "0");
 
-    this->open();
-
     std::cerr << "Phase 1: opening time is not known, only position sensors "
                  "are reported."
               << std::endl;
 
-    auto func1 = [&](unsigned long time, size_t /*round*/) {
-        if (this->position >= this->maxPosition) {
-            // End of travel reached; skip assertions during debounce.
-        } else {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            if (time <= 200) {
-                EXPECT_EQ(this->getValue(1), "0");
-            } else if (time < 4800) {
-                EXPECT_EQ(this->getValue(1), "1");
-            } else if (time <= 5200) {
-                EXPECT_EQ(this->getValue(1), "50");
-            } else if (time < 9800) {
-                EXPECT_EQ(this->getValue(1), "51");
-            } else {
-                EXPECT_EQ(this->getValue(1), "100");
-            }
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func1));
-    ASSERT_NO_FAILURE();
+    this->open();
+    auto phase1 = this->loopFor2(10000, delay);
+    auto phase1Settle = this->loopFor2(delay + 20 + delay, delay);
 
-    auto funcOpen = [&](unsigned long time, size_t round) {
-        if (!this->isStopDebouncing(time, round, 0, delay)) {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay + 20 + delay, delay, funcOpen));
-    ASSERT_NO_FAILURE();
+    // Uncalibrated: the cover can only report the values of the three
+    // position sensors (0, 50, 100) plus the value just past each sensor
+    // (1, 51, 99 for closing direction).
+    CoverSequence expected1;
+    addState(expected1, "OPENING", "0");
+    addState(expected1, "OPENING", "1");
+    addState(expected1, "OPENING", "50");
+    addState(expected1, "OPENING", "51");
+    addState(expected1, "OPENING", "100");
+    EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
-    this->close();
+    CoverSequence expected1Settle;
+    addState(expected1Settle, "OPEN", "100");
+    EXPECT_EQ(phase1Settle, expected1Settle)
+        << diff(phase1Settle, expected1Settle);
 
     std::cerr << "Phase 2: closing time is not known, only position sensors "
                  "are reported."
               << std::endl;
 
-    auto func2 = [&](unsigned long time, size_t /*round*/) {
-        if (this->position <= 0) {
-            // End of travel reached; skip assertions during debounce.
-        } else {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-            if (time <= 200) {
-                EXPECT_EQ(this->getValue(1), "100");
-            } else if (time < 4800) {
-                EXPECT_EQ(this->getValue(1), "99");
-            } else if (time <= 5200) {
-                EXPECT_EQ(this->getValue(1), "50");
-            } else if (time < 9800) {
-                EXPECT_EQ(this->getValue(1), "49");
-            } else {
-                EXPECT_EQ(this->getValue(1), "0");
-            }
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func2));
-    ASSERT_NO_FAILURE();
+    this->close();
+    auto phase2 = this->loopFor2(10000, delay);
+    auto phase2Settle = this->loopFor2(delay + 20 + delay, delay);
 
-    auto funcClosed = [&](unsigned long time, size_t round) {
-        if (!this->isStopDebouncing(time, round, 0, delay)) {
-            EXPECT_FALSE(this->isMovingUp());
-            EXPECT_FALSE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSED");
-            EXPECT_EQ(this->getValue(1), "0");
-            EXPECT_EQ(this->position, 0);
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(delay + 20 + delay, delay, funcClosed));
-    ASSERT_NO_FAILURE();
+    CoverSequence expected2;
+    addState(expected2, "CLOSING", "100");
+    addState(expected2, "CLOSING", "99");
+    addState(expected2, "CLOSING", "50");
+    addState(expected2, "CLOSING", "49");
+    addState(expected2, "CLOSING", "0");
+    EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
 
-    this->open();
+    CoverSequence expected2Settle;
+    addState(expected2Settle, "CLOSED", "0");
+    EXPECT_EQ(phase2Settle, expected2Settle)
+        << diff(phase2Settle, expected2Settle);
 
     std::cerr << "Phase 3: opening time is known, positions are interpolated "
-                 "between position sensos."
+                 "between position sensors."
               << std::endl;
 
-    auto func3 = [&](unsigned long time, size_t /*round*/) {
-        if (this->position >= this->maxPosition) {
-            // End of travel reached; skip assertions during debounce.
-        } else {
-            EXPECT_TRUE(this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "OPENING");
-            if (time <= 200) {
-                EXPECT_EQ(this->getValue(1), "0");
-            } else if (time < 4800) {
-                EXPECT_EQ(
-                    this->getValue(1),
-                    std::to_string((time - 200 - delay) * 50 / (4600 - delay)));
-            } else if (time <= 5200) {
-                EXPECT_EQ(this->getValue(1), "50");
-            } else if (time < 9800) {
-                EXPECT_EQ(
-                    this->getValue(1),
-                    std::to_string(
-                        50 + (time - 5200 - delay) * 50 / (4600 - delay)));
-            } else {
-                EXPECT_EQ(this->getValue(1), "100");
+    this->open();
+    auto phase3 = this->loopFor2(10000, delay);
+    auto phase3Settle = this->loopFor2(delay + 20 + delay, delay);
+
+    // Calibrated: positions are interpolated linearly between sensors. With
+    // delay=100, the cover advances by ~1.11 per tick, so every 10th value
+    // starting at 9 is skipped (the integer position jumps by 2). For
+    // delay=10 and delay=50, the tick resolution is fine enough that all
+    // values 0..100 are observed.
+    CoverSequence expected3;
+    addState(expected3, "OPENING", "0");
+    if (delay == 100) {
+        for (int i = 1; i <= 100; ++i) {
+            if (i % 10 != 9) {
+                addState(expected3, "OPENING", std::to_string(i));
             }
         }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func3));
-    ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(delay + 20 + delay, delay, funcOpen));
-    ASSERT_NO_FAILURE();
+    } else {
+        createSequence(expected3, "OPENING", 1, 100);
+    }
+    EXPECT_EQ(phase3, expected3) << diff(phase3, expected3);
 
-    this->close();
+    CoverSequence expected3Settle;
+    addState(expected3Settle, "OPEN", "100");
+    EXPECT_EQ(phase3Settle, expected3Settle)
+        << diff(phase3Settle, expected3Settle);
 
     std::cerr << "Phase 4: closing time is known, positions are interpolated "
-                 "between position sensos."
+                 "between position sensors."
               << std::endl;
 
-    auto func4 = [&](unsigned long time, size_t /*round*/) {
-        if (this->position <= 0) {
-            // End of travel reached; skip assertions during debounce.
-        } else {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-            if (time <= 200) {
-                EXPECT_EQ(this->getValue(1), "100");
-            } else if (time < 4800) {
-                EXPECT_EQ(
-                    this->getValue(1),
-                    std::to_string(
-                        100 - (time - 200 - delay) * 50 / (4600 - delay)));
-            } else if (time <= 5200) {
-                EXPECT_EQ(this->getValue(1), "50");
-            } else if (time < 9800) {
-                EXPECT_EQ(
-                    this->getValue(1),
-                    std::to_string(
-                        50 - (time - 5200 - delay) * 50 / (4600 - delay)));
-            } else {
-                EXPECT_EQ(this->getValue(1), "0");
+    this->close();
+    auto phase4 = this->loopFor2(10000, delay);
+    auto phase4Settle = this->loopFor2(delay + 20 + delay, delay);
+
+    // Mirror of phase 3: with delay=100, the skipped values are
+    // 91, 81, 71, ..., 11, 1 (the cover's integer position jumps by 2
+    // going down). For delay=10 and delay=50, all values 100..0 are
+    // observed.
+    CoverSequence expected4;
+    addState(expected4, "CLOSING", "100");
+    if (delay == 100) {
+        for (int i = 99; i >= 0; --i) {
+            if (i % 10 != 1) {
+                addState(expected4, "CLOSING", std::to_string(i));
             }
         }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(10000, delay, func4));
-    ASSERT_NO_FAILURE();
-    ASSERT_NO_FATAL_FAILURE(
-        this->loopFor(delay + 20 + delay, delay, funcClosed));
+    } else {
+        createSequence(expected4, "CLOSING", 99, 0, -1);
+    }
+    EXPECT_EQ(phase4, expected4) << diff(phase4, expected4);
+
+    CoverSequence expected4Settle;
+    addState(expected4Settle, "CLOSED", "0");
+    EXPECT_EQ(phase4Settle, expected4Settle)
+        << diff(phase4Settle, expected4Settle);
+
+    EXPECT_FALSE(this->isMovingUp());
+    EXPECT_FALSE(this->isMovingDown());
 }
 
 INSTANTIATE_TEST_SUITE_P(
