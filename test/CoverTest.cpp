@@ -1164,9 +1164,7 @@ TEST_P(CalibrateFixture, CalibrationFailsIfMovementCannotStart) {
     GET_PARAM(start, 3);
 
     if (hasPositionSensor && delay == 500) {
-        std::cout << "Cannot test position sensor with too large delay"
-                  << std::endl;
-        GTEST_SKIP();
+        GTEST_SKIP() << "Cannot test position sensor with too large delay";
     }
 
     this->init(isLatching, this->getPositionSensors(hasPositionSensor));
@@ -1177,66 +1175,16 @@ TEST_P(CalibrateFixture, CalibrationFailsIfMovementCannotStart) {
     this->setPosition(50);
 
     const unsigned long t1 = 1000 + delay;
+    auto actual = this->loopFor2(5 * t1, delay);
 
-    std::string constantPosition;
-    bool hasConstantPosition = false;
-    if (hasPositionSensor) {
-        if (start == 0) {
-            constantPosition = "0";
-            hasConstantPosition = true;
-        } else if (start == this->maxPosition) {
-            constantPosition = "100";
-            hasConstantPosition = true;
-        }
+    CoverSequence expected;
+    if (!hasPositionSensor) {
+        addState(expected, "OPEN", "100");
+        addState(expected, "CLOSED", "0");
+        addState(expected, "OPEN", "100");
+        addState(expected, "CLOSED", "0");
     }
-
-    auto check = [&](unsigned long time, size_t) {
-        if (!hasPositionSensor) {
-            bool upActive, downActive;
-            if (time < t1) {
-                upActive = true;
-                downActive = false;
-            } else if (time < 2 * t1) {
-                upActive = false;
-                downActive = true;
-            } else if (time < 3 * t1) {
-                upActive = true;
-                downActive = false;
-            } else if (time < 4 * t1) {
-                upActive = false;
-                downActive = true;
-            } else {
-                upActive = false;
-                downActive = false;
-            }
-            EXPECT_EQ(this->isMovingUp(), upActive);
-            EXPECT_EQ(this->isMovingDown(), downActive);
-        }
-
-        if (hasPositionSensor) {
-            if (hasConstantPosition) {
-                EXPECT_EQ(this->getValue(1), constantPosition);
-            } else {
-                EXPECT_EQ(this->interface.storedValue.size(), 1u);
-            }
-        } else {
-            std::string expectedPos;
-            if (time < t1) {
-                EXPECT_EQ(this->interface.storedValue.size(), 1u);
-                return;
-            } else if (time < 2 * t1) {
-                expectedPos = "100";
-            } else if (time < 3 * t1) {
-                expectedPos = "0";
-            } else if (time < 4 * t1) {
-                expectedPos = "100";
-            } else {
-                expectedPos = "0";
-            }
-            EXPECT_EQ(this->getValue(1), expectedPos);
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(5 * t1, delay, check));
+    EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(
