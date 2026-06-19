@@ -646,34 +646,26 @@ TEST_P(BasicFixture, Close) {
     this->loop();
 
     this->close();
-    auto func = [&](unsigned long time, size_t round) {
-        if (!hasPositionSensor && (this->isDebouncing(time, round))) {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->interface.storedValue.size(), 1u);
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-        } else if (time <= 10000) {
-            EXPECT_TRUE(this->isMovingDown());
-            EXPECT_EQ(this->getValue(0), "CLOSING");
-            if (hasPositionSensor && time == 10000) {
-                EXPECT_EQ(this->getValue(1), "0");
-            } else {
-                EXPECT_EQ(this->getValue(1), "99");
-            }
-        } else if (this->isStopDebouncing(time, round, 10000, delay)) {
-            if (hasPositionSensor) {
-                EXPECT_EQ(this->getValue(1), "0");
-                EXPECT_EQ(this->getValue(0), "CLOSED");
-            } else {
-                EXPECT_EQ(this->getValue(1), "99");
-                EXPECT_EQ(this->getValue(0), "OPEN");
-            }
-        } else {
-            EXPECT_TRUE(!this->isMovingUp());
-            EXPECT_EQ(this->getValue(0), "CLOSED");
-            EXPECT_EQ(this->getValue(1), "0");
-        }
-    };
-    ASSERT_NO_FATAL_FAILURE(this->loopFor(10100, delay, func));
+    auto actual =
+        this->loopFor2(11000, delay);  // 10000ms travel + 1000ms buffer
+
+    CoverSequence expected;
+    // Mirror of Open: cover starts fully open (position 10000), close() drives
+    // it to 0. Without position sensors, the initial state-only CLOSING
+    // transition is emitted because position is unknown until the start
+    // timeout fires. With position sensors, the first observed change is
+    // already CLOSING/99 (state and value change together).
+    if (!hasPositionSensor) {
+        addState(expected, "CLOSING");
+    }
+    addState(expected, "CLOSING", "99");
+    if (hasPositionSensor) {
+        addState(expected, "CLOSING", "0");
+    } else {
+        addState(expected, "OPEN", "99");
+    }
+    addState(expected, "CLOSED", "0");
+    EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
 TEST_P(BasicFixture, StopWhileOpening) {
