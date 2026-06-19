@@ -1,9 +1,84 @@
 #include <algorithm>
 #include <iostream>
+#include <optional>
+#include <sstream>
+#include <string>
 #include <tuple>
+#include <utility>
+#include <vector>
 
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
+
+namespace {
+
+using CoverState = std::pair<std::string, std::string>;
+using CoverSequence = std::vector<CoverState>;
+
+void addState(
+    CoverSequence& out, const std::string& state,
+    const std::string& value = "") {
+    out.emplace_back(state, value);
+}
+
+void createSequence(
+    CoverSequence& out, const std::string& state, int from, int to,
+    int step = 1) {
+    if (step == 0) {
+        return;
+    }
+    if (step > 0) {
+        for (int i = from; i <= to; i += step) {
+            out.emplace_back(state, std::to_string(i));
+        }
+    } else {
+        for (int i = from; i >= to; i += step) {
+            out.emplace_back(state, std::to_string(i));
+        }
+    }
+}
+
+std::string diff(const CoverSequence& actual, const CoverSequence& expected) {
+    if (actual == expected) {
+        return "";
+    }
+    std::ostringstream os;
+    auto a = actual.begin();
+    auto e = expected.begin();
+    size_t i = 0;
+    for (; a != actual.end() && e != expected.end(); ++a, ++e, ++i) {
+        if (*a != *e) {
+            os << "  [" << i << "] actual=(" << a->first << ","
+               << (a->second.empty() ? "_" : a->second) << ") expected=("
+               << e->first << "," << (e->second.empty() ? "_" : e->second)
+               << ")\n";
+        }
+    }
+    while (a != actual.end()) {
+        os << "  [" << i << "] actual=(" << a->first << ","
+           << (a->second.empty() ? "_" : a->second) << ") (extra)\n";
+        ++a;
+        ++i;
+    }
+    while (e != expected.end()) {
+        os << "  [" << i << "] expected=(" << e->first << ","
+           << (e->second.empty() ? "_" : e->second) << ") (missing)\n";
+        ++e;
+        ++i;
+    }
+    return os.str();
+}
+
+// Force ODR-use of the helpers to suppress unused-function warnings until
+// they are used by tests in subsequent tasks.
+static const auto _unused_helper_marker = []() {
+    (void)&addState;
+    (void)&createSequence;
+    (void)&diff;
+    return 0;
+}();
+
+}  // namespace
 
 #define GET_PARAM(name, n)               \
     auto name = std::get<n>(GetParam()); \
