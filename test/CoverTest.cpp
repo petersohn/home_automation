@@ -313,6 +313,12 @@ public:
         return result;
     }
 
+    // Run the simulation for a fixed 30ms window to capture state transitions
+    // after a command. The 30ms window is long enough to cover the cover's
+    // 20ms debounce plus the first value emission, so a single observe() call
+    // captures the full state transition (e.g., "OPENING" then "OPENING/1").
+    CoverSequence observe() { return this->loopFor2(30, 1); }
+
     static bool isDebouncing(unsigned long time, size_t round) {
         return time <= 20 || round == 1;
     }
@@ -378,14 +384,10 @@ const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
 TEST_P(HasPositionSensorFixture, NormalMode) {
     GET_PARAM(hasPositionSensor, 0);
 
-    auto observe = [this]() {
-        return this->loopFor2(this->esp.millis() + 1, 1);
-    };
-
     this->position = 5000;
     this->init(false, this->getPositionSensors(hasPositionSensor));
     this->loop();
-    EXPECT_EQ(observe(), CoverSequence{});
+    EXPECT_EQ(this->observe(), CoverSequence{});
 
     this->open();
     {
@@ -393,7 +395,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         CoverSequence expected;
         addState(expected, "OPENING");
         addState(expected, "OPENING", "1");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -402,7 +404,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         SCOPED_TRACE("stop after open");
         CoverSequence expected;
         addState(expected, "CLOSED", "1");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -412,7 +414,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         CoverSequence expected;
         addState(expected, "CLOSING", "1");
         addState(expected, "CLOSING", "99");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -421,7 +423,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         SCOPED_TRACE("stop after close");
         CoverSequence expected;
         addState(expected, "OPEN", "99");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -431,7 +433,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         CoverSequence expected;
         addState(expected, "OPENING", "99");
         addState(expected, "OPENING", "1");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -441,7 +443,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         CoverSequence expected;
         addState(expected, "CLOSING", "1");
         addState(expected, "CLOSING", "99");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -451,7 +453,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         CoverSequence expected;
         addState(expected, "OPENING", "99");
         addState(expected, "OPENING", "1");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 
@@ -461,7 +463,7 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
         CoverSequence expected;
         addState(expected, "CLOSING", "1");
         addState(expected, "CLOSING", "99");
-        auto s = observe();
+        auto s = this->observe();
         EXPECT_EQ(s, expected) << diff(s, expected);
     }
 }
