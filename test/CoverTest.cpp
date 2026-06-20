@@ -272,7 +272,7 @@ public:
             return CoverObservation{v[0], v[1]};
         };
 
-        std::optional<CoverObservation> last = getCurrent();
+        std::optional<CoverObservation> last;
         CoverSequence result;
         this->delayUntil(beginTime + time, delay, [&]() {
             this->loop();
@@ -469,12 +469,15 @@ TEST_P(BasicFixture, OpenWhileFullyOpen) {
 
     CoverSequence expected;
     if (!hasPositionSensor) {
-        // Without position sensors, position is unknown until the start
-        // timeout (1000ms) fires and the cover reports its end position.
+        // Without position sensors, the cover is at 100% but reports
+        // CLOSED until the start timeout (1000ms) fires.
+        addState(expected, "CLOSED");
+        addState(expected, "OPEN", "100");
+    } else {
+        // With position sensors, the initial state is OPEN/100 and the
+        // open() command is a no-op.
         addState(expected, "OPEN", "100");
     }
-    // With position sensors, the cover is already OPEN/100 and the open()
-    // command is a no-op, so no state transitions are emitted.
     EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
@@ -492,12 +495,15 @@ TEST_P(BasicFixture, CloseWhileFullyClosed) {
 
     CoverSequence expected;
     if (!hasPositionSensor) {
-        // Without position sensors, position is unknown until the start
-        // timeout (1000ms) fires and the cover reports its end position.
+        // Without position sensors, the cover reports CLOSED (no value)
+        // until the start timeout (1000ms) fires.
+        addState(expected, "CLOSED");
+        addState(expected, "CLOSED", "0");
+    } else {
+        // With position sensors, the cover is already CLOSED/0 and the
+        // close() command is a no-op.
         addState(expected, "CLOSED", "0");
     }
-    // With position sensors, the cover is already CLOSED/0 and the close()
-    // command is a no-op, so no state transitions are emitted.
     EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
@@ -560,9 +566,9 @@ TEST_P(BasicFixture, StopWhileOpening) {
 
     // The stop transition is emitted by the manual loop() above (cover
     // reports state at position 1, the only known position since move
-    // time is not yet calibrated). Phase 2 captures the steady state, so
-    // no new transitions are observed.
+    // time is not yet calibrated). Phase 2 captures the steady state.
     CoverSequence expected2;
+    addState(expected2, "CLOSED", "1");
     EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
 
     EXPECT_EQ(this->position, 2000);
@@ -598,9 +604,9 @@ TEST_P(BasicFixture, StopWhileClosing) {
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     // The manual loop() between phases catches the settle transition.
-    // Phase 2 captures the steady state, so no new transitions are
-    // observed.
+    // Phase 2 captures the steady state.
     CoverSequence expected2;
+    addState(expected2, "OPEN", "99");
     EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
 
     EXPECT_EQ(this->position, 8000);
@@ -641,6 +647,9 @@ TEST_P(CalibrateFixture, Calibrate) {
 
     CoverSequence expected;
     if (!hasPositionSensor && start == this->maxPosition) {
+        // Cover is already at top but doesn't know (no sensor), so it
+        // reports CLOSED until the start timeout fires and reports OPEN/100.
+        addState(expected, "CLOSED");
         // Phase 1 skipped (already at top). Phase 2: close full.
         addState(expected, "OPEN", "100");
         addState(expected, "CLOSING", "100");
@@ -996,6 +1005,7 @@ TEST_P(BasicFixture, StopEarlyWhileCalibrating) {
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     CoverSequence expected2;
+    addState(expected2, "CLOSED", "1");
     EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
 }
 
@@ -1020,6 +1030,7 @@ TEST_P(
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     CoverSequence expected2;
+    addState(expected2, "CLOSED", "1");
     EXPECT_EQ(phase2, expected2) << diff(phase2, expected2);
 }
 
@@ -1045,10 +1056,17 @@ TEST_P(CalibrateFixture, CalibrationFailsIfMovementCannotStart) {
 
     CoverSequence expected;
     if (!hasPositionSensor) {
+        addState(expected, "CLOSED");
         addState(expected, "OPEN", "100");
         addState(expected, "CLOSED", "0");
         addState(expected, "OPEN", "100");
         addState(expected, "CLOSED", "0");
+    } else if (start == 0) {
+        addState(expected, "CLOSED", "0");
+    } else if (start == this->maxPosition) {
+        addState(expected, "OPEN", "100");
+    } else {
+        addState(expected, "CLOSED");
     }
     EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
