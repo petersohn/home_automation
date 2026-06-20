@@ -340,85 +340,49 @@ TEST_P(HasPositionSensorFixture, NormalMode) {
     this->position = 5000;
     this->init(false, this->getPositionSensors(hasPositionSensor));
     this->loop();
-    EXPECT_EQ(this->observe(), CoverSequence{});
 
+    CoverSequence full;
     this->open();
-    {
-        SCOPED_TRACE("open at init");
-        CoverSequence expected;
-        addState(expected, "OPENING");
-        addState(expected, "OPENING", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    auto s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->stop();
-    {
-        SCOPED_TRACE("stop after open");
-        CoverSequence expected;
-        addState(expected, "CLOSED", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->close();
-    {
-        SCOPED_TRACE("close after stop");
-        CoverSequence expected;
-        addState(expected, "CLOSING", "1");
-        addState(expected, "CLOSING", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->stop();
-    {
-        SCOPED_TRACE("stop after close");
-        CoverSequence expected;
-        addState(expected, "OPEN", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->open();
-    {
-        SCOPED_TRACE("open after stop");
-        CoverSequence expected;
-        addState(expected, "OPENING", "99");
-        addState(expected, "OPENING", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->close();
-    {
-        SCOPED_TRACE("close after open 1");
-        CoverSequence expected;
-        addState(expected, "CLOSING", "1");
-        addState(expected, "CLOSING", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->open();
-    {
-        SCOPED_TRACE("open after close");
-        CoverSequence expected;
-        addState(expected, "OPENING", "99");
-        addState(expected, "OPENING", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->close();
-    {
-        SCOPED_TRACE("close after open 2");
-        CoverSequence expected;
-        addState(expected, "CLOSING", "1");
-        addState(expected, "CLOSING", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
+
+    CoverSequence expected;
+    addState(expected, "OPENING");
+    addState(expected, "OPENING", "1");
+    addState(expected, "CLOSED", "1");
+    addState(expected, "CLOSING", "1");
+    addState(expected, "CLOSING", "99");
+    addState(expected, "OPEN", "99");
+    addState(expected, "OPENING", "99");
+    addState(expected, "OPENING", "1");
+    addState(expected, "CLOSING", "1");
+    addState(expected, "CLOSING", "99");
+    addState(expected, "OPENING", "99");
+    addState(expected, "OPENING", "1");
+    addState(expected, "CLOSING", "1");
+    addState(expected, "CLOSING", "99");
+    EXPECT_EQ(full, expected) << diff(full, expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -431,85 +395,49 @@ TEST_P(HasPositionSensorFixture, LatchingMode) {
     this->position = 5000;
     this->init(true, this->getPositionSensors(hasPositionSensor));
     this->loop();
-    EXPECT_EQ(this->observe(), CoverSequence{});
 
+    CoverSequence full;
     this->open();
-    {
-        SCOPED_TRACE("open at init");
-        CoverSequence expected;
-        addState(expected, "OPENING");
-        addState(expected, "OPENING", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    auto s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->stop();
-    {
-        SCOPED_TRACE("stop after open");
-        CoverSequence expected;
-        addState(expected, "CLOSED", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->close();
-    {
-        SCOPED_TRACE("close after stop");
-        CoverSequence expected;
-        addState(expected, "CLOSING", "1");
-        addState(expected, "CLOSING", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->stop();
-    {
-        SCOPED_TRACE("stop after close");
-        CoverSequence expected;
-        addState(expected, "OPEN", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->open();
-    {
-        SCOPED_TRACE("open after stop");
-        CoverSequence expected;
-        addState(expected, "OPENING", "99");
-        addState(expected, "OPENING", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->close();
-    {
-        SCOPED_TRACE("close after open 1");
-        CoverSequence expected;
-        addState(expected, "CLOSING", "1");
-        addState(expected, "CLOSING", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->open();
-    {
-        SCOPED_TRACE("open after close");
-        CoverSequence expected;
-        addState(expected, "OPENING", "99");
-        addState(expected, "OPENING", "1");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
-
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
     this->close();
-    {
-        SCOPED_TRACE("close after open 2");
-        CoverSequence expected;
-        addState(expected, "CLOSING", "1");
-        addState(expected, "CLOSING", "99");
-        auto s = this->observe();
-        EXPECT_EQ(s, expected) << diff(s, expected);
-    }
+    s = this->observe();
+    full.insert(full.end(), s.begin(), s.end());
+
+    CoverSequence expected;
+    addState(expected, "OPENING");
+    addState(expected, "OPENING", "1");
+    addState(expected, "CLOSED", "1");
+    addState(expected, "CLOSING", "1");
+    addState(expected, "CLOSING", "99");
+    addState(expected, "OPEN", "99");
+    addState(expected, "OPENING", "99");
+    addState(expected, "OPENING", "1");
+    addState(expected, "CLOSING", "1");
+    addState(expected, "CLOSING", "99");
+    addState(expected, "OPENING", "99");
+    addState(expected, "OPENING", "1");
+    addState(expected, "CLOSING", "1");
+    addState(expected, "CLOSING", "99");
+    EXPECT_EQ(full, expected) << diff(full, expected);
 }
 
 TEST_P(BasicFixture, Open) {
