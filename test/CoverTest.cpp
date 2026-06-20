@@ -336,53 +336,43 @@ const int calibrateStartPositions[] = {0, 5000, 8000, 10000};
 
 TEST_P(HasPositionSensorFixture, NormalMode) {
     GET_PARAM(hasPositionSensor, 0);
+    auto check = [this](const std::string& name, int upValue, int downValue) {
+        SCOPED_TRACE(name);
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
+        this->esp.delay(10);
+        this->loop();
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
+    };
 
     this->position = 5000;
     this->init(false, this->getPositionSensors(hasPositionSensor));
-    this->loop();
+    check("initial state", 0, 0);
 
-    CoverSequence full;
     this->open();
-    auto s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->stop();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->close();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->stop();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->open();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->close();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->open();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->close();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
+    check("open at init", 1, 0);
 
-    CoverSequence expected;
-    addState(expected, "OPENING");
-    addState(expected, "OPENING", "1");
-    addState(expected, "CLOSED", "1");
-    addState(expected, "CLOSING", "1");
-    addState(expected, "CLOSING", "99");
-    addState(expected, "OPEN", "99");
-    addState(expected, "OPENING", "99");
-    addState(expected, "OPENING", "1");
-    addState(expected, "CLOSING", "1");
-    addState(expected, "CLOSING", "99");
-    addState(expected, "OPENING", "99");
-    addState(expected, "OPENING", "1");
-    addState(expected, "CLOSING", "1");
-    addState(expected, "CLOSING", "99");
-    EXPECT_EQ(full, expected) << diff(full, expected);
+    this->stop();
+    check("stop after open", 0, 0);
+
+    this->close();
+    check("close after stop", 0, 1);
+
+    this->stop();
+    check("stop after close", 0, 0);
+
+    this->open();
+    check("open after stop", 1, 0);
+
+    this->close();
+    check("close after open 1", 0, 1);
+
+    this->open();
+    check("open after close", 1, 0);
+
+    this->close();
+    check("close after open 2", 0, 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -391,53 +381,47 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(HasPositionSensorFixture, LatchingMode) {
     GET_PARAM(hasPositionSensor, 0);
+    auto check = [this](
+                     const std::string& name, int upValue, int downValue,
+                     int stopValue) {
+        SCOPED_TRACE(name);
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), upValue);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), downValue);
+        EXPECT_EQ(this->esp.digitalRead(StopOutput), stopValue);
+        this->esp.delay(10);
+        this->loop();
+        EXPECT_EQ(this->esp.digitalRead(UpOutput), 0);
+        EXPECT_EQ(this->esp.digitalRead(DownOutput), 0);
+        EXPECT_EQ(this->esp.digitalRead(StopOutput), 0);
+    };
 
     this->position = 5000;
     this->init(true, this->getPositionSensors(hasPositionSensor));
-    this->loop();
+    check("initial state", 0, 0, 1);
 
-    CoverSequence full;
     this->open();
-    auto s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->stop();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->close();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->stop();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->open();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->close();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->open();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
-    this->close();
-    s = this->observe();
-    full.insert(full.end(), s.begin(), s.end());
+    check("open at init", 1, 0, 0);
 
-    CoverSequence expected;
-    addState(expected, "OPENING");
-    addState(expected, "OPENING", "1");
-    addState(expected, "CLOSED", "1");
-    addState(expected, "CLOSING", "1");
-    addState(expected, "CLOSING", "99");
-    addState(expected, "OPEN", "99");
-    addState(expected, "OPENING", "99");
-    addState(expected, "OPENING", "1");
-    addState(expected, "CLOSING", "1");
-    addState(expected, "CLOSING", "99");
-    addState(expected, "OPENING", "99");
-    addState(expected, "OPENING", "1");
-    addState(expected, "CLOSING", "1");
-    addState(expected, "CLOSING", "99");
-    EXPECT_EQ(full, expected) << diff(full, expected);
+    this->stop();
+    check("stop after open", 0, 0, 1);
+
+    this->close();
+    check("close after stop", 0, 1, 0);
+
+    this->stop();
+    check("stop after close", 0, 0, 1);
+
+    this->open();
+    check("open after stop", 1, 0, 0);
+
+    this->close();
+    check("close after open 1", 0, 1, 0);
+
+    this->open();
+    check("open after close", 1, 0, 0);
+
+    this->close();
+    check("close after open 2", 0, 1, 0);
 }
 
 TEST_P(BasicFixture, Open) {
