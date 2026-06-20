@@ -990,8 +990,11 @@ TEST_P(
     this->setPosition(50);
     auto phase1 = this->loopFor(1000, delay);
 
-    this->stop();
-    this->esp.delay(delay);
+    if (isLatching) {
+        this->movingUp = false;
+    } else {
+        this->esp.digitalWrite(UpOutput, 0);
+    }
     this->loop();
     auto phase2 = this->loopFor(delay * 3, delay);
 
