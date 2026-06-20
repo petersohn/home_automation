@@ -437,15 +437,14 @@ TEST_P(BasicFixture, Open) {
         this->loopFor(11000, delay);  // 10000ms travel + 1000ms buffer
 
     CoverSequence expected;
-    if (hasPositionSensor) {
-        // With position sensor, the cover starts at position 0, so the
-        // first observed state change is already OPENING/1 (no empty-value
-        // OPENING transition is emitted because position is known).
-        addState(expected, "OPENING", "1");
-    } else {
+    // Without position sensor, the cover first emits OPENING with no
+    // position, then OPENING with the interpolated position. With
+    // position sensor, the cover starts at position 0, so the
+    // empty-value OPENING transition is skipped.
+    if (!hasPositionSensor) {
         addState(expected, "OPENING");
-        addState(expected, "OPENING", "1");
     }
+    addState(expected, "OPENING", "1");
     if (hasPositionSensor) {
         addState(expected, "OPENING", "100");
     } else {
@@ -468,16 +467,12 @@ TEST_P(BasicFixture, OpenWhileFullyOpen) {
     auto actual = this->loopFor(1100, delay);
 
     CoverSequence expected;
+    // Without position sensors, the cover is at 100% but reports CLOSED
+    // until the start timeout (1000ms) fires.
     if (!hasPositionSensor) {
-        // Without position sensors, the cover is at 100% but reports
-        // CLOSED until the start timeout (1000ms) fires.
         addState(expected, "CLOSED");
-        addState(expected, "OPEN", "100");
-    } else {
-        // With position sensors, the initial state is OPEN/100 and the
-        // open() command is a no-op.
-        addState(expected, "OPEN", "100");
     }
+    addState(expected, "OPEN", "100");
     EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
@@ -494,16 +489,12 @@ TEST_P(BasicFixture, CloseWhileFullyClosed) {
     auto actual = this->loopFor(1100, delay);
 
     CoverSequence expected;
+    // Without position sensors, the cover reports CLOSED (no value)
+    // until the start timeout (1000ms) fires.
     if (!hasPositionSensor) {
-        // Without position sensors, the cover reports CLOSED (no value)
-        // until the start timeout (1000ms) fires.
         addState(expected, "CLOSED");
-        addState(expected, "CLOSED", "0");
-    } else {
-        // With position sensors, the cover is already CLOSED/0 and the
-        // close() command is a no-op.
-        addState(expected, "CLOSED", "0");
     }
+    addState(expected, "CLOSED", "0");
     EXPECT_EQ(actual, expected) << diff(actual, expected);
 }
 
@@ -794,14 +785,14 @@ TEST_P(BasicFixture, CloseAfterCalibrate) {
     // runs ahead of the test's position. With larger delays, this
     // divergence causes the test's position to reach 0 (or the position
     // sensor to fire) before the cover reports positions 1 and 2.
-    int lastClosing;
+    int lastClosing = (hasPositionSensor && delay == 100)  ? 3
+                      : (hasPositionSensor && delay == 50) ? 2
+                      : (delay == 100)                     ? 2
+                                                           : 1;
+    addSequence(expected, "CLOSING", 59, lastClosing, -1);
     if (hasPositionSensor) {
-        lastClosing = (delay == 100) ? 3 : (delay == 50) ? 2 : 1;
-        addSequence(expected, "CLOSING", 59, lastClosing, -1);
         addState(expected, "CLOSING", "0");
     } else {
-        lastClosing = (delay == 100) ? 2 : 1;
-        addSequence(expected, "CLOSING", 59, lastClosing, -1);
         addState(expected, "CLOSED", "1");
     }
     addState(expected, "CLOSED", "0");
@@ -996,12 +987,10 @@ TEST_P(BasicFixture, StopEarlyWhileCalibrating) {
     auto phase2 = this->loopFor(delay * 3, delay);
 
     CoverSequence expected1;
-    if (hasPositionSensor) {
-        addState(expected1, "OPENING", "1");
-    } else {
+    if (!hasPositionSensor) {
         addState(expected1, "OPENING");
-        addState(expected1, "OPENING", "1");
     }
+    addState(expected1, "OPENING", "1");
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     CoverSequence expected2;
