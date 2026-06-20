@@ -21,7 +21,7 @@ void addState(
     out.emplace_back(state, value);
 }
 
-void createSequence(
+void addSequence(
     CoverSequence& out, const std::string& state, int from, int to,
     int step = 1) {
     if (step == 0) {
@@ -267,9 +267,9 @@ public:
                 return std::nullopt;
             }
             if (v.size() == 1) {
-                return CoverObservation{v.back(), ""};
+                return CoverObservation{v[0], ""};
             }
-            return CoverObservation{v[v.size() - 2], v.back()};
+            return CoverObservation{v[0], v[1]};
         };
 
         std::optional<CoverObservation> last = getCurrent();
@@ -638,16 +638,12 @@ TEST_P(BasicFixture, StopWhileOpening) {
     auto phase2 = this->loopFor(delay * 3, delay);
 
     CoverSequence expected1;
-    if (hasPositionSensor) {
-        // With position sensor, the cover starts at a known position
-        // (0), so the first state already includes the position.
-        addState(expected1, "OPENING", "1");
-    } else {
+    if (!hasPositionSensor) {
         // Without position sensor, the cover first emits OPENING with no
         // position, then OPENING with the interpolated position.
         addState(expected1, "OPENING");
-        addState(expected1, "OPENING", "1");
     }
+    addState(expected1, "OPENING", "1");
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     // The stop transition is emitted by the manual loop() above (cover
@@ -683,12 +679,10 @@ TEST_P(BasicFixture, StopWhileClosing) {
     // Mirror of StopWhileOpening: closing from a known position
     // emits CLOSING with the interpolated value during the 2s
     // window.
-    if (hasPositionSensor) {
-        addState(expected1, "CLOSING", "99");
-    } else {
+    if (!hasPositionSensor) {
         addState(expected1, "CLOSING");
-        addState(expected1, "CLOSING", "99");
     }
+    addState(expected1, "CLOSING", "99");
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     // The manual loop() between phases catches the settle transition.
@@ -748,7 +742,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         addState(expected, "OPEN", "100");
         // Phase 4: close to 40.
         addState(expected, "CLOSING", "100");
-        createSequence(expected, "CLOSING", 99, 40, -1);
+        addSequence(expected, "CLOSING", 99, 40, -1);
         addState(expected, "OPEN", "40");
     } else if (!hasPositionSensor) {
         // Phase 1: open full (start timeout fires; cover reports
@@ -769,7 +763,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         addState(expected, "OPEN", "100");
         // Phase 4: close to 40.
         addState(expected, "CLOSING", "100");
-        createSequence(expected, "CLOSING", 99, 40, -1);
+        addSequence(expected, "CLOSING", 99, 40, -1);
         addState(expected, "OPEN", "40");
     } else if (hasPositionSensor && start == 0) {
         // Phase 1: open full.
@@ -782,7 +776,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         addState(expected, "CLOSED", "0");
         // Phase 4 (no Phase 3, calibration is done): open to 40.
         addState(expected, "OPENING", "0");
-        createSequence(expected, "OPENING", 1, 40);
+        addSequence(expected, "OPENING", 1, 40);
         addState(expected, "OPEN", "40");
     } else if (hasPositionSensor && start == this->maxPosition) {
         // Phase 1 skipped. Phase 2: close full.
@@ -795,7 +789,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         addState(expected, "OPEN", "100");
         // Phase 4: close to 40.
         addState(expected, "CLOSING", "100");
-        createSequence(expected, "CLOSING", 99, 40, -1);
+        addSequence(expected, "CLOSING", 99, 40, -1);
         addState(expected, "OPEN", "40");
     } else {
         // hasPositionSensor && start in (0, maxPosition)
@@ -814,7 +808,7 @@ TEST_P(CalibrateFixture, Calibrate) {
         addState(expected, "OPEN", "100");
         // Phase 4: close to 40.
         addState(expected, "CLOSING", "100");
-        createSequence(expected, "CLOSING", 99, 40, -1);
+        addSequence(expected, "CLOSING", 99, 40, -1);
         addState(expected, "OPEN", "40");
     }
 
@@ -847,9 +841,9 @@ TEST_P(BasicFixture, OpenAfterCalibrate) {
     CoverSequence expected;
     addState(expected, "OPENING", "60");
     if (hasPositionSensor) {
-        createSequence(expected, "OPENING", 61, 100);
+        addSequence(expected, "OPENING", 61, 100);
     } else {
-        createSequence(expected, "OPENING", 61, 99);
+        addSequence(expected, "OPENING", 61, 99);
         addState(expected, "OPEN", "99");
     }
     addState(expected, "OPEN", "100");
@@ -882,11 +876,11 @@ TEST_P(BasicFixture, CloseAfterCalibrate) {
     int lastClosing;
     if (hasPositionSensor) {
         lastClosing = (delay == 100) ? 3 : (delay == 50) ? 2 : 1;
-        createSequence(expected, "CLOSING", 59, lastClosing, -1);
+        addSequence(expected, "CLOSING", 59, lastClosing, -1);
         addState(expected, "CLOSING", "0");
     } else {
         lastClosing = (delay == 100) ? 2 : 1;
-        createSequence(expected, "CLOSING", 59, lastClosing, -1);
+        addSequence(expected, "CLOSING", 59, lastClosing, -1);
         addState(expected, "CLOSED", "1");
     }
     addState(expected, "CLOSED", "0");
@@ -914,7 +908,7 @@ TEST_P(BasicFixture, RestartAfterCalibrate) {
 
     CoverSequence expected1;
     addState(expected1, "CLOSING", "60");
-    createSequence(expected1, "CLOSING", 59, 41, -1);
+    addSequence(expected1, "CLOSING", 59, 41, -1);
     EXPECT_EQ(phase1, expected1) << diff(phase1, expected1);
 
     CoverSequence expected2;
@@ -1014,7 +1008,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
             }
         }
     } else {
-        createSequence(expected3, "OPENING", 1, 100);
+        addSequence(expected3, "OPENING", 1, 100);
     }
     EXPECT_EQ(phase3, expected3) << diff(phase3, expected3);
 
@@ -1044,7 +1038,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
             }
         }
     } else {
-        createSequence(expected4, "CLOSING", 99, 0, -1);
+        addSequence(expected4, "CLOSING", 99, 0, -1);
     }
     EXPECT_EQ(phase4, expected4) << diff(phase4, expected4);
 
