@@ -637,88 +637,69 @@ TEST_P(CalibrateFixture, Calibrate) {
     auto actual = this->loopFor(41000, delay);
 
     CoverSequence expected;
-    if (!hasPositionSensor && start == this->maxPosition) {
-        // Cover is already at top but doesn't know (no sensor), so it
-        // reports CLOSED until the start timeout fires and reports OPEN/100.
-        addState(expected, "CLOSED");
-        // Phase 1 skipped (already at top). Phase 2: close full.
-        addState(expected, "OPEN", "100");
-        addState(expected, "CLOSING", "100");
-        addState(expected, "CLOSING", "99");
-        addState(expected, "OPEN", "99");
-        addState(expected, "CLOSED", "0");
-        // Phase 3: open full.
-        addState(expected, "OPENING", "0");
-        addState(expected, "OPENING", "1");
-        addState(expected, "CLOSED", "1");
-        addState(expected, "OPEN", "100");
-        // Phase 4: close to 40.
-        addState(expected, "CLOSING", "100");
-        addSequence(expected, "CLOSING", 99, 40, -1);
-        addState(expected, "OPEN", "40");
-    } else if (!hasPositionSensor) {
-        // Phase 1: open full (start timeout fires; cover reports
-        // OPEN,100 after stop at the end of up movement).
-        addState(expected, "OPENING");
-        addState(expected, "OPENING", "1");
-        addState(expected, "CLOSED", "1");
-        addState(expected, "OPEN", "100");
-        // Phase 2: close full.
-        addState(expected, "CLOSING", "100");
-        addState(expected, "CLOSING", "99");
-        addState(expected, "OPEN", "99");
-        addState(expected, "CLOSED", "0");
-        // Phase 3: open full.
-        addState(expected, "OPENING", "0");
-        addState(expected, "OPENING", "1");
-        addState(expected, "CLOSED", "1");
-        addState(expected, "OPEN", "100");
-        // Phase 4: close to 40.
-        addState(expected, "CLOSING", "100");
-        addSequence(expected, "CLOSING", 99, 40, -1);
-        addState(expected, "OPEN", "40");
-    } else if (hasPositionSensor && start == 0) {
-        // Phase 1: open full.
-        addState(expected, "OPENING", "1");
-        addState(expected, "OPENING", "100");
-        addState(expected, "OPEN", "100");
-        // Phase 2: close full.
+    if (hasPositionSensor) {
+        // Phase 1 (open full). Skipped if already at the top.
+        if (start != this->maxPosition) {
+            if (start == 0) {
+                // Sensor at 0% reports position 0, so the cover knows
+                // its position from the start (no state-only OPENING).
+                addState(expected, "OPENING", "1");
+                addState(expected, "OPENING", "100");
+            } else {
+                // Mid position; no 0% sensor active so cover starts
+                // with a state-only OPENING.
+                addState(expected, "OPENING");
+                addState(expected, "OPENING", "1");
+                addState(expected, "OPENING", "100");
+            }
+            addState(expected, "OPEN", "100");
+        }
+        // Phase 2 (close full).
         addState(expected, "CLOSING", "99");
         addState(expected, "CLOSING", "0");
         addState(expected, "CLOSED", "0");
-        // Phase 4 (no Phase 3, calibration is done): open to 40.
-        addState(expected, "OPENING", "0");
-        addSequence(expected, "OPENING", 1, 40);
-        addState(expected, "OPEN", "40");
-    } else if (hasPositionSensor && start == this->maxPosition) {
-        // Phase 1 skipped. Phase 2: close full.
-        addState(expected, "CLOSING", "99");
-        addState(expected, "CLOSING", "0");
-        addState(expected, "CLOSED", "0");
-        // Phase 3: open full.
-        addState(expected, "OPENING", "1");
-        addState(expected, "OPENING", "100");
-        addState(expected, "OPEN", "100");
-        // Phase 4: close to 40.
-        addState(expected, "CLOSING", "100");
-        addSequence(expected, "CLOSING", 99, 40, -1);
+        // Phase 3 (open full). Skipped when start==0: open time is
+        // already known from Phase 2's close-time + the existing 0%
+        // sensor.
+        if (start != 0) {
+            addState(expected, "OPENING", "1");
+            addState(expected, "OPENING", "100");
+            addState(expected, "OPEN", "100");
+        }
+        // Phase 4 (to position 40).
+        if (start == 0) {
+            // Open from 0.
+            addState(expected, "OPENING", "0");
+            addSequence(expected, "OPENING", 1, 40);
+        } else {
+            // Close from 100.
+            addState(expected, "CLOSING", "100");
+            addSequence(expected, "CLOSING", 99, 40, -1);
+        }
         addState(expected, "OPEN", "40");
     } else {
-        // hasPositionSensor && start in (0, maxPosition)
-        // Phase 1: open full.
-        addState(expected, "OPENING");
-        addState(expected, "OPENING", "1");
-        addState(expected, "OPENING", "100");
+        // Phase 1 (open full). Skipped if start==maxPosition; the cover
+        // is already at the top but doesn't know (no sensor), so it
+        // reports CLOSED until the start timeout fires.
+        if (start == this->maxPosition) {
+            addState(expected, "CLOSED");
+        } else {
+            addState(expected, "OPENING");
+            addState(expected, "OPENING", "1");
+            addState(expected, "CLOSED", "1");
+        }
         addState(expected, "OPEN", "100");
-        // Phase 2: close full.
+        // Phase 2 (close full).
+        addState(expected, "CLOSING", "100");
         addState(expected, "CLOSING", "99");
-        addState(expected, "CLOSING", "0");
+        addState(expected, "OPEN", "99");
         addState(expected, "CLOSED", "0");
-        // Phase 3: open full.
+        // Phase 3 (open full).
+        addState(expected, "OPENING", "0");
         addState(expected, "OPENING", "1");
-        addState(expected, "OPENING", "100");
+        addState(expected, "CLOSED", "1");
         addState(expected, "OPEN", "100");
-        // Phase 4: close to 40.
+        // Phase 4 (close to 40).
         addState(expected, "CLOSING", "100");
         addSequence(expected, "CLOSING", 99, 40, -1);
         addState(expected, "OPEN", "40");
