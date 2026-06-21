@@ -711,4 +711,71 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
     this->expectLogContains("End position reached.");
 }
 
+// ============= update() — missed position sensors =============
+
+TEST_F(CoverMovementTest, MissedMiddleSensorDoesNotSaveMoveTime) {
+    // Three position sensors: begin (0), middle (50), end (100).
+    // Two move-time slots are allocated: id 0 for 0->50, id 1 for 50->100.
+    this->state.positionSensors = {
+        PositionSensor{0, 10, false},
+        PositionSensor{50, 11, false},
+        PositionSensor{100, 12, false},
+    };
+    this->state.position = 0;
+    CoverStopImpl stopper(this->esp, this->state, this->stopPin, false);
+    CoverMovementImpl movement(
+        this->state, stopper, this->inputPin, this->outputPin,
+        this->endPositionUp, this->upDirection, "Up");
+
+    // Both move-time slots start unset.
+    EXPECT_EQ(this->rtc.get(0), 0u);
+    EXPECT_EQ(this->rtc.get(1), 0u);
+
+    // Cover starts at the beginning sensor (sensor 0 active).
+    this->state.activePositionSensor = 0;
+    this->state.previouslyActivePositionSensor = -1;
+
+    this->advanceMs(1);
+    movement.start();
+
+    // First update: cover sits at sensor 0, motor not yet running.
+    movement.update();
+
+    // Sensor 0 deactivates as the cover starts moving up.
+    this->state.activePositionSensor = -1;
+    this->state.previouslyActivePositionSensor = 0;
+
+    this->esp.digitalWrite(this->inputPin, 1);
+
+    // handleLeavingSensor sets up the 0->50 segment: moveTimeIndex=0,
+    // moveStartTime, moveStartPosition=0, beginPosition=0, endPosition=50.
+    this->advanceMs(10);
+    movement.update();
+
+    // Cover keeps moving for a while; the middle sensor (50) is never
+    // triggered. Move time for segment 0->50 must still be unset.
+    this->advanceMs(200);
+    movement.update();
+    EXPECT_EQ(this->rtc.get(0), 0u);
+
+    // The end sensor (100) is activated directly, skipping the middle.
+    // CoverUpdate would set activePositionSensor=2 and
+    // previouslyActivePositionSensor=-1 (transition from no-sensor).
+    this->state.activePositionSensor = 2;
+    this->state.previouslyActivePositionSensor = -1;
+
+    this->advanceMs(10);
+    this->debug.str("");
+    movement.update();
+
+    // The middle sensor was missed, so the 0->50 segment was never
+    // actually traversed. The move time for that segment must NOT be
+    // saved to RTC.
+    EXPECT_EQ(this->rtc.get(0), 0u);
+    EXPECT_EQ(this->rtc.get(1), 0u);
+    EXPECT_EQ(this->debug.str().find("Move time:"), std::string::npos)
+        << "Expected no 'Move time:' log entry when middle sensor is missed."
+        << "\nActual log: " << this->debug.str();
+}
+
 }  // namespace

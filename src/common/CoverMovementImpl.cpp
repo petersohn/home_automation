@@ -156,7 +156,11 @@ void CoverMovementImpl::resetLatchingStartIfMoving(bool moving) {
 
 void CoverMovementImpl::updateWithActivePositionSensor() {
     if (this->state.previouslyActivePositionSensor == noPositionSensor) {
-        this->calculateMoveTimeIfNeeded();
+        const int expectedNextSensor =
+            this->direction > 0 ? this->moveTimeIndex + 1 : this->moveTimeIndex;
+        if (this->state.activePositionSensor == expectedNextSensor) {
+            this->calculateMoveTimeIfNeeded();
+        }
     }
     this->moveStartTime = 0;
 }
