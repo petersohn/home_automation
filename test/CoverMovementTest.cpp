@@ -277,8 +277,8 @@ TEST_F(CoverMovementTest, UpdateMovementStartsAfterDebounce) {
     pos = movement.update();
     EXPECT_EQ(pos, 0);
 
-    // Advance past debounce threshold (need >= 20ms from moveStartTime)
-    this->advanceMs(20);
+    // Advance past debounce threshold (need >= 50ms from moveStartTime)
+    this->advanceMs(50);
     this->debug.str("");
     pos = movement.update();
     // After debounce, moveStartPosition is set and we get beginPosition +
@@ -304,7 +304,7 @@ TEST_F(CoverMovementTest, UpdateMovementInterpolatesPosition) {
     this->esp.digitalWrite(this->inputPin, 1);
 
     // Advance past debounce and let interpolation run
-    this->advanceMs(20);
+    this->advanceMs(50);
     movement.update();  // triggers debounce, sets moveStartPosition=0
 
     // Advance 500ms — with 1000ms total travel time, we expect position ~50
@@ -332,7 +332,7 @@ TEST_F(CoverMovementTest, UpdateMovementEndReached) {
     this->esp.digitalWrite(this->inputPin, 1);
 
     // Let it run past debounce and get some interpolation going
-    this->advanceMs(20);
+    this->advanceMs(50);
     movement.update();
     this->advanceMs(500);
     movement.update();  // interpolated position ~50
@@ -340,7 +340,7 @@ TEST_F(CoverMovementTest, UpdateMovementEndReached) {
     // Motor reaches end stop and stops
     this->esp.digitalWrite(this->inputPin, 0);
     movement.update();  // records stopStartTime, enters stop debounce
-    this->advanceMs(20);
+    this->advanceMs(50);
 
     this->debug.str("");
     int pos = movement.update();
@@ -377,7 +377,7 @@ TEST_F(CoverMovementTest, UpdateDownDirection) {
     EXPECT_EQ(pos, 100);
 
     // Advance past debounce
-    this->advanceMs(20);
+    this->advanceMs(50);
     this->debug.str("");
     pos = movement.update();
     // beginPosition = 100 - 0 = 100, direction = -1
@@ -388,7 +388,7 @@ TEST_F(CoverMovementTest, UpdateDownDirection) {
     // Motor stops
     this->esp.digitalWrite(this->inputPin, 0);
     movement.update();  // records stopStartTime, enters stop debounce
-    this->advanceMs(20);
+    this->advanceMs(50);
     this->debug.str("");
     pos = movement.update();
 
@@ -412,7 +412,7 @@ TEST_F(CoverMovementTest, UpdateDownDirectionInterpolates) {
     this->esp.digitalWrite(this->inputPin, 1);
 
     // Advance past debounce
-    this->advanceMs(20);
+    this->advanceMs(50);
     movement.update();  // triggers debounce, moveStartPosition =
                         // context.position = 100
 
@@ -572,7 +572,7 @@ TEST_F(CoverMovementTest, CalculateMoveTimeSavesToRtc) {
     movement.update();
 
     // Advance past debounce: moveStartPosition gets set
-    this->advanceMs(20);
+    this->advanceMs(50);
     movement.update();
     // Now isReallyMoving() = true, moveStartPosition = 0, moveStartTime = 6
 
@@ -582,13 +582,13 @@ TEST_F(CoverMovementTest, CalculateMoveTimeSavesToRtc) {
     // Motor stops at end
     this->esp.digitalWrite(this->inputPin, 0);
     movement.update();  // records stopStartTime, enters stop debounce
-    this->advanceMs(20);
+    this->advanceMs(50);
     this->debug.str("");
     movement.update();
 
     // calculateMoveTimeIfNeeded should have called rtc.set() for id 0
     // The move time should now be non-zero (~300ms, not ~325ms —
-    // calculateMoveTimeIfNeeded uses stopStartTime, so the 20ms stop
+    // calculateMoveTimeIfNeeded uses stopStartTime, so the 50ms stop
     // debounce is not included in the measurement)
     auto moveTime = this->rtc.get(0);
     EXPECT_GT(moveTime, 0u);
@@ -613,24 +613,24 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounce) {
     // Get the cover "really moving" past the start debounce
     this->advanceMs(5);
     movement.update();  // first update sets moveStartTime
-    this->advanceMs(20);
+    this->advanceMs(50);
     movement.update();  // past start debounce, moveStartPosition = 0
 
     // Motor stops
     this->esp.digitalWrite(this->inputPin, 0);
 
     // Immediately after stop: still in stop debounce, position interpolated
-    // as if still moving (now = moveStartTime + 26, position advances)
+    // as if still moving (now = moveStartTime + 50, position advances)
     this->debug.str("");
     int pos = movement.update();
     // Stop debounce: position is interpolated as if still moving.
-    // moveStartTime = 6, now = 26, moveTime = 1000
-    // a = 100 * 20 = 2000, d = 2000/1000 = 2, newPosition = 0 + 2 = 2
-    EXPECT_EQ(pos, 2);
+    // moveStartTime = 6, now = 56, moveTime = 1000
+    // a = 100 * 50 = 5000, d = 5000/1000 = 5, newPosition = 0 + 5 = 5
+    EXPECT_EQ(pos, 5);
     EXPECT_TRUE(movement.isStarted());  // not stopped yet
 
     // Advance past debounce and update: end of movement fires
-    this->advanceMs(20);
+    this->advanceMs(50);
     this->debug.str("");
     pos = movement.update();
     EXPECT_EQ(pos, this->endPositionUp);
@@ -661,13 +661,13 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
     this->advanceMs(500);  // time = 526
     this->debug.str("");
     int pos = movement.update();
-    // moveStartTime = 26, debounce fires (526-26 = 500 >= 20),
+    // moveStartTime = 26, debounce fires (526-26 = 500 >= 50),
     // moveStartPosition = 0, then interpolate:
     // position = 0 + 100 * 500 / 1000 = 50
     EXPECT_EQ(pos, 50);
     EXPECT_TRUE(movement.isStarted());
 
-    // Brief stop blip (10ms < 20ms debounce). During the debounce window,
+    // Brief stop blip (10ms < 50ms debounce). During the debounce window,
     // interpolation should continue as if the cover were still moving.
     this->esp.digitalWrite(this->inputPin, 0);
     this->advanceMs(10);  // time = 536
@@ -701,7 +701,7 @@ TEST_F(CoverMovementTest, UpdateMovementStopDebounceBounce) {
     // past debounce.
     this->esp.digitalWrite(this->inputPin, 0);
     movement.update();    // records stopStartTime = 741, enters stop debounce
-    this->advanceMs(20);  // time = 761
+    this->advanceMs(50);  // time = 791
     this->debug.str("");
     pos = movement.update();
 

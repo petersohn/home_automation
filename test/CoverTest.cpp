@@ -285,11 +285,11 @@ public:
         return result;
     }
 
-    // Run the simulation for a fixed 30ms window to capture state transitions
-    // after a command. The 30ms window is long enough to cover the cover's
-    // 20ms debounce plus the first value emission, so a single observe() call
+    // Run the simulation for a fixed 60ms window to capture state transitions
+    // after a command. The 60ms window is long enough to cover the cover's
+    // 50ms debounce plus the first value emission, so a single observe() call
     // captures the full state transition (e.g., "OPENING" then "OPENING/1").
-    CoverSequence observe() { return this->loopFor(30, 1); }
+    CoverSequence observe() { return this->loopFor(60, 1); }
 
     void calibrateToPosition(int position, unsigned long delay) {
         this->setPosition(position);
@@ -544,7 +544,7 @@ TEST_P(BasicFixture, StopWhileOpening) {
     this->stop();
     this->esp.delay(delay);
     this->loop();
-    auto phase2 = this->loopFor(delay * 3, delay);
+    auto phase2 = this->loopFor(delay * 7, delay);
 
     CoverSequence expected1;
     if (!hasPositionSensor) {
@@ -582,7 +582,7 @@ TEST_P(BasicFixture, StopWhileClosing) {
     this->stop();
     this->esp.delay(delay);
     this->loop();
-    auto phase2 = this->loopFor(delay * 3, delay);
+    auto phase2 = this->loopFor(delay * 7, delay);
 
     CoverSequence expected1;
     // Mirror of StopWhileOpening: closing from a known position
@@ -797,7 +797,7 @@ TEST_P(BasicFixture, RestartAfterCalibrate) {
     this->setPosition(40);
 
     auto phase1 = this->loopFor(2000, delay);
-    auto phase2 = this->loopFor(delay * 3, delay);
+    auto phase2 = this->loopFor(delay * 7, delay);
 
     CoverSequence expected1;
     addState(expected1, "CLOSING", "60");
@@ -840,7 +840,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     this->open();
     auto phase1 = this->loopFor(10000, delay);
-    auto phase1Settle = this->loopFor(delay + 20 + delay, delay);
+    auto phase1Settle = this->loopFor(delay + 50 + delay, delay);
 
     // Uncalibrated: the cover can only report the values of the three
     // position sensors (0, 50, 100) plus the value just past each sensor
@@ -864,7 +864,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     this->close();
     auto phase2 = this->loopFor(10000, delay);
-    auto phase2Settle = this->loopFor(delay + 20 + delay, delay);
+    auto phase2Settle = this->loopFor(delay + 50 + delay, delay);
 
     CoverSequence expected2;
     addState(expected2, "CLOSING", "100");
@@ -885,7 +885,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     this->open();
     auto phase3 = this->loopFor(10000, delay);
-    auto phase3Settle = this->loopFor(delay + 20 + delay, delay);
+    auto phase3Settle = this->loopFor(delay + 50 + delay, delay);
 
     // Calibrated: positions are interpolated linearly between sensors. With
     // delay=100, the cover advances by ~1.11 per tick, so every 10th value
@@ -916,7 +916,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     this->close();
     auto phase4 = this->loopFor(10000, delay);
-    auto phase4Settle = this->loopFor(delay + 20 + delay, delay);
+    auto phase4Settle = this->loopFor(delay + 50 + delay, delay);
 
     // Mirror of phase 3: with delay=100, the skipped values are
     // 91, 81, 71, ..., 11, 1 (the cover's integer position jumps by 2
@@ -965,7 +965,7 @@ TEST_P(BasicFixture, StopEarlyWhileCalibrating) {
     this->stop();
     this->esp.delay(delay);
     this->loop();
-    auto phase2 = this->loopFor(delay * 3, delay);
+    auto phase2 = this->loopFor(delay * 7, delay);
 
     CoverSequence expected1;
     if (!hasPositionSensor) {
@@ -996,7 +996,7 @@ TEST_P(
         this->esp.digitalWrite(UpOutput, 0);
     }
     this->loop();
-    auto phase2 = this->loopFor(delay * 3, delay);
+    auto phase2 = this->loopFor(delay * 7, delay);
 
     CoverSequence expected1;
     addState(expected1, "OPENING", "1");

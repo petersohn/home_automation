@@ -4,7 +4,7 @@
 #include "CoverHelper.hpp"
 
 namespace {
-constexpr int debounceTime = 20;
+constexpr int debounceTime = 50;
 constexpr int startTimeout = 1000;
 constexpr int noPositionSensor = -1;
 constexpr int noPosition = -1;
