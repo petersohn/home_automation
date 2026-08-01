@@ -56,9 +56,9 @@ is GPIO 1 and URXD is GPIO 3.
 
 ## Development
 
-*   [ESP8266 toolchain for Eclipse](https://github.com/esp8266/Arduino/blob/master/doc/eclipse/eclipse.rst).
-*   [ESP8266 toolchain for Arduino IDE](https://github.com/esp8266/Arduino/)
-    with [SPIFFS support](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
+* [Arduino CLI](https://docs.arduino.cc/arduino-cli/)
+* [ESP8266 toolchain for Arduino IDE](https://github.com/esp8266/Arduino/)
+* [SPIFFS support](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
 
 ## Building and flashing with `flash.py`
 
@@ -85,18 +85,18 @@ Commands:
 
 ```
 python3 flash.py compile                                   # build only
-python3 flash.py upload                                     # build + upload firmware
-python3 flash.py upload-fs data example_config              # build SPIFFS image, upload it
-python3 flash.py inspect-fs data example_config            # build image, unpack it, show contents
+python3 flash.py upload                                    # build + upload firmware
+python3 flash.py upload-fs data example_config             # build SPIFFS image, upload it
+python3 flash.py inspect-fs data example_config            # verify image: build, unpack, show contents
 python3 flash.py inspect-fs -o /tmp/fsout data             # keep image + unpacked tree for inspection
-python3 flash.py -n upload-fs data                          # dry run: print commands only
+python3 flash.py -n upload-fs data                         # dry run: print commands only
 python3 flash.py -c custom.toml -s /path/to/sketch upload
 ```
 
 `upload-fs` resolves the SPIFFS partition offset/size from the board options
 (via `arduino-cli board details --show-properties`), so it picks the correct
 flash address automatically. The filesystem is built with the `mkspiffs`
-bundled with the ESP8266 core (matching the firmware's SPIFFS library).
+bundled with the ESP8266 core.
 
 # Configuration
 
@@ -110,8 +110,7 @@ Examples for these config files are found in the
 [example_config](example_config/) directory.
 
 To upload these files to the device, use `flash.py upload-fs` (see
-[Building and flashing](#building-and-flashing-with-flashpy) above) or the
-[Arduino IDE SPIFFS upload instructions](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
+[Building and flashing](#building-and-flashing-with-flashpy) above).
 
 The `device_config.json` consists of the following fields:
 
