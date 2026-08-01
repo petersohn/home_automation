@@ -386,6 +386,8 @@ private:
                     !getRequiredValue(sensorConfig, "pin", sensor.pin)) {
                     continue;
                 }
+                sensor.invert =
+                    getJsonWithDefault(sensorConfig["invert"], false);
                 positionSensors.push_back(sensor);
             }
 
@@ -403,7 +405,8 @@ private:
                              getJsonWithDefault(data["invertOutput"], false),
                              getJsonWithDefault(data["closedPosition"], 0),
                              std::move(positionSensors),
-                             getJsonWithDefault(data["invertOutput"], false))
+                              getJsonWithDefault(
+                                  data["invertPositionSensors"], false))
                        : nullptr;
             //        } else if (type == "hlw8012") {
             //            uint8_t powerPin = 0;
