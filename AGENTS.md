@@ -76,6 +76,7 @@ Note that this is not formatted in the style of a `compile_commands.json`, but i
 ## Coding considerations
 
 - The code is built to an embedded device, efficiency and small code size are important. But also keep the code readable and secure.
+- When adding or changing a config option (field parsed from `device_config.json` or `global_config.json`), update `README.md` in the same change. The README is the user-facing reference for all config fields; it must stay in sync with `src/config.cpp`.
 
 ## Device specific considerations
 
