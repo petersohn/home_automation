@@ -58,7 +58,45 @@ is GPIO 1 and URXD is GPIO 3.
 
 *   [ESP8266 toolchain for Eclipse](https://github.com/esp8266/Arduino/blob/master/doc/eclipse/eclipse.rst).
 *   [ESP8266 toolchain for Arduino IDE](https://github.com/esp8266/Arduino/)
-  with [SPIFFS support](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
+    with [SPIFFS support](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
+
+## Building and flashing with `flash.py`
+
+The `flash.py` helper script wraps `arduino-cli` to build the firmware, upload
+it, and upload a SPIFFS filesystem image from a single config file. It requires
+`arduino-cli` and the ESP8266 core (`esp8266:esp8266`) to be installed.
+
+Settings live in `flash.toml` (path configurable with `-c`):
+
+```toml
+[build]
+fqbn = "esp8266:esp8266:generic"
+port = "/dev/ttyUSB0"
+
+[build.board_options]
+baud = "921600"
+# eesz = "4M2M"  # override default 1M64 for a bigger filesystem
+
+[upload]
+verify = true
+```
+
+Commands:
+
+```
+python3 flash.py compile                                   # build only
+python3 flash.py upload                                     # build + upload firmware
+python3 flash.py upload-fs data example_config              # build SPIFFS image, upload it
+python3 flash.py inspect-fs data example_config            # build image, unpack it, show contents
+python3 flash.py inspect-fs -o /tmp/fsout data             # keep image + unpacked tree for inspection
+python3 flash.py -n upload-fs data                          # dry run: print commands only
+python3 flash.py -c custom.toml -s /path/to/sketch upload
+```
+
+`upload-fs` resolves the SPIFFS partition offset/size from the board options
+(via `arduino-cli board details --show-properties`), so it picks the correct
+flash address automatically. The filesystem is built with the `mkspiffs`
+bundled with the ESP8266 core (matching the firmware's SPIFFS library).
 
 # Configuration
 
@@ -71,10 +109,9 @@ ESP:
 Examples for these config files are found in the
 [example_config](example_config/) directory.
 
-To upload these files to the device, create an empty sketch with the Arduino
-IDE and set it up with the parameters of your ESP device. Follow [these
-instructions](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system)
-to upload the file to the device.
+To upload these files to the device, use `flash.py upload-fs` (see
+[Building and flashing](#building-and-flashing-with-flashpy) above) or the
+[Arduino IDE SPIFFS upload instructions](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html#uploading-files-to-file-system).
 
 The `device_config.json` consists of the following fields:
 

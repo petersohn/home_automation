@@ -27,6 +27,17 @@ To build the project, run this in the project root:
 arduino-cli compile --fqbn esp8266:esp8266:generic --verify
 ```
 
+To build and upload firmware / a SPIFFS filesystem image to the device, use the
+`flash.py` helper (settings in `flash.toml`):
+```
+python3 flash.py compile                       # build only
+python3 flash.py upload                        # build + upload firmware
+python3 flash.py upload-fs data example_config  # build SPIFFS image, upload it
+python3 flash.py inspect-fs data example_config # build image, unpack + show contents
+```
+`upload-fs` resolves the SPIFFS offset from the board options automatically. Use
+`-n` for dry runs and `-c <toml>` to use a different config file.
+
 To build the test, run this from `build/`:
 ```
 cmake
