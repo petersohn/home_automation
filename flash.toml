@@ -1,0 +1,24 @@
+[build]
+fqbn = "esp8266:esp8266:generic"
+port = "/dev/ttyUSB0"
+
+[build.board_options]
+baud = "921600"
+
+[build.build_properties]
+# build.extra_flags = "-DDEBUG"
+
+[upload]
+verify = true
+
+[upload.board_options]
+
+[upload.build_properties]
+# upload.speed = "921600"
+
+[upload_fs]
+# override board_options / build_properties for FS upload.
+# leave unset to reuse [upload]'s.
+
+[mkspiffs]
+# path = "/usr/local/bin/mkspiffs"  # auto-detected if unset
