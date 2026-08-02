@@ -275,6 +275,9 @@ std::unique_ptr<Interface> ConfigFactory::buildInterface(
         } else if constexpr (std::is_same_v<T, StatusConfig>) {
             return this->buildStatus(c);
         } else {
+            static_assert(
+                !std::is_same_v<T, T>,
+                "unhandled InterfaceConfigVariant type");
             return nullptr;
         }
     }, config);
@@ -382,8 +385,12 @@ DeviceConfig ConfigFactory::buildDeviceConfig(
             if constexpr (std::is_same_v<T, Mcp3008Config>) {
                 return std::make_shared<Mcp3008AnalogInput>(
                     cfg.sck, cfg.mosi, cfg.miso, cfg.cs);
+            } else {
+                static_assert(
+                    !std::is_same_v<T, T>,
+                    "unhandled AnalogInputConfig variant type");
+                return nullptr;
             }
-            return nullptr;
         }, inputConfig.input);
         if (analogInput) {
             this->analogInputs[std::move(name)] = std::move(analogInput);
