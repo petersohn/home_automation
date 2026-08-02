@@ -44,28 +44,31 @@ std::string diff(const CoverSequence& actual, const CoverSequence& expected) {
         return "";
     }
     std::ostringstream os;
-    auto a = actual.begin();
-    auto e = expected.begin();
-    size_t i = 0;
-    for (; a != actual.end() && e != expected.end(); ++a, ++e, ++i) {
-        if (*a != *e) {
-            os << "  [" << i << "] actual=(" << a->first << ","
-               << (a->second.empty() ? "_" : a->second) << ") expected=("
-               << e->first << "," << (e->second.empty() ? "_" : e->second)
-               << ")\n";
+    const auto fmt = [](const std::string& s) -> const std::string& {
+        static const std::string underscore = "_";
+        return s.empty() ? underscore : s;
+    };
+    const size_t n = std::max(actual.size(), expected.size());
+    for (size_t i = 0; i < n; ++i) {
+        const bool hasA = i < actual.size();
+        const bool hasE = i < expected.size();
+        if (hasA && hasE && actual[i] == expected[i]) {
+            continue;
         }
-    }
-    while (a != actual.end()) {
-        os << "  [" << i << "] actual=(" << a->first << ","
-           << (a->second.empty() ? "_" : a->second) << ") (extra)\n";
-        ++a;
-        ++i;
-    }
-    while (e != expected.end()) {
-        os << "  [" << i << "] expected=(" << e->first << ","
-           << (e->second.empty() ? "_" : e->second) << ") (missing)\n";
-        ++e;
-        ++i;
+        if (hasA) {
+            os << "  [" << i << "] actual=(" << actual[i].first << ","
+               << fmt(actual[i].second) << ")";
+        }
+        if (hasE) {
+            os << "  [" << i << "] expected=(" << expected[i].first << ","
+               << fmt(expected[i].second) << ")";
+        }
+        if (hasA && !hasE) {
+            os << " (extra)";
+        } else if (!hasA && hasE) {
+            os << " (missing)";
+        }
+        os << "\n";
     }
     return os.str();
 }
