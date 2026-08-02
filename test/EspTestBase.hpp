@@ -3,12 +3,12 @@
 
 #include <gtest/gtest.h>
 
-#include <ostream>
+#include <functional>
 
+#include "DebugTestBase.hpp"
 #include "FakeEspApi.hpp"
 #include "FakeRtc.hpp"
 #include "FakeWifi.hpp"
-#include "TestStream.hpp"
 
 #define ASSERT_NO_FAILURE()                  \
     do {                                     \
@@ -19,10 +19,8 @@
 
 class LogExpectation;
 
-class EspTestBase : public ::testing::Test {
+class EspTestBase : public DebugTestBase {
 public:
-    TestStreambuf debugStreambuf;
-    std::ostream debug;
     FakeEspApi esp;
     FakeRtc rtc;
     FakeWifi wifi;

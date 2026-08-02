@@ -2,7 +2,7 @@
 
 #include "LogExpectation.hpp"
 
-EspTestBase::EspTestBase() : debug(&this->debugStreambuf) {
+EspTestBase::EspTestBase() {
     this->debugStreambuf.esp = &this->esp;
 }
 
