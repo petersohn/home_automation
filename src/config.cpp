@@ -276,8 +276,7 @@ std::unique_ptr<Interface> ConfigFactory::buildInterface(
             return this->buildStatus(c);
         } else {
             static_assert(
-                !std::is_same_v<T, T>,
-                "unhandled InterfaceConfigVariant type");
+                !std::is_same_v<T, T>, "unhandled InterfaceConfigVariant type");
             return nullptr;
         }
     }, config);
@@ -312,54 +311,57 @@ void ConfigFactory::buildActions(
             continue;
         }
 
-        if (std::holds_alternative<PublishActionConfig>(entry.config)) {
-            const auto& cfg = std::get<PublishActionConfig>(entry.config);
+        std::visit([this, defaultInterface, &interfaces](const auto& cfg) {
+            using T = std::decay_t<decltype(cfg)>;
+            if constexpr (std::is_same_v<T, PublishActionConfig>) {
+                DynamicJsonBuffer buffer{512};
+                auto& root = buffer.parseObject(cfg.operationJson);
+                auto [operation, usedInterfaces] = this->parseOperation(
+                    interfaces, defaultInterface, root, "payload", "template");
 
-            DynamicJsonBuffer buffer{512};
-            auto& root = buffer.parseObject(cfg.operationJson);
-            auto [operation, usedInterfaces] = this->parseOperation(
-                interfaces, defaultInterface, root, "payload", "template");
+                auto action = std::make_shared<PublishAction>(
+                    this->debug, this->esp, this->mqttClient, cfg.topic,
+                    std::move(operation), cfg.retain, cfg.minimumSendInterval,
+                    cfg.sendDiff);
 
-            auto action = std::make_shared<PublishAction>(
-                this->debug, this->esp, this->mqttClient, cfg.topic,
-                std::move(operation), cfg.retain, cfg.minimumSendInterval,
-                cfg.sendDiff);
+                defaultInterface->hasExternalAction = true;
+                for (auto* iface : usedInterfaces) {
+                    iface->hasExternalAction = true;
+                }
+                usedInterfaces.insert(defaultInterface);
+                for (auto* iface : usedInterfaces) {
+                    iface->actions.push_back(action);
+                }
+            } else if constexpr (std::is_same_v<T, CommandActionConfig>) {
+                auto target = findInterface(interfaces, cfg.target);
+                if (!target) {
+                    this->debug << "Interface not found: " << cfg.target
+                                << std::endl;
+                    return;
+                }
 
-            defaultInterface->hasExternalAction = true;
-            for (auto* iface : usedInterfaces) {
-                iface->hasExternalAction = true;
+                DynamicJsonBuffer buffer{512};
+                auto& root = buffer.parseObject(cfg.operationJson);
+                auto [operation, usedInterfaces] = this->parseOperation(
+                    interfaces, defaultInterface, root, "command", "template");
+
+                auto action = std::make_shared<CommandAction>(
+                    *target->interface, std::move(operation));
+
+                defaultInterface->hasInternalAction = true;
+                for (auto* iface : usedInterfaces) {
+                    iface->hasInternalAction = true;
+                }
+                usedInterfaces.insert(defaultInterface);
+                for (auto* iface : usedInterfaces) {
+                    iface->actions.push_back(action);
+                }
+            } else {
+                static_assert(
+                    !std::is_same_v<T, T>,
+                    "unhandled ActionConfigVariant type");
             }
-            usedInterfaces.insert(defaultInterface);
-            for (auto* iface : usedInterfaces) {
-                iface->actions.push_back(action);
-            }
-        } else if (std::holds_alternative<CommandActionConfig>(entry.config)) {
-            const auto& cfg = std::get<CommandActionConfig>(entry.config);
-
-            auto target = findInterface(interfaces, cfg.target);
-            if (!target) {
-                this->debug << "Interface not found: " << cfg.target
-                            << std::endl;
-                continue;
-            }
-
-            DynamicJsonBuffer buffer{512};
-            auto& root = buffer.parseObject(cfg.operationJson);
-            auto [operation, usedInterfaces] = this->parseOperation(
-                interfaces, defaultInterface, root, "command", "template");
-
-            auto action = std::make_shared<CommandAction>(
-                *target->interface, std::move(operation));
-
-            defaultInterface->hasInternalAction = true;
-            for (auto* iface : usedInterfaces) {
-                iface->hasInternalAction = true;
-            }
-            usedInterfaces.insert(defaultInterface);
-            for (auto* iface : usedInterfaces) {
-                iface->actions.push_back(action);
-            }
-        }
+        }, entry.config);
     }
 }
 
@@ -380,7 +382,7 @@ DeviceConfig ConfigFactory::buildDeviceConfig(
 
     for (auto& [name, inputConfig] : parsed.analogInputs) {
         auto analogInput =
-            std::visit([this](const auto& cfg) -> std::shared_ptr<AnalogInput> {
+            std::visit([](const auto& cfg) -> std::shared_ptr<AnalogInput> {
             using T = std::decay_t<decltype(cfg)>;
             if constexpr (std::is_same_v<T, Mcp3008Config>) {
                 return std::make_shared<Mcp3008AnalogInput>(
