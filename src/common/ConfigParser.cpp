@@ -8,6 +8,16 @@
 
 using namespace ArduinoJson;
 
+namespace {
+
+template <typename T>
+std::optional<InterfaceConfigVariant> toVariant(std::optional<T> config) {
+    return config ? std::optional<InterfaceConfigVariant>(*config)
+                  : std::nullopt;
+}
+
+}  // unnamed namespace
+
 ConfigParser::ConfigParser(std::ostream& debug) : debug(debug) {}
 
 SensorConfig ConfigParser::getSensorConfig(const JsonObject& data) {
