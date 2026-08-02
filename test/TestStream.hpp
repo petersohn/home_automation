@@ -10,7 +10,7 @@ class LogExpectation;
 
 class TestStreambuf : public std::stringbuf {
 public:
-    EspApi* esp;
+    EspApi* esp = nullptr;
 
     void addExpectation(std::shared_ptr<LogExpectation> expectation);
 
