@@ -5,6 +5,7 @@
 #include "EspTestBase.hpp"
 #include "FakeAnalogInput.hpp"
 #include "FakeEspApi.hpp"
+#include "common/AnalogConfig.hpp"
 #include "common/AnalogInputWithChannel.hpp"
 #include "common/AnalogSensor.hpp"
 #include "tools/string.hpp"
@@ -37,9 +38,16 @@ public:
     void init(
         double max, double offset, int precision, unsigned aggregateTime,
         double cutoff) {
+        AnalogConfig config;
+        config.max = max;
+        config.valueOffset = offset;
+        config.cutoff = cutoff;
+        config.precision = precision;
+        config.aggregateTime = aggregateTime;
+        config.aggregateDelay = 0;
         this->sensor = std::make_unique<AnalogSensor>(
-            this->esp, this->debug, AnalogInputWithChannel(this->input, 0), max,
-            offset, cutoff, precision, aggregateTime, 0 /*aggregateDelay*/);
+            this->esp, this->debug, AnalogInputWithChannel(this->input, 0),
+            config);
         this->esp.delay(10);
     }
 

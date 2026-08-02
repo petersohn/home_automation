@@ -1,9 +1,12 @@
 #include "KeepaliveInterface.hpp"
 
 KeepaliveInterface::KeepaliveInterface(
-    EspApi& esp, uint8_t pin, unsigned interval, unsigned resetInterval)
-    : esp(esp), pin(pin), interval(interval), resetInterval(resetInterval) {
-    esp.pinMode(pin, GpioMode::input);
+    EspApi& esp, const KeepaliveConfig& config)
+    : esp(esp)
+    , pin(config.pin)
+    , interval(config.interval)
+    , resetInterval(config.resetInterval) {
+    esp.pinMode(config.pin, GpioMode::input);
 }
 
 void KeepaliveInterface::start() {

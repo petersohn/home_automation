@@ -7,13 +7,13 @@
 #include "EspApi.hpp"
 #include "Interface.hpp"
 #include "Sensor.hpp"
+#include "SensorConfig.hpp"
 
 class SensorInterface : public Interface {
 public:
     SensorInterface(
         std::ostream& debug, EspApi& esp, std::unique_ptr<Sensor>&& sensor,
-        std::string name, int interval, int offset,
-        std::vector<std::string> pulse);
+        std::string name, const SensorConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

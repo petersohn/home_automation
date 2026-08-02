@@ -5,13 +5,14 @@
 
 #include <ostream>
 
+#include "common/Hm3301Config.hpp"
 #include "common/Sensor.hpp"
 
 class HM3301Sensor : public Sensor {
 public:
     bool initialized = false;
 
-    HM3301Sensor(std::ostream& debug, int sda, int sdl);
+    HM3301Sensor(std::ostream& debug, const Hm3301Config& config);
 
     std::optional<std::vector<std::string>> measure() override;
 

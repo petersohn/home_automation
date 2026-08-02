@@ -213,14 +213,14 @@ TEST_F(ConfigParserTest, ParseDht_Dht11) {
     auto result = parser.parseDeviceConfig(root);
     auto& cfg = std::get<DhtConfig>(result.interfaces.at("t").config);
     EXPECT_EQ(cfg.pin, 5);
-    EXPECT_EQ(cfg.type, DHT11);
+    EXPECT_EQ(cfg.type, dht_type::DHT11);
 }
 
 TEST_F(ConfigParserTest, ParseDht_DefaultDht22) {
     auto& root = parse(R"({"interfaces":[{"type":"dht","name":"t","pin":5}]})");
     auto result = parser.parseDeviceConfig(root);
     auto& cfg = std::get<DhtConfig>(result.interfaces.at("t").config);
-    EXPECT_EQ(cfg.type, DHT22);
+    EXPECT_EQ(cfg.type, dht_type::DHT22);
 }
 
 TEST_F(ConfigParserTest, ParseDallasTemperature_Valid) {

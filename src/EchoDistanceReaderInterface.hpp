@@ -3,13 +3,15 @@
 
 #include <ostream>
 
+#include "common/EchoDistanceConfig.hpp"
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
 
 class EchoDistanceReaderInterface : public Interface {
 public:
     EchoDistanceReaderInterface(
-        std::ostream& debug, EspApi& esp, uint8_t echoPin);
+        std::ostream& debug, EspApi& esp,
+        const EchoDistanceReaderConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

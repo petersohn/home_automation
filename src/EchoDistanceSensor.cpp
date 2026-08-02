@@ -12,17 +12,16 @@ constexpr double speedOfSound = 0.00034;  // m/us
 constexpr unsigned long timeout = 150;    // ms
 
 EchoDistanceSensor::EchoDistanceSensor(
-    std::ostream& debug, EspApi& esp, uint8_t triggerPin, uint8_t echoPin,
-    unsigned triggerTime)
+    std::ostream& debug, EspApi& esp, const EchoDistanceConfig& config)
     : debug(debug)
     , esp(esp)
-    , triggerPin(triggerPin)
-    , echoPin(echoPin)
-    , triggerTime(triggerTime) {
-    esp.pinMode(triggerPin, GpioMode::output);
-    esp.pinMode(echoPin, GpioMode::input);
-    esp.digitalWrite(triggerPin, 0);
-    attachInterruptArg(echoPin, onChangeStatic, this, CHANGE);
+    , triggerPin(config.triggerPin)
+    , echoPin(config.echoPin)
+    , triggerTime(config.triggerTime) {
+    esp.pinMode(config.triggerPin, GpioMode::output);
+    esp.pinMode(config.echoPin, GpioMode::input);
+    esp.digitalWrite(config.triggerPin, 0);
+    attachInterruptArg(config.echoPin, onChangeStatic, this, CHANGE);
 }
 
 std::optional<std::vector<std::string>> EchoDistanceSensor::measure() {

@@ -4,9 +4,9 @@
 
 #include "tools/string.hpp"
 
-HM3301Sensor::HM3301Sensor(std::ostream& debug, int sda, int scl)
+HM3301Sensor::HM3301Sensor(std::ostream& debug, const Hm3301Config& config)
     : debug(debug) {
-    Wire.pins(sda, scl);
+    Wire.pins(config.sda, config.scl);
     initialize();
 }
 

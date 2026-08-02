@@ -3,14 +3,14 @@
 
 #include <ostream>
 
+#include "common/EchoDistanceConfig.hpp"
 #include "common/EspApi.hpp"
 #include "common/Sensor.hpp"
 
 class EchoDistanceSensor : public Sensor {
 public:
     EchoDistanceSensor(
-        std::ostream& debug, EspApi& esp, uint8_t triggerPin, uint8_t echoPin,
-        unsigned triggerTime);
+        std::ostream& debug, EspApi& esp, const EchoDistanceConfig& config);
 
     std::optional<std::vector<std::string>> measure() override;
 

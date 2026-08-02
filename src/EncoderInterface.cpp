@@ -3,8 +3,9 @@
 #include "common/Encoder.hpp"
 #include "tools/string.hpp"
 
-EncoderInterface::EncoderInterface(std::unique_ptr<Encoder> encoder, bool pulse)
-    : encoder(std::move(encoder)), pulse(pulse) {}
+EncoderInterface::EncoderInterface(
+    std::unique_ptr<Encoder> encoder, const EncoderConfig& config)
+    : encoder(std::move(encoder)), pulse(config.pulse) {}
 
 void EncoderInterface::start() {}
 

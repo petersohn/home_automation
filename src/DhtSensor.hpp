@@ -5,11 +5,12 @@
 
 #include <ostream>
 
+#include "common/DhtConfig.hpp"
 #include "common/Sensor.hpp"
 
 class DhtSensor : public Sensor {
 public:
-    DhtSensor(std::ostream& debug, uint8_t pin, int type);
+    DhtSensor(std::ostream& debug, const DhtConfig& config);
 
     std::optional<std::vector<std::string>> measure() override;
 

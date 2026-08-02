@@ -5,13 +5,13 @@
 
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
+#include "common/PwmConfig.hpp"
 #include "common/rtc.hpp"
 
 class PwmOutput : public Interface {
 public:
     PwmOutput(
-        std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin,
-        int defaultValue, bool invert);
+        std::ostream& debug, EspApi& esp, Rtc& rtc, const PwmConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

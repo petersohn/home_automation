@@ -3,6 +3,7 @@
 
 #include <ostream>
 
+#include "common/CounterConfig.hpp"
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
 #include "common/SensorInterface.hpp"
@@ -10,9 +11,7 @@
 class CounterInterface : public Interface {
 public:
     CounterInterface(
-        std::ostream& debug, EspApi& esp, std::string name, uint8_t pin,
-        int bounceTime, float multiplier, int interval, int offset,
-        std::vector<std::string> pulse);
+        std::ostream& debug, EspApi& esp, const CounterConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

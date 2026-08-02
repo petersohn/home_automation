@@ -3,15 +3,12 @@
 
 #include <ostream>
 
+#include "common/InputConfig.hpp"
 #include "common/Interface.hpp"
 
 class GpioInput : public Interface {
 public:
-    enum class CycleType { none, single, multi };
-
-    GpioInput(
-        std::ostream& debug, uint8_t pin, CycleType cycleType,
-        unsigned interval = 10);
+    GpioInput(std::ostream& debug, const InputConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

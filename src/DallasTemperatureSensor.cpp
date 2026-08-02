@@ -3,11 +3,11 @@
 #include "tools/string.hpp"
 
 DallasTemperatureSensor::DallasTemperatureSensor(
-    std::ostream& debug, uint8_t pin, std::size_t expectedNumberOfDevices)
+    std::ostream& debug, const DallasTemperatureConfig& config)
     : debug(debug)
-    , oneWire(pin)
+    , oneWire(config.pin)
     , sensors(&oneWire)
-    , expectedNumberOfDevices(expectedNumberOfDevices) {
+    , expectedNumberOfDevices(config.devices) {
     this->initialize();
 }
 

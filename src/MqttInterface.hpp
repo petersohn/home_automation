@@ -3,11 +3,12 @@
 
 #include "common/Interface.hpp"
 #include "common/MqttClient.hpp"
+#include "common/MqttInterfaceConfig.hpp"
 
 class MqttInterface : public Interface {
 public:
-    MqttInterface(MqttClient& mqttClient, const std::string& topic)
-        : mqttClient(mqttClient), topic(topic) {}
+    MqttInterface(MqttClient& mqttClient, const MqttInterfaceConfig& config)
+        : mqttClient(mqttClient), topic(config.topic) {}
     ~MqttInterface();
 
     void start() override;

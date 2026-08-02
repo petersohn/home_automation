@@ -140,7 +140,10 @@ private:
     }
 
     const std::initializer_list<std::pair<const char*, int>> dhtTypes{
-        {"", DHT22}, {"dht11", DHT11}, {"dht22", DHT22}, {"dht21", DHT21}};
+        {"", dht_type::DHT22},
+        {"dht11", dht_type::DHT11},
+        {"dht22", dht_type::DHT22},
+        {"dht21", dht_type::DHT21}};
 
     int getInterval(const JsonObject& data) {
         auto intervalMs = data["intervalMs"].as<int>();
@@ -215,20 +218,24 @@ private:
 
     std::unique_ptr<Interface> createSensorInterface(
         const JsonObject& data, std::unique_ptr<Sensor>&& sensor) {
+        SensorConfig sensorConfig;
+        sensorConfig.interval = getInterval(data);
+        sensorConfig.offset = getOffset(data);
+        sensorConfig.pulse = getPulse(data);
         return std::make_unique<SensorInterface>(
             debug, esp, std::move(sensor), data.get<std::string>("name"),
-            getInterval(data), getOffset(data), getPulse(data));
+            sensorConfig);
     }
 
-    GpioInput::CycleType getCycleType(const std::string& value) {
+    CycleType getCycleType(const std::string& value) {
         if (value == "none") {
-            return GpioInput::CycleType::none;
+            return CycleType::none;
         }
         if (value == "multi") {
-            return GpioInput::CycleType::multi;
+            return CycleType::multi;
         }
 
-        return GpioInput::CycleType::single;
+        return CycleType::single;
     }
 
     std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
@@ -237,22 +244,27 @@ private:
             uint8_t pin = 0;
             return getPin(data, pin)
                        ? std::make_unique<GpioInput>(
-                             debug, pin,
-                             getCycleType(data.get<std::string>("cycle")),
-                             getJsonWithDefault(data["debounce"], 10))
+                             debug,
+                             InputConfig{
+                                 pin,
+                                 getCycleType(data.get<std::string>("cycle")),
+                                 getJsonWithDefault(data["debounce"], 10U),
+                             })
                        : nullptr;
         } else if (type == "output") {
             uint8_t pin = 0;
-            return getPin(data, pin) ? std::make_unique<GpioOutput>(
-                                           debug, esp, rtc, pin,
-                                           data["default"], data["invert"])
-                                     : nullptr;
+            return getPin(data, pin)
+                       ? std::make_unique<GpioOutput>(
+                             debug, esp, rtc,
+                             OutputConfig{pin, data["default"], data["invert"]})
+                       : nullptr;
         } else if (type == "pwm") {
             uint8_t pin = 0;
-            return getPin(data, pin) ? std::make_unique<PwmOutput>(
-                                           debug, esp, rtc, pin,
-                                           data["default"], data["invert"])
-                                     : nullptr;
+            return getPin(data, pin)
+                       ? std::make_unique<PwmOutput>(
+                             debug, esp, rtc,
+                             PwmConfig{pin, data["default"], data["invert"]})
+                       : nullptr;
         } else if (type == "analog") {
             auto input =
                 parseAnalogInputWithChannel(data["input"].as<std::string>());
@@ -260,15 +272,19 @@ private:
                 debug << "Invalid analog input." << std::endl;
                 return nullptr;
             }
+            AnalogConfig analogConfig;
+            analogConfig.max = getJsonWithDefault(data["max"], 0.0);
+            analogConfig.valueOffset =
+                getJsonWithDefault(data["valueOffset"], 0.0);
+            analogConfig.cutoff = getJsonWithDefault(data["cutoff"], 0.0);
+            analogConfig.precision = getJsonWithDefault(data["precision"], 0);
+            analogConfig.aggregateTime =
+                getJsonWithDefault(data["aggregateTime"], 0U);
+            analogConfig.aggregateDelay =
+                getJsonWithDefault(data["aggregateDelay"], 0U);
             return createSensorInterface(
                 data, std::make_unique<AnalogSensor>(
-                          esp, debug, std::move(*input),
-                          getJsonWithDefault(data["max"], 0.0),
-                          getJsonWithDefault(data["valueOffset"], 0.0),
-                          getJsonWithDefault(data["cutoff"], 0.0),
-                          getJsonWithDefault(data["precision"], 0),
-                          getJsonWithDefault(data["aggregateTime"], 0U),
-                          getJsonWithDefault(data["aggregateDelay"], 0U)));
+                          esp, debug, std::move(*input), analogConfig));
         } else if (type == "encoder") {
             uint8_t downPin = 0;
             uint8_t upPin = 0;
@@ -276,7 +292,9 @@ private:
                            getRequiredValue(data, "upPin", upPin)
                        ? std::make_unique<EncoderInterface>(
                              std::make_unique<EspEncoder>(downPin, upPin),
-                             getJsonWithDefault(data["pulse"], false))
+                             EncoderConfig{
+                                 downPin, upPin,
+                                 getJsonWithDefault(data["pulse"], false)})
                        : nullptr;
         } else if (type == "dht") {
             uint8_t pin = 0;
@@ -286,10 +304,11 @@ private:
                 debug << "Invalid DHT type." << std::endl;
                 return nullptr;
             }
-            return getPin(data, pin) ? createSensorInterface(
-                                           data, std::make_unique<DhtSensor>(
-                                                     debug, pin, *type))
-                                     : nullptr;
+            return getPin(data, pin)
+                       ? createSensorInterface(
+                             data, std::make_unique<DhtSensor>(
+                                       debug, DhtConfig{pin, *type}))
+                       : nullptr;
         } else if (type == "dallasTemperature") {
             uint8_t pin = 0;
             size_t devices = data.get<size_t>("devices");
@@ -298,8 +317,9 @@ private:
             }
             return getPin(data, pin)
                        ? createSensorInterface(
-                             data, std::make_unique<DallasTemperatureSensor>(
-                                       debug, pin, devices))
+                             data,
+                             std::make_unique<DallasTemperatureSensor>(
+                                 debug, DallasTemperatureConfig{pin, devices}))
                        : nullptr;
         } else if (type == "hm3301") {
             int sda = 0;
@@ -307,8 +327,8 @@ private:
             return (getRequiredValue(data, "sda", sda) &&
                     getRequiredValue(data, "scl", scl))
                        ? createSensorInterface(
-                             data,
-                             std::make_unique<HM3301Sensor>(debug, sda, scl))
+                             data, std::make_unique<HM3301Sensor>(
+                                       debug, Hm3301Config{sda, scl}))
                        : nullptr;
             //} else if (type == "sds011") {
             //    int rx = 0;
@@ -323,10 +343,18 @@ private:
             uint8_t pin = 0;
             return getPin(data, pin)
                        ? std::make_unique<CounterInterface>(
-                             debug, esp, data.get<std::string>("name"), pin,
-                             getJsonWithDefault(data["bounceTime"], 0),
-                             getJsonWithDefault(data["multiplier"], 1.0f),
-                             getInterval(data), getOffset(data), getPulse(data))
+                             debug, esp,
+                             CounterConfig{
+                                 data.get<std::string>("name"),
+                                 pin,
+                                 getJsonWithDefault(data["bounceTime"], 0),
+                                 getJsonWithDefault(data["multiplier"], 1.0f),
+                                 SensorConfig{
+                                     getInterval(data),
+                                     getOffset(data),
+                                     getPulse(data),
+                                 },
+                             })
                        : nullptr;
         } else if (type == "hc-sr04" || type == "echo-distance") {
             uint8_t echoPin = 0;
@@ -337,24 +365,32 @@ private:
             uint8_t triggerPin = getJsonWithDefault(data["triggerPin"], 0);
             return triggerPin != 0
                        ? createSensorInterface(
-                             data,
-                             std::make_unique<EchoDistanceSensor>(
-                                 debug, esp, triggerPin, echoPin,
-                                 getJsonWithDefault(data["triggerTime"], 10)))
+                             data, std::make_unique<EchoDistanceSensor>(
+                                       debug, esp,
+                                       EchoDistanceConfig{
+                                           echoPin,
+                                           triggerPin,
+                                           getJsonWithDefault(
+                                               data["triggerTime"], 10U),
+                                       }))
                        : std::make_unique<EchoDistanceReaderInterface>(
-                             debug, esp, echoPin);
+                             debug, esp, EchoDistanceReaderConfig{echoPin});
         } else if (type == "mqtt") {
             std::string topic = data["topic"];
             return topic.length() != 0
-                       ? std::make_unique<MqttInterface>(mqttClient, topic)
+                       ? std::make_unique<MqttInterface>(
+                             mqttClient, MqttInterfaceConfig{topic})
                        : nullptr;
         } else if (type == "keepalive") {
             uint8_t pin = 0;
             return getPin(data, pin)
                        ? std::make_unique<KeepaliveInterface>(
-                             esp, pin,
-                             getJsonWithDefault(data["interval"], 10000),
-                             getJsonWithDefault(data["resetInterval"], 10))
+                             esp,
+                             KeepaliveConfig{
+                                 pin,
+                                 getJsonWithDefault(data["interval"], 10000U),
+                                 getJsonWithDefault(data["resetInterval"], 10U),
+                             })
                        : nullptr;
         } else if (type == "powerSupply") {
             uint8_t powerSwitchPin = 0;
@@ -364,12 +400,17 @@ private:
                     getRequiredValue(data, "resetSwitchPin", resetSwitchPin) &&
                     getRequiredValue(data, "powerCheckPin", powerCheckPin))
                        ? std::make_unique<PowerSupplyInterface>(
-                             debug, esp, powerSwitchPin, resetSwitchPin,
-                             powerCheckPin,
-                             getJsonWithDefault(data["pushTime"], 200),
-                             getJsonWithDefault(data["forceOffTime"], 6000),
-                             getJsonWithDefault(data["checkTime"], 60000),
-                             getJsonWithDefault(data["initialState"], ""))
+                             debug, esp,
+                             PowerSupplyConfig{
+                                 powerSwitchPin,
+                                 resetSwitchPin,
+                                 powerCheckPin,
+                                 getJsonWithDefault(data["pushTime"], 200U),
+                                 getJsonWithDefault(
+                                     data["forceOffTime"], 6000U),
+                                 getJsonWithDefault(data["checkTime"], 60000U),
+                                 getJsonWithDefault(data["initialState"], ""),
+                             })
                        : nullptr;
         } else if (type == "cover") {
             uint8_t upMovementPin = 0;
@@ -397,16 +438,22 @@ private:
                     getRequiredValue(data, "upPin", upPin) &&
                     getRequiredValue(data, "downPin", downPin))
                        ? std::make_unique<Cover>(
-                             debug, esp, rtc, upMovementPin, downMovementPin,
-                             upPin, downPin,
-                             getJsonWithDefault(data["stopPin"], 0),
-                             getJsonWithDefault(data["latching"], false),
-                             getJsonWithDefault(data["invertInput"], false),
-                             getJsonWithDefault(data["invertOutput"], false),
-                             getJsonWithDefault(data["closedPosition"], 0),
-                             std::move(positionSensors),
-                              getJsonWithDefault(
-                                  data["invertPositionSensors"], false))
+                             debug, esp, rtc,
+                             CoverConfig{
+                                 upMovementPin,
+                                 downMovementPin,
+                                 upPin,
+                                 downPin,
+                                 getJsonWithDefault(data["stopPin"], 0),
+                                 getJsonWithDefault(data["latching"], false),
+                                 getJsonWithDefault(data["invertInput"], false),
+                                 getJsonWithDefault(
+                                     data["invertOutput"], false),
+                                 getJsonWithDefault(data["closedPosition"], 0),
+                                 getJsonWithDefault(
+                                     data["invertPositionSensors"], false),
+                                 std::move(positionSensors),
+                             })
                        : nullptr;
             //        } else if (type == "hlw8012") {
             //            uint8_t powerPin = 0;

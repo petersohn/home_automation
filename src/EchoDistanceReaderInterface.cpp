@@ -12,10 +12,10 @@ constexpr double speedOfSound = 0.00034;   // m/us
 constexpr unsigned long timeout = 150000;  // us
 
 EchoDistanceReaderInterface::EchoDistanceReaderInterface(
-    std::ostream& debug, EspApi& esp, uint8_t echoPin)
-    : debug(debug), esp(esp), echoPin(echoPin) {
-    esp.pinMode(echoPin, GpioMode::input);
-    attachInterruptArg(echoPin, onChangeStatic, this, CHANGE);
+    std::ostream& debug, EspApi& esp, const EchoDistanceReaderConfig& config)
+    : debug(debug), esp(esp), echoPin(config.echoPin) {
+    esp.pinMode(config.echoPin, GpioMode::input);
+    attachInterruptArg(config.echoPin, onChangeStatic, this, CHANGE);
 }
 
 void EchoDistanceReaderInterface::start() {}

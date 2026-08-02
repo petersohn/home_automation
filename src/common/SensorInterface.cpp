@@ -2,14 +2,14 @@
 
 SensorInterface::SensorInterface(
     std::ostream& debug, EspApi& esp, std::unique_ptr<Sensor>&& sensor,
-    std::string name, int interval, int offset, std::vector<std::string> pulse)
+    std::string name, const SensorConfig& config)
     : debug(debug)
     , esp(esp)
     , sensor(std::move(sensor))
     , name(std::move(name))
-    , interval(interval)
-    , offset(offset)
-    , pulse(std::move(pulse)) {}
+    , interval(config.interval)
+    , offset(config.offset)
+    , pulse(config.pulse) {}
 
 void SensorInterface::start() {
     // When connected to the network, all sensors make a measurement.

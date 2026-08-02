@@ -10,15 +10,14 @@ constexpr int maxValue = 255;
 }
 
 PwmOutput::PwmOutput(
-    std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin, int defaultValue,
-    bool invert)
+    std::ostream& debug, EspApi& esp, Rtc& rtc, const PwmConfig& config)
     : debug(debug)
     , esp(esp)
     , rtc(rtc)
-    , pin(pin)
-    , invert(invert)
+    , pin(config.pin)
+    , invert(config.invert)
     , rtcId(rtc.next())
-    , currentValue(defaultValue) {
+    , currentValue(config.defaultValue) {
     auto rtcData = this->rtc.get(this->rtcId);
     if (rtcData != 0) {
         this->currentValue = rtcData - 1;

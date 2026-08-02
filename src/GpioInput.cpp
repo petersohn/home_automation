@@ -43,9 +43,11 @@ int encodeState(const State& state) {
 
 }  // namespace
 
-GpioInput::GpioInput(
-    std::ostream& debug, uint8_t pin, CycleType cycleType, unsigned interval)
-    : debug(debug), pin(pin), cycleType(cycleType), interval(interval) {
+GpioInput::GpioInput(std::ostream& debug, const InputConfig& config)
+    : debug(debug)
+    , pin(config.pin)
+    , cycleType(config.cycleType)
+    , interval(config.debounce) {
     pinMode(this->pin, INPUT);
     this->lastChanged = millis();
     bool currentState = digitalRead(this->pin);

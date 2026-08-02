@@ -6,18 +6,17 @@
 #include "../tools/string.hpp"
 
 AnalogSensor::AnalogSensor(
-    EspApi& esp, std::ostream& debug, AnalogInputWithChannel input, double max,
-    double offset, double cutoff, int precision, unsigned aggregateTime,
-    unsigned long aggregateDelay)
+    EspApi& esp, std::ostream& debug, AnalogInputWithChannel input,
+    const AnalogConfig& config)
     : esp(esp)
     , debug(debug)
     , input(std::move(input))
-    , max(max)
-    , offset(offset)
-    , cutoff(cutoff)
-    , precision(precision)
-    , aggregateTime(aggregateTime * 1000UL)
-    , aggregateDelay(aggregateDelay) {}
+    , max(config.max)
+    , offset(config.valueOffset)
+    , cutoff(config.cutoff)
+    , precision(config.precision)
+    , aggregateTime(config.aggregateTime * 1000UL)
+    , aggregateDelay(config.aggregateDelay) {}
 
 std::optional<std::vector<std::string>> AnalogSensor::measure() {
     auto value = this->doMeasure();

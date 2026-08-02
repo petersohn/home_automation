@@ -9,6 +9,7 @@
 
 #include "InterfaceTestBase.hpp"
 #include "common/Cover.hpp"
+#include "common/CoverConfig.hpp"
 
 namespace {
 
@@ -121,9 +122,20 @@ public:
 
         this->initInterface(
             "cover", std::make_unique<Cover>(
-                         this->debug, this->esp, this->rtc, UpInput, DownInput,
-                         UpOutput, DownOutput, StopOutput, isLatching, false,
-                         false, 10, std::move(positionSensorInput), false));
+                         this->debug, this->esp, this->rtc,
+                         CoverConfig{
+                             UpInput,
+                             DownInput,
+                             UpOutput,
+                             DownOutput,
+                             StopOutput,
+                             isLatching,
+                             false,
+                             false,
+                             10,
+                             false,
+                             std::move(positionSensorInput),
+                         }));
         this->esp.delay(10);
     }
 

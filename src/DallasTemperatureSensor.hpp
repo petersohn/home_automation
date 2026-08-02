@@ -8,12 +8,13 @@
 #include <ostream>
 #include <vector>
 
+#include "common/DallasTemperatureConfig.hpp"
 #include "common/Sensor.hpp"
 
 class DallasTemperatureSensor : public Sensor {
 public:
     DallasTemperatureSensor(
-        std::ostream& debug, uint8_t pin, std::size_t expectedNumberOfDevices);
+        std::ostream& debug, const DallasTemperatureConfig& config);
 
     std::optional<std::vector<std::string>> measure() override;
 

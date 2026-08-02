@@ -6,11 +6,11 @@
 #include <string>
 #include <vector>
 
+#include "CoverConfig.hpp"
 #include "CoverState.hpp"
 #include "CoverUpdate.hpp"
 #include "EspApi.hpp"
 #include "Interface.hpp"
-#include "PositionSensor.hpp"
 #include "rtc.hpp"
 
 /**
@@ -50,33 +50,8 @@
  */
 class Cover : public Interface {
 public:
-    /**
-     * @param upMovementPin Input for detecting that the cover is opening.
-     * @param downMovementPin Input for detecting that the cover is closing.
-     * @param upPin Output for controlling opening movement.
-     * @param downPin Output for controlling closing movement.
-     * @param stopPin Output for stopping movement. Only used if latching is
-     * true.
-     * @param latching If true, the device works in latching mode and uses
-     * stopPin. If false, the device works in continuous mode and stopPin is
-     * ignored.
-     * @param invertInput Controls inversion of upMovementPin and
-     * downMovementPin.
-     * @param invertOutput Controls inversion of upPin and downPin.
-     * @param closedPosition Controls the reported state when the cover is not
-     * moving. If the position is above this value, report as open. Otherwise,
-     * report as closed.
-     * @param invertPositionSensors Controls inversion of position sensors. This
-     * inverts all position sensors, while each position sensor can be inverted
-     * individually. The two are cumulative: if this parameter is true and the
-     * position sensor is inverted, then that sensor will use positive logic.
-     */
     Cover(
-        std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
-        uint8_t downMovementPin, uint8_t upPin, uint8_t downPin,
-        uint8_t stopPin, bool latching, bool invertInput, bool invertOutput,
-        int closedPosition, std::vector<PositionSensor> positionSensors,
-        bool invertPositionSensors);
+        std::ostream& debug, EspApi& esp, Rtc& rtc, const CoverConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

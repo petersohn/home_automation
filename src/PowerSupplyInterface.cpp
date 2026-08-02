@@ -1,27 +1,25 @@
 #include "PowerSupplyInterface.hpp"
 
 PowerSupplyInterface::PowerSupplyInterface(
-    std::ostream& debug, EspApi& esp, uint8_t powerSwitchPin,
-    uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
-    unsigned forceOffTime, unsigned checkTime, const std::string& initialState)
+    std::ostream& debug, EspApi& esp, const PowerSupplyConfig& config)
     : debug(debug)
     , esp(esp)
-    , powerSwitchPin(powerSwitchPin)
-    , resetSwitchPin(resetSwitchPin)
-    , powerCheckPin(powerCheckPin)
-    , pushTime(pushTime)
-    , forceOffTime(forceOffTime)
-    , checkTime(checkTime)
+    , powerSwitchPin(config.powerSwitchPin)
+    , resetSwitchPin(config.resetSwitchPin)
+    , powerCheckPin(config.powerCheckPin)
+    , pushTime(config.pushTime)
+    , forceOffTime(config.forceOffTime)
+    , checkTime(config.checkTime)
     , targetState(TargetState::Dontcare) {
-    if (initialState == "on") {
+    if (config.initialState == "on") {
         targetState = TargetState::On;
-    } else if (initialState == "off") {
+    } else if (config.initialState == "off") {
         targetState = TargetState::Off;
     }
 
-    esp.pinMode(powerSwitchPin, GpioMode::input);
-    esp.pinMode(resetSwitchPin, GpioMode::input);
-    esp.pinMode(powerCheckPin, GpioMode::input);
+    esp.pinMode(config.powerSwitchPin, GpioMode::input);
+    esp.pinMode(config.resetSwitchPin, GpioMode::input);
+    esp.pinMode(config.powerCheckPin, GpioMode::input);
 }
 
 void PowerSupplyInterface::start() {}

@@ -9,9 +9,9 @@
 
 #include "ActionConfig.hpp"
 #include "AnalogInputConfig.hpp"
+#include "ArduinoJson.hpp"
 #include "GlobalConfig.hpp"
 #include "InterfaceConfigs.hpp"
-#include "common/ArduinoJson.hpp"
 
 struct DeviceConfigDescription {
     DeviceConfigCommon common;

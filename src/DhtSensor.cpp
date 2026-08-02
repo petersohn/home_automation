@@ -12,8 +12,8 @@ bool isOk(float value) {
 
 }  // unnamed namespace
 
-DhtSensor::DhtSensor(std::ostream& debug, uint8_t pin, int type)
-    : debug(debug), dht(pin, type) {
+DhtSensor::DhtSensor(std::ostream& debug, const DhtConfig& config)
+    : debug(debug), dht(config.pin, config.type) {
     this->dht.begin();
 }
 

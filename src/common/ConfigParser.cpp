@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "common/ArduinoJson.hpp"
-#include "tools/collection.hpp"
+#include "../tools/collection.hpp"
+#include "ArduinoJson.hpp"
 
 using namespace ArduinoJson;
 
@@ -49,11 +49,14 @@ CycleType ConfigParser::getCycleType(const std::string& value) {
 }
 
 const std::initializer_list<std::pair<const char*, int>> dhtTypes{
-    {"", DHT22}, {"dht11", DHT11}, {"dht22", DHT22}, {"dht21", DHT21}};
+    {"", dht_type::DHT22},
+    {"dht11", dht_type::DHT11},
+    {"dht22", dht_type::DHT22},
+    {"dht21", dht_type::DHT21}};
 
 int ConfigParser::getDhtType(const std::string& value) {
     auto type = tools::findValue(dhtTypes, value);
-    return type ? *type : DHT22;
+    return type ? *type : dht_type::DHT22;
 }
 
 bool ConfigParser::parseDebugEnabled(const JsonObject& root) {
@@ -98,7 +101,7 @@ GlobalConfig ConfigParser::parseGlobalConfig(const JsonObject& root) {
         result.wifiPassword = wifiPassword;
     }
 
-    JsonArray& servers = root.get<JsonVariant>("servers");
+    JsonArray& servers = root.get<JsonArray>("servers");
     if (servers == JsonArray::invalid()) {
         this->debug << "No servers config. "
                        "Attempting old-style single-server config."

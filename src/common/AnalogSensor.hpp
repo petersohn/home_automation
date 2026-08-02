@@ -3,6 +3,7 @@
 
 #include <ostream>
 
+#include "AnalogConfig.hpp"
 #include "AnalogInputWithChannel.hpp"
 #include "EspApi.hpp"
 #include "Sensor.hpp"
@@ -11,8 +12,7 @@ class AnalogSensor : public Sensor {
 public:
     AnalogSensor(
         EspApi& esp, std::ostream& debug, AnalogInputWithChannel input,
-        double max, double offset, double cutoff, int precision,
-        unsigned aggregateTime, unsigned long aggregateDelay);
+        const AnalogConfig& config);
 
     std::optional<std::vector<std::string>> measure() override;
 

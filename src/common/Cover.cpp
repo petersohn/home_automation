@@ -10,34 +10,31 @@
 #include "CoverStopImpl.hpp"
 
 Cover::Cover(
-    std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t upMovementPin,
-    uint8_t downMovementPin, uint8_t upPin, uint8_t downPin, uint8_t stopPin,
-    bool latching, bool invertInput, bool invertOutput, int closedPosition,
-    std::vector<PositionSensor> positionSensors, bool invertPositionSensors)
+    std::ostream& debug, EspApi& esp, Rtc& rtc, const CoverConfig& config)
     : state{
-          -1,            // position
-          false,         // stateChanged
-          -1,            // activePositionSensor
-          -1,            // previouslyActivePositionSensor
-          0,             // previousMovementDirection
-          -1,            // targetPosition
-          0,             // restartCount
-          std::move(positionSensors),
-          invertInput,
-          invertOutput,
-          invertPositionSensors,
-          latching,
-          closedPosition,
-          rtc.next(),    // positionId
-          esp,           // esp
-          rtc,           // rtc
-          debug,         // debug
-          "Cover " + tools::intToString(upPin) + "." +
-              tools::intToString(downPin) + ": ",  // debugPrefix
-      },
-      updateImpl(makeUpdateImpl(
-          state, esp, upMovementPin, downMovementPin, upPin, downPin, stopPin,
-          invertOutput)) {
+          -1,     // position
+          false,  // stateChanged
+          -1,     // activePositionSensor
+          -1,     // previouslyActivePositionSensor
+          0,      // previousMovementDirection
+          -1,     // targetPosition
+          0,      // restartCount
+          config.positionSensors,
+          config.invertInput,
+          config.invertOutput,
+          config.invertPositionSensors,
+          config.latching,
+          config.closedPosition,
+          rtc.next(),  // positionId
+          esp,         // esp
+          rtc,         // rtc
+          debug,       // debug
+          "Cover " + tools::intToString(config.upPin) + "." +
+              tools::intToString(config.downPin) + ": ",  // debugPrefix
+      }
+    , updateImpl(makeUpdateImpl(
+          state, esp, config.upMovementPin, config.downMovementPin,
+          config.upPin, config.downPin, config.stopPin, config.invertOutput)) {
     if (this->state.positionSensors.size() == 1) {
         this->state.debug
             << "Invalid position sensors: there should be zero or at least 2."

@@ -57,17 +57,15 @@ void IRAM_ATTR CounterInterface::onRiseStatic(void* arg) {
 }
 
 CounterInterface::CounterInterface(
-    std::ostream& debug, EspApi& esp, std::string name, uint8_t pin,
-    int bounceTime, float multiplier, int interval, int offset,
-    std::vector<std::string> pulse)
-    : bounceTime(bounceTime)
-    , interval(interval)
+    std::ostream& debug, EspApi& esp, const CounterConfig& config)
+    : bounceTime(config.bounceTime)
+    , interval(config.timing.interval)
     , sensorInterface(
-          debug, esp, createCounterSensor(multiplier), std::move(name),
-          interval, offset, std::move(pulse)) {
-    pinMode(pin, INPUT);
+          debug, esp, createCounterSensor(config.multiplier), config.name,
+          config.timing) {
+    pinMode(config.pin, INPUT);
     this->resetMinInterval();
-    attachInterruptArg(pin, onRiseStatic, this, RISING);
+    attachInterruptArg(config.pin, onRiseStatic, this, RISING);
 }
 
 void IRAM_ATTR CounterInterface::onRise() {

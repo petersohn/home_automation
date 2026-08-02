@@ -1,13 +1,15 @@
 #ifndef ENCODER_INTERFACE_HPP
 #define ENCODER_INTERFACE_HPP
 
+#include "common/EncoderConfig.hpp"
 #include "common/Interface.hpp"
 
 class Encoder;
 
 class EncoderInterface : public Interface {
 public:
-    EncoderInterface(std::unique_ptr<Encoder> encoder, bool pulse);
+    EncoderInterface(
+        std::unique_ptr<Encoder> encoder, const EncoderConfig& config);
     virtual void start() override;
     virtual void execute(const std::string& command) override;
     virtual void update(Actions action) override;

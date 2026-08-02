@@ -3,11 +3,11 @@
 
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
+#include "common/KeepaliveConfig.hpp"
 
 class KeepaliveInterface : public Interface {
 public:
-    KeepaliveInterface(
-        EspApi& esp, uint8_t pin, unsigned interval, unsigned resetInterval);
+    KeepaliveInterface(EspApi& esp, const KeepaliveConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

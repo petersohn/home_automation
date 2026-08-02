@@ -5,16 +5,14 @@
 
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
+#include "common/PowerSupplyConfig.hpp"
 
 class PowerSupplyInterface : public Interface {
 public:
     enum class TargetState { Off, On, Dontcare };
 
     PowerSupplyInterface(
-        std::ostream& debug, EspApi& esp, uint8_t powerSwitchPin,
-        uint8_t resetSwitchPin, uint8_t powerCheckPin, unsigned pushTime,
-        unsigned forceOffTime, unsigned checkTime,
-        const std::string& initialState);
+        std::ostream& debug, EspApi& esp, const PowerSupplyConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

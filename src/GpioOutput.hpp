@@ -5,13 +5,13 @@
 
 #include "common/EspApi.hpp"
 #include "common/Interface.hpp"
+#include "common/OutputConfig.hpp"
 #include "common/rtc.hpp"
 
 class GpioOutput : public Interface {
 public:
     GpioOutput(
-        std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin,
-        bool defaultValue, bool invert);
+        std::ostream& debug, EspApi& esp, Rtc& rtc, const OutputConfig& config);
 
     void start() override;
     void execute(const std::string& command) override;

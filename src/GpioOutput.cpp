@@ -20,19 +20,18 @@ bool GpioOutput::getOutput() {
 }
 
 GpioOutput::GpioOutput(
-    std::ostream& debug, EspApi& esp, Rtc& rtc, uint8_t pin, bool defaultValue,
-    bool invert)
+    std::ostream& debug, EspApi& esp, Rtc& rtc, const OutputConfig& config)
     : debug(debug)
     , esp(esp)
     , rtc(rtc)
-    , pin(pin)
+    , pin(config.pin)
     , rtcId(rtc.next())
-    , invert(invert) {
+    , invert(config.invert) {
     this->esp.pinMode(this->pin, GpioMode::output);
     Rtc::Data rtcData = this->rtc.get(this->rtcId);
     this->debug << "Pin " << static_cast<int>(this->pin) << ": ";
     if ((rtcData & rtcSetMask) == 0) {
-        this->value = defaultValue;
+        this->value = config.defaultValue;
         this->debug << "default value ";
     } else {
         this->value = rtcData & rtcValueMask;
