@@ -1,10 +1,6 @@
 #include "ConfigParser.hpp"
 
-#include <algorithm>
-#include <memory>
-
 #include "../tools/collection.hpp"
-#include "ArduinoJson.hpp"
 
 using namespace ArduinoJson;
 
