@@ -397,7 +397,7 @@ TEST_F(ConfigParserTest, ParseCover_Valid) {
     EXPECT_FALSE(cfg.positionSensors[1].invert);
 }
 
-TEST_F(ConfigParserTest, ParseCover_PerSensorInvert_Regression) {
+TEST_F(ConfigParserTest, ParseCover_PerSensorInvert) {
     auto& root = parse(R"({
         "interfaces":[{"type":"cover","name":"gate",
             "upMovementPin":1,"downMovementPin":2,"upPin":3,"downPin":4,
