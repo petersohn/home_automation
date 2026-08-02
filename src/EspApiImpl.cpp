@@ -44,9 +44,9 @@ void EspApiImpl::delay(unsigned long ms) {
 
 void EspApiImpl::restart(bool hard) {
     if (hard) {
-        if (deviceConfig.resetPin <= 16) {
-            pinMode(deviceConfig.resetPin, GpioMode::output);
-            digitalWrite(deviceConfig.resetPin, 0);
+        if (deviceConfig.common.resetPin <= 16) {
+            pinMode(deviceConfig.common.resetPin, GpioMode::output);
+            digitalWrite(deviceConfig.common.resetPin, 0);
             delay(10000);
         }
         ESP.reset();

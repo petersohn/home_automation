@@ -37,9 +37,9 @@ void setDeviceName() {
 
     // This function accepts a char*, and it is not documented if copies the
     // name or not. To be safe, the string is made permanent.
-    name = new char[deviceConfig.name.length() + 5];
+    name = new char[deviceConfig.common.name.length() + 5];
     std::strcpy(name, "ESP_");
-    std::strcat(name, deviceConfig.name.c_str());
+    std::strcat(name, deviceConfig.common.name.c_str());
     wifi_station_set_hostname(name);
 }
 
@@ -72,15 +72,15 @@ void setup() {
     initConfig(debug, debugStream, esp, rtc, mqttClient);
     mqttClient.setConfig(
         MqttConfig{
-            deviceConfig.name,
+            deviceConfig.common.name,
             std::move(globalConfig.servers),
-            std::move(deviceConfig.topics),
+            std::move(deviceConfig.common.topics),
         });
     setDeviceName();
 
-    if (deviceConfig.debugTopic != "") {
+    if (deviceConfig.common.debugTopic != "") {
         mqttStream = std::make_unique<MqttStreambuf>(
-            mqttLock, mqttClient, deviceConfig.debugTopic);
+            mqttLock, mqttClient, deviceConfig.common.debugTopic);
         debugStream.add(mqttStream.get());
     }
 
@@ -101,9 +101,9 @@ void loop() {
     const bool isConnected = wifiConnection.connectIfNeeded(
         globalConfig.wifiSSID, globalConfig.wifiPassword);
     if (isConnected) {
-        if (!wifiStream && deviceConfig.debugPort != 0) {
+        if (!wifiStream && deviceConfig.common.debugPort != 0) {
             wifiStream =
-                std::make_unique<WifiStreambuf>(deviceConfig.debugPort);
+                std::make_unique<WifiStreambuf>(deviceConfig.common.debugPort);
             debugStream.add(wifiStream.get());
         }
         mqttClient.loop();

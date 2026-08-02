@@ -1,31 +1,21 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include <limits>
-#include <ostream>
-#include <string>
+#include <memory>
+#include <streambuf>
 #include <vector>
 
-#include "common/EspApi.hpp"
+#include "common/GlobalConfig.hpp"
 #include "common/InterfaceConfig.hpp"
-#include "common/MqttClient.hpp"
-#include "common/rtc.hpp"
 
 class DebugStreambuf;
-
-struct GlobalConfig {
-    std::string wifiSSID;
-    std::string wifiPassword;
-    std::vector<ServerConfig> servers;
-};
+class EspApi;
+class MqttClient;
+class Rtc;
 
 struct DeviceConfig {
-    std::string name;
-    TopicConfig topics;
+    DeviceConfigCommon common;
     std::unique_ptr<std::streambuf> debug;
-    int debugPort = 2534;
-    std::string debugTopic;
-    uint8_t resetPin = std::numeric_limits<uint8_t>::max();
     std::vector<std::unique_ptr<InterfaceConfig>> interfaces;
 
     DeviceConfig() = default;

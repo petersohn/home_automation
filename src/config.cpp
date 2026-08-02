@@ -2,10 +2,11 @@
 
 #include <FS.h>
 
-#include <algorithm>
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <utility>
+#include <variant>
 
 #include "CounterInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
@@ -19,7 +20,6 @@
 #include "GpioInput.hpp"
 #include "GpioOutput.hpp"
 #include "HM3301Sensor.hpp"
-#include "Hlw8012Interface.hpp"
 #include "JsonParser.hpp"
 #include "KeepaliveInterface.hpp"
 #include "Mcp3008AnalogInput.hpp"
@@ -33,6 +33,7 @@
 #include "common/AnalogSensor.hpp"
 #include "common/ArduinoJson.hpp"
 #include "common/CommandAction.hpp"
+#include "common/ConfigParser.hpp"
 #include "common/Cover.hpp"
 #include "common/MqttClient.hpp"
 #include "common/SensorInterface.hpp"
@@ -44,24 +45,14 @@ using namespace ArduinoJson;
 
 namespace {
 
-class ConfigParser {
+class ConfigFactory {
 public:
-    ConfigParser(
+    ConfigFactory(
         std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp, Rtc& rtc,
-        MqttClient& mqttClient)
-        : debug(debug)
-        , debugStream(debugStream)
-        , esp(esp)
-        , rtc(rtc)
-        , mqttClient(mqttClient)
-        , jsonParser(debug) {}
+        MqttClient& mqttClient);
 
-    void parse() {
-        SPIFFS.begin();
-
-        deviceConfig = readDeviceConfig("/device_config.json");
-        globalConfig = readGlobalConfig("/global_config.json");
-    }
+    void initSerial();
+    DeviceConfig buildDeviceConfig(DeviceConfigDescription&& parsed);
 
 private:
     std::ostream& debug;
@@ -69,513 +60,38 @@ private:
     EspApi& esp;
     Rtc& rtc;
     MqttClient& mqttClient;
-
-    JsonParser jsonParser;
-
+    std::unique_ptr<std::streambuf> debugStreambuf;
     std::unordered_map<std::string, std::shared_ptr<AnalogInput>> analogInputs;
 
-    ServerConfig parseServerConfig(const JsonObject& data) {
-        ServerConfig result;
-        PARSE(this->jsonParser, data, result, address);
-        PARSE(this->jsonParser, data, result, port);
-        PARSE(this->jsonParser, data, result, username);
-        PARSE(this->jsonParser, data, result, password);
-        return result;
-    }
+    std::unique_ptr<Interface> buildInterface(
+        const InterfaceConfigVariant& config);
 
-    ServerConfig parseSingleServerConfig(const JsonObject& data) {
-        ServerConfig result;
-        result.address = data.get<std::string>("serverAddress");
-        result.port = data.get<uint16_t>("serverPort");
-        result.username = data.get<std::string>("serverUsername");
-        result.password = data.get<std::string>("serverPassword");
-        return result;
-    }
+    std::unique_ptr<Interface> buildInput(const InputConfig& c);
+    std::unique_ptr<Interface> buildOutput(const OutputConfig& c);
+    std::unique_ptr<Interface> buildPwm(const PwmConfig& c);
+    std::unique_ptr<Interface> buildAnalog(const AnalogConfig& c);
+    std::unique_ptr<Interface> buildEncoder(const EncoderConfig& c);
+    std::unique_ptr<Interface> buildDht(const DhtConfig& c);
+    std::unique_ptr<Interface> buildDallasTemperature(
+        const DallasTemperatureConfig& c);
+    std::unique_ptr<Interface> buildHm3301(const Hm3301Config& c);
+    std::unique_ptr<Interface> buildCounter(const CounterConfig& c);
+    std::unique_ptr<Interface> buildEchoDistance(const EchoDistanceConfig& c);
+    std::unique_ptr<Interface> buildEchoDistanceReader(
+        const EchoDistanceReaderConfig& c);
+    std::unique_ptr<Interface> buildMqttInterface(const MqttInterfaceConfig& c);
+    std::unique_ptr<Interface> buildKeepalive(const KeepaliveConfig& c);
+    std::unique_ptr<Interface> buildPowerSupply(const PowerSupplyConfig& c);
+    std::unique_ptr<Interface> buildCover(const CoverConfig& c);
+    std::unique_ptr<Interface> buildStatus(const StatusConfig& c);
 
-    GlobalConfig readGlobalConfig(const char* filename) {
-        GlobalConfig result;
-        ParsedData data = this->jsonParser.parseFile(filename);
-        if (!data.root) {
-            return result;
-        }
-
-        PARSE(this->jsonParser, *data.root, result, wifiSSID);
-        PARSE(this->jsonParser, *data.root, result, wifiPassword);
-
-        JsonArray& servers = data.root->get<JsonVariant>("servers");
-        if (servers == JsonArray::invalid()) {
-            debug << "No servers config. "
-                     "Attempting old-style single-server config."
-                  << std::endl;
-            result.servers.push_back(parseSingleServerConfig(*data.root));
-        } else {
-            for (auto server : servers) {
-                result.servers.push_back(
-                    parseServerConfig(server.as<JsonObject>()));
-            }
-        }
-
-        return result;
-    }
-
-    template <typename T>
-    bool getRequiredValue(const JsonObject& data, const char* name, T& value) {
-        JsonVariant rawValue = data[name];
-        if (rawValue.is<T>()) {
-            value = rawValue.as<T>();
-            return true;
-        }
-        debug << "Invalid " << name << ": " << rawValue.as<std::string>()
-              << std::endl;
-        return false;
-    }
-
-    bool getPin(const JsonObject& data, uint8_t& value) {
-        return getRequiredValue(data, "pin", value);
-    }
-
-    template <typename T>
-    T getJsonWithDefault(JsonVariant data, T defaultValue) {
-        return data | defaultValue;
-    }
-
-    const std::initializer_list<std::pair<const char*, int>> dhtTypes{
-        {"", dht_type::DHT22},
-        {"dht11", dht_type::DHT11},
-        {"dht22", dht_type::DHT22},
-        {"dht21", dht_type::DHT21}};
-
-    int getInterval(const JsonObject& data) {
-        auto intervalMs = data["intervalMs"].as<int>();
-        if (intervalMs != 0) {
-            return intervalMs;
-        }
-        return getJsonWithDefault(data["interval"], 60) * 1000;
-    }
-
-    int getOffset(const JsonObject& data) {
-        return getJsonWithDefault(data["offset"], 0) * 1000;
-    }
-
-    AnalogInputWithChannel getEspAnalogInput() {
-        auto it = this->analogInputs.find("");
-        if (it == this->analogInputs.end()) {
-            it = this->analogInputs
-                     .emplace("", std::make_shared<EspAnalogInput>())
-                     .first;
-        }
-        return AnalogInputWithChannel(it->second, A0);
-    }
-
-    std::optional<AnalogInputWithChannel> parseAnalogInputWithChannel(
-        const std::string& value) {
-        if (value.empty()) {
-            return getEspAnalogInput();
-        }
-
-        auto dotLocation = value.find('.');
-        if (dotLocation == std::string::npos) {
-            debug << "Invalid input format: " << value << std::endl;
-            return std::nullopt;
-        }
-
-        auto name = value.substr(0, dotLocation);
-        auto it = this->analogInputs.find(name);
-        if (it == this->analogInputs.end()) {
-            debug << "Input not found: " << name << std::endl;
-            return std::nullopt;
-        }
-        auto channelStr = value.substr(dotLocation + 1);
-        StaticJsonBuffer<10> buf;
-        auto v = buf.parse(channelStr);
-        if (!v.is<uint8_t>()) {
-            debug << "Not a valid channel number: " << channelStr << std::endl;
-            return std::nullopt;
-        }
-
-        return AnalogInputWithChannel(it->second, v.as<uint8_t>());
-    }
-
-    std::vector<std::string> getPulse(const JsonObject& data) {
-        auto pulse = data.get<JsonVariant>("pulse");
-        if (!pulse.success()) {
-            return {};
-        }
-
-        auto& array = pulse.as<JsonArray>();
-        if (array == JsonArray::invalid()) {
-            return {pulse.as<std::string>()};
-        }
-
-        std::vector<std::string> result;
-        result.reserve(array.size());
-        for (const JsonVariant& value : array) {
-            result.push_back(value.as<std::string>());
-        }
-
-        return result;
-    }
+    AnalogInputWithChannel getEspAnalogInput();
+    std::optional<AnalogInputWithChannel> resolveAnalogInput(
+        const AnalogInputWithChannelDescription& desc);
 
     std::unique_ptr<Interface> createSensorInterface(
-        const JsonObject& data, std::unique_ptr<Sensor>&& sensor) {
-        SensorConfig sensorConfig;
-        sensorConfig.interval = getInterval(data);
-        sensorConfig.offset = getOffset(data);
-        sensorConfig.pulse = getPulse(data);
-        return std::make_unique<SensorInterface>(
-            debug, esp, std::move(sensor), data.get<std::string>("name"),
-            sensorConfig);
-    }
-
-    CycleType getCycleType(const std::string& value) {
-        if (value == "none") {
-            return CycleType::none;
-        }
-        if (value == "multi") {
-            return CycleType::multi;
-        }
-
-        return CycleType::single;
-    }
-
-    std::unique_ptr<Interface> parseInterface(const JsonObject& data) {
-        std::string type = data.get<std::string>("type");
-        if (type == "input") {
-            uint8_t pin = 0;
-            return getPin(data, pin)
-                       ? std::make_unique<GpioInput>(
-                             debug,
-                             InputConfig{
-                                 pin,
-                                 getCycleType(data.get<std::string>("cycle")),
-                                 getJsonWithDefault(data["debounce"], 10U),
-                             })
-                       : nullptr;
-        } else if (type == "output") {
-            uint8_t pin = 0;
-            return getPin(data, pin)
-                       ? std::make_unique<GpioOutput>(
-                             debug, esp, rtc,
-                             OutputConfig{pin, data["default"], data["invert"]})
-                       : nullptr;
-        } else if (type == "pwm") {
-            uint8_t pin = 0;
-            return getPin(data, pin)
-                       ? std::make_unique<PwmOutput>(
-                             debug, esp, rtc,
-                             PwmConfig{pin, data["default"], data["invert"]})
-                       : nullptr;
-        } else if (type == "analog") {
-            auto input =
-                parseAnalogInputWithChannel(data["input"].as<std::string>());
-            if (!input) {
-                debug << "Invalid analog input." << std::endl;
-                return nullptr;
-            }
-            AnalogConfig analogConfig;
-            analogConfig.max = getJsonWithDefault(data["max"], 0.0);
-            analogConfig.valueOffset =
-                getJsonWithDefault(data["valueOffset"], 0.0);
-            analogConfig.cutoff = getJsonWithDefault(data["cutoff"], 0.0);
-            analogConfig.precision = getJsonWithDefault(data["precision"], 0);
-            analogConfig.aggregateTime =
-                getJsonWithDefault(data["aggregateTime"], 0U);
-            analogConfig.aggregateDelay =
-                getJsonWithDefault(data["aggregateDelay"], 0U);
-            return createSensorInterface(
-                data, std::make_unique<AnalogSensor>(
-                          esp, debug, std::move(*input), analogConfig));
-        } else if (type == "encoder") {
-            uint8_t downPin = 0;
-            uint8_t upPin = 0;
-            return getRequiredValue(data, "downPin", downPin) &&
-                           getRequiredValue(data, "upPin", upPin)
-                       ? std::make_unique<EncoderInterface>(
-                             std::make_unique<EspEncoder>(downPin, upPin),
-                             EncoderConfig{
-                                 downPin, upPin,
-                                 getJsonWithDefault(data["pulse"], false)})
-                       : nullptr;
-        } else if (type == "dht") {
-            uint8_t pin = 0;
-            auto type =
-                tools::findValue(dhtTypes, data.get<std::string>("dhtType"));
-            if (!type) {
-                debug << "Invalid DHT type." << std::endl;
-                return nullptr;
-            }
-            return getPin(data, pin)
-                       ? createSensorInterface(
-                             data, std::make_unique<DhtSensor>(
-                                       debug, DhtConfig{pin, *type}))
-                       : nullptr;
-        } else if (type == "dallasTemperature") {
-            uint8_t pin = 0;
-            size_t devices = data.get<size_t>("devices");
-            if (devices == 0) {
-                devices = 1;
-            }
-            return getPin(data, pin)
-                       ? createSensorInterface(
-                             data,
-                             std::make_unique<DallasTemperatureSensor>(
-                                 debug, DallasTemperatureConfig{pin, devices}))
-                       : nullptr;
-        } else if (type == "hm3301") {
-            int sda = 0;
-            int scl = 0;
-            return (getRequiredValue(data, "sda", sda) &&
-                    getRequiredValue(data, "scl", scl))
-                       ? createSensorInterface(
-                             data, std::make_unique<HM3301Sensor>(
-                                       debug, Hm3301Config{sda, scl}))
-                       : nullptr;
-            //} else if (type == "sds011") {
-            //    int rx = 0;
-            //    int tx = 0;
-            //    return (getRequiredValue(data, "rx", rx)
-            //            && getRequiredValue(data, "tx", tx))
-            //            ?  createSensorInterface(data,
-            //                std::make_unique<SDS011Sensor>(debug, rx, tx,
-            //                      getJsonWithDefault(data["measureTime"], 3)))
-            //            : nullptr;
-        } else if (type == "counter") {
-            uint8_t pin = 0;
-            return getPin(data, pin)
-                       ? std::make_unique<CounterInterface>(
-                             debug, esp,
-                             CounterConfig{
-                                 data.get<std::string>("name"),
-                                 pin,
-                                 getJsonWithDefault(data["bounceTime"], 0),
-                                 getJsonWithDefault(data["multiplier"], 1.0f),
-                                 SensorConfig{
-                                     getInterval(data),
-                                     getOffset(data),
-                                     getPulse(data),
-                                 },
-                             })
-                       : nullptr;
-        } else if (type == "hc-sr04" || type == "echo-distance") {
-            uint8_t echoPin = 0;
-            if (!getRequiredValue(data, "echoPin", echoPin)) {
-                return nullptr;
-            }
-
-            uint8_t triggerPin = getJsonWithDefault(data["triggerPin"], 0);
-            return triggerPin != 0
-                       ? createSensorInterface(
-                             data, std::make_unique<EchoDistanceSensor>(
-                                       debug, esp,
-                                       EchoDistanceConfig{
-                                           echoPin,
-                                           triggerPin,
-                                           getJsonWithDefault(
-                                               data["triggerTime"], 10U),
-                                       }))
-                       : std::make_unique<EchoDistanceReaderInterface>(
-                             debug, esp, EchoDistanceReaderConfig{echoPin});
-        } else if (type == "mqtt") {
-            std::string topic = data["topic"];
-            return topic.length() != 0
-                       ? std::make_unique<MqttInterface>(
-                             mqttClient, MqttInterfaceConfig{topic})
-                       : nullptr;
-        } else if (type == "keepalive") {
-            uint8_t pin = 0;
-            return getPin(data, pin)
-                       ? std::make_unique<KeepaliveInterface>(
-                             esp,
-                             KeepaliveConfig{
-                                 pin,
-                                 getJsonWithDefault(data["interval"], 10000U),
-                                 getJsonWithDefault(data["resetInterval"], 10U),
-                             })
-                       : nullptr;
-        } else if (type == "powerSupply") {
-            uint8_t powerSwitchPin = 0;
-            uint8_t resetSwitchPin = 0;
-            uint8_t powerCheckPin = 0;
-            return (getRequiredValue(data, "powerSwitchPin", powerSwitchPin) &&
-                    getRequiredValue(data, "resetSwitchPin", resetSwitchPin) &&
-                    getRequiredValue(data, "powerCheckPin", powerCheckPin))
-                       ? std::make_unique<PowerSupplyInterface>(
-                             debug, esp,
-                             PowerSupplyConfig{
-                                 powerSwitchPin,
-                                 resetSwitchPin,
-                                 powerCheckPin,
-                                 getJsonWithDefault(data["pushTime"], 200U),
-                                 getJsonWithDefault(
-                                     data["forceOffTime"], 6000U),
-                                 getJsonWithDefault(data["checkTime"], 60000U),
-                                 getJsonWithDefault(data["initialState"], ""),
-                             })
-                       : nullptr;
-        } else if (type == "cover") {
-            uint8_t upMovementPin = 0;
-            uint8_t downMovementPin = 0;
-            uint8_t upPin = 0;
-            uint8_t downPin = 0;
-            std::vector<PositionSensor> positionSensors;
-            const JsonArray& positionSensorConfigs = data["positionSensors"];
-            positionSensors.reserve(positionSensorConfigs.size());
-            for (const JsonObject& sensorConfig : positionSensorConfigs) {
-                PositionSensor sensor;
-                if (!getRequiredValue(
-                        sensorConfig, "position", sensor.position) ||
-                    !getRequiredValue(sensorConfig, "pin", sensor.pin)) {
-                    continue;
-                }
-                sensor.invert =
-                    getJsonWithDefault(sensorConfig["invert"], false);
-                positionSensors.push_back(sensor);
-            }
-
-            return (getRequiredValue(data, "upMovementPin", upMovementPin) &&
-                    getRequiredValue(
-                        data, "downMovementPin", downMovementPin) &&
-                    getRequiredValue(data, "upPin", upPin) &&
-                    getRequiredValue(data, "downPin", downPin))
-                       ? std::make_unique<Cover>(
-                             debug, esp, rtc,
-                             CoverConfig{
-                                 upMovementPin,
-                                 downMovementPin,
-                                 upPin,
-                                 downPin,
-                                 getJsonWithDefault(data["stopPin"], 0),
-                                 getJsonWithDefault(data["latching"], false),
-                                 getJsonWithDefault(data["invertInput"], false),
-                                 getJsonWithDefault(
-                                     data["invertOutput"], false),
-                                 getJsonWithDefault(data["closedPosition"], 0),
-                                 getJsonWithDefault(
-                                     data["invertPositionSensors"], false),
-                                 std::move(positionSensors),
-                             })
-                       : nullptr;
-            //        } else if (type == "hlw8012") {
-            //            uint8_t powerPin = 0;
-            //            return (getRequiredValue(data, "powerPin", powerPin))
-            //                    ?  std::make_unique<Hlw8012Interface>(debug,
-            //                    esp,
-            //                            data.get<std::string>("name"),
-            //                            getInterval(data), getOffset(data),
-            //                            powerPin)
-            //                    : nullptr;
-        } else if (type == "status") {
-            return std::make_unique<StatusInterface>(mqttClient);
-        } else {
-            debug << "Invalid interface type: " << type << std::endl;
-            return {};
-        }
-    }
-
-    std::shared_ptr<AnalogInput> parseAnalogInput(const JsonObject& data) {
-        std::string type = data["type"];
-        if (type.empty()) {
-            debug << "Input needs a valid type.\n";
-            return nullptr;
-        }
-
-        if (type == "mcp3008") {
-            uint8_t sck = 0;
-            uint8_t mosi = 0;
-            uint8_t miso = 0;
-            uint8_t cs = 0;
-            if (!getRequiredValue(data, "sck", sck) ||
-                !getRequiredValue(data, "mosi", mosi) ||
-                !getRequiredValue(data, "miso", miso) ||
-                !getRequiredValue(data, "cs", cs)) {
-                return nullptr;
-            }
-            return std::make_shared<Mcp3008AnalogInput>(sck, mosi, miso, cs);
-        } else {
-            debug << "Invalid input type: " << type << "\n";
-            return nullptr;
-        }
-    }
-
-    void parseAnalogInputs(const JsonObject& data) {
-        const JsonArray& inputs = data["analogInputs"];
-        if (inputs == JsonArray::invalid()) {
-            return;
-        }
-
-        this->analogInputs.reserve(inputs.size());
-        for (const JsonObject& input : inputs) {
-            if (input == JsonObject::invalid()) {
-                debug << "Input configuration must be an object." << std::endl;
-                continue;
-            }
-
-            std::string name = input["name"];
-            if (name.empty()) {
-                debug << "Input needs a valid name." << std::endl;
-                continue;
-            }
-
-            auto inputConfig = parseAnalogInput(input);
-            if (!inputConfig) {
-                debug << name << ": invalid config." << std::endl;
-                continue;
-            }
-
-            this->analogInputs.emplace(std::move(name), std::move(inputConfig));
-        }
-    }
-
-    void parseInterfaces(
-        const JsonObject& data,
-        std::vector<std::unique_ptr<InterfaceConfig>>& result) {
-        const JsonArray& interfaces = data["interfaces"];
-        if (interfaces == JsonArray::invalid()) {
-            debug << "Could not parse interfaces." << std::endl;
-            return;
-        }
-
-        result.reserve(interfaces.size());
-        for (const JsonObject& interface : interfaces) {
-            if (interface == JsonObject::invalid()) {
-                debug << "Interface configuration must be an object."
-                      << std::endl;
-                continue;
-            }
-
-            auto parsedInterface = parseInterface(interface);
-            if (!parsedInterface) {
-                debug << "Invalid interface configuration." << std::endl;
-                continue;
-            }
-
-            result.emplace_back(std::make_unique<InterfaceConfig>());
-            InterfaceConfig& interfaceConfig = *result.back();
-
-            PARSE(jsonParser, interface, interfaceConfig, name);
-
-            std::string commandTopic = interface["commandTopic"];
-            if (!commandTopic.empty()) {
-                mqttClient.subscribe(
-                    commandTopic.c_str(),
-                    [&interfaceConfig](const MqttConnection::Message& message) {
-                    std::string command{
-                        message.payload, message.payloadLength};  // FIXME
-                    interfaceConfig.interface->execute(command);
-                });
-            }
-
-            interfaceConfig.interface = std::move(parsedInterface);
-        }
-    }
-
-    std::string getMandatoryArgument(const JsonObject& data, const char* name) {
-        std::string result = data[name];
-        if (result.length() == 0) {
-            debug << std::string(name) + " is mandatory." << std::endl;
-        }
-        return result;
-    }
+        const SensorConfig& timing, std::unique_ptr<Sensor>&& sensor,
+        const std::string& name);
 
     std::pair<
         std::unique_ptr<operation::Operation>,
@@ -583,142 +99,324 @@ private:
     parseOperation(
         const std::vector<std::unique_ptr<InterfaceConfig>>& interfaces,
         InterfaceConfig* defaultInterface, const ArduinoJson::JsonObject& data,
-        const char* fieldName, const char* templateFieldName) {
-        if (data[fieldName].is<std::string>()) {
-            operation::Parser2 parser{debug, interfaces, defaultInterface};
-            auto operation = parser.parse(data.get<std::string>(fieldName));
-            auto usedInterfaces = std::move(parser).getUsedInterfaces();
-            return {std::move(operation), std::move(usedInterfaces)};
-        } else {
-            operation::Parser parser{interfaces, defaultInterface};
-            auto operation = parser.parse(data, fieldName, templateFieldName);
-            auto usedInterfaces = std::move(parser).getUsedInterfaces();
-            return {std::move(operation), std::move(usedInterfaces)};
-        }
+        const char* fieldName, const char* templateFieldName);
+
+    void buildActions(
+        const std::vector<ActionEntry>& entries,
+        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces);
+};
+
+ConfigFactory::ConfigFactory(
+    std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp, Rtc& rtc,
+    MqttClient& mqttClient)
+    : debug(debug)
+    , debugStream(debugStream)
+    , esp(esp)
+    , rtc(rtc)
+    , mqttClient(mqttClient) {}
+
+void ConfigFactory::initSerial() {
+    Serial.begin(115200);
+    this->debugStreambuf = std::make_unique<PrintStreambuf>(Serial);
+    this->debugStream.add(this->debugStreambuf.get());
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildInput(const InputConfig& c) {
+    return std::make_unique<GpioInput>(this->debug, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildOutput(const OutputConfig& c) {
+    return std::make_unique<GpioOutput>(this->debug, this->esp, this->rtc, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildPwm(const PwmConfig& c) {
+    return std::make_unique<PwmOutput>(this->debug, this->esp, this->rtc, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildAnalog(const AnalogConfig& c) {
+    auto input = this->resolveAnalogInput(c.input);
+    if (!input) {
+        this->debug << "Invalid analog input." << std::endl;
+        return nullptr;
+    }
+    return this->createSensorInterface(
+        c.timing,
+        std::make_unique<AnalogSensor>(
+            this->esp, this->debug, std::move(*input), c),
+        "");
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildEncoder(const EncoderConfig& c) {
+    return std::make_unique<EncoderInterface>(
+        std::make_unique<EspEncoder>(c.downPin, c.upPin), c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildDht(const DhtConfig& c) {
+    return this->createSensorInterface(
+        c.timing, std::make_unique<DhtSensor>(this->debug, c), "");
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildDallasTemperature(
+    const DallasTemperatureConfig& c) {
+    return this->createSensorInterface(
+        c.timing, std::make_unique<DallasTemperatureSensor>(this->debug, c),
+        "");
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildHm3301(const Hm3301Config& c) {
+    return this->createSensorInterface(
+        c.timing, std::make_unique<HM3301Sensor>(this->debug, c), "");
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildCounter(const CounterConfig& c) {
+    return std::make_unique<CounterInterface>(this->debug, this->esp, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildEchoDistance(
+    const EchoDistanceConfig& c) {
+    return this->createSensorInterface(
+        c.timing,
+        std::make_unique<EchoDistanceSensor>(this->debug, this->esp, c), "");
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildEchoDistanceReader(
+    const EchoDistanceReaderConfig& c) {
+    return std::make_unique<EchoDistanceReaderInterface>(
+        this->debug, this->esp, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildMqttInterface(
+    const MqttInterfaceConfig& c) {
+    return std::make_unique<MqttInterface>(this->mqttClient, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildKeepalive(
+    const KeepaliveConfig& c) {
+    return std::make_unique<KeepaliveInterface>(this->esp, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildPowerSupply(
+    const PowerSupplyConfig& c) {
+    return std::make_unique<PowerSupplyInterface>(this->debug, this->esp, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildCover(const CoverConfig& c) {
+    return std::make_unique<Cover>(this->debug, this->esp, this->rtc, c);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildStatus(const StatusConfig&) {
+    return std::make_unique<StatusInterface>(this->mqttClient);
+}
+
+std::unique_ptr<Interface> ConfigFactory::createSensorInterface(
+    const SensorConfig& timing, std::unique_ptr<Sensor>&& sensor,
+    const std::string& name) {
+    return std::make_unique<SensorInterface>(
+        this->debug, this->esp, std::move(sensor), name, timing);
+}
+
+AnalogInputWithChannel ConfigFactory::getEspAnalogInput() {
+    auto it = this->analogInputs.find("");
+    if (it == this->analogInputs.end()) {
+        it = this->analogInputs.emplace("", std::make_shared<EspAnalogInput>())
+                 .first;
+    }
+    return AnalogInputWithChannel(it->second, A0);
+}
+
+std::optional<AnalogInputWithChannel> ConfigFactory::resolveAnalogInput(
+    const AnalogInputWithChannelDescription& desc) {
+    if (desc.inputName.empty()) {
+        return this->getEspAnalogInput();
     }
 
-    std::pair<std::unique_ptr<Action>, std::unordered_set<InterfaceConfig*>>
-    parseAction(
-        JsonObject& data, InterfaceConfig* defaultInterface,
-        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
-        auto type = data.get<std::string>("type");
-        std::unique_ptr<Action> result;
-        std::unordered_set<InterfaceConfig*> usedInterfaces;
-        bool InterfaceConfig::* actionType = nullptr;
-        if (type == "publish") {
-            std::string topic = getMandatoryArgument(data, "topic");
-            if (topic.empty()) {
-                return {};
+    auto it = this->analogInputs.find(desc.inputName);
+    if (it == this->analogInputs.end()) {
+        this->debug << "Input not found: " << desc.inputName << std::endl;
+        return std::nullopt;
+    }
+    return AnalogInputWithChannel(it->second, desc.channel);
+}
+
+std::unique_ptr<Interface> ConfigFactory::buildInterface(
+    const InterfaceConfigVariant& config) {
+    return std::visit([this](const auto& c) -> std::unique_ptr<Interface> {
+        using T = std::decay_t<decltype(c)>;
+        if constexpr (std::is_same_v<T, InputConfig>) {
+            return this->buildInput(c);
+        } else if constexpr (std::is_same_v<T, OutputConfig>) {
+            return this->buildOutput(c);
+        } else if constexpr (std::is_same_v<T, PwmConfig>) {
+            return this->buildPwm(c);
+        } else if constexpr (std::is_same_v<T, AnalogConfig>) {
+            return this->buildAnalog(c);
+        } else if constexpr (std::is_same_v<T, EncoderConfig>) {
+            return this->buildEncoder(c);
+        } else if constexpr (std::is_same_v<T, DhtConfig>) {
+            return this->buildDht(c);
+        } else if constexpr (std::is_same_v<T, DallasTemperatureConfig>) {
+            return this->buildDallasTemperature(c);
+        } else if constexpr (std::is_same_v<T, Hm3301Config>) {
+            return this->buildHm3301(c);
+        } else if constexpr (std::is_same_v<T, CounterConfig>) {
+            return this->buildCounter(c);
+        } else if constexpr (std::is_same_v<T, EchoDistanceConfig>) {
+            return this->buildEchoDistance(c);
+        } else if constexpr (std::is_same_v<T, EchoDistanceReaderConfig>) {
+            return this->buildEchoDistanceReader(c);
+        } else if constexpr (std::is_same_v<T, MqttInterfaceConfig>) {
+            return this->buildMqttInterface(c);
+        } else if constexpr (std::is_same_v<T, KeepaliveConfig>) {
+            return this->buildKeepalive(c);
+        } else if constexpr (std::is_same_v<T, PowerSupplyConfig>) {
+            return this->buildPowerSupply(c);
+        } else if constexpr (std::is_same_v<T, CoverConfig>) {
+            return this->buildCover(c);
+        } else if constexpr (std::is_same_v<T, StatusConfig>) {
+            return this->buildStatus(c);
+        } else {
+            return nullptr;
+        }
+    }, config);
+}
+
+std::pair<
+    std::unique_ptr<operation::Operation>, std::unordered_set<InterfaceConfig*>>
+ConfigFactory::parseOperation(
+    const std::vector<std::unique_ptr<InterfaceConfig>>& interfaces,
+    InterfaceConfig* defaultInterface, const ArduinoJson::JsonObject& data,
+    const char* fieldName, const char* templateFieldName) {
+    if (data[fieldName].is<std::string>()) {
+        operation::Parser2 parser{this->debug, interfaces, defaultInterface};
+        auto operation = parser.parse(data.get<std::string>(fieldName));
+        auto usedInterfaces = std::move(parser).getUsedInterfaces();
+        return {std::move(operation), std::move(usedInterfaces)};
+    }
+    operation::Parser parser{interfaces, defaultInterface};
+    auto operation = parser.parse(data, fieldName, templateFieldName);
+    auto usedInterfaces = std::move(parser).getUsedInterfaces();
+    return {std::move(operation), std::move(usedInterfaces)};
+}
+
+void ConfigFactory::buildActions(
+    const std::vector<ActionEntry>& entries,
+    std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
+    for (const auto& entry : entries) {
+        auto defaultInterface = findInterface(interfaces, entry.interface);
+        if (!defaultInterface) {
+            this->debug << "Interface not found: "
+                        << entry.interface << std::endl;
+            continue;
+        }
+
+        if (std::holds_alternative<PublishActionConfig>(entry.config)) {
+            const auto& cfg = std::get<PublishActionConfig>(entry.config);
+
+            DynamicJsonBuffer buffer{512};
+            auto& root = buffer.parseObject(cfg.operationJson);
+            auto [operation, usedInterfaces] = this->parseOperation(
+                interfaces, defaultInterface, root, "payload", "template");
+
+            auto action = std::make_shared<PublishAction>(
+                this->debug, this->esp, this->mqttClient, cfg.topic,
+                std::move(operation), cfg.retain, cfg.minimumSendInterval,
+                cfg.sendDiff);
+
+            defaultInterface->hasExternalAction = true;
+            for (auto* iface : usedInterfaces) {
+                iface->hasExternalAction = true;
             }
-            if (!data["payload"].success() && !data["template"].success()) {
-                data.set("template", "%1");
+            usedInterfaces.insert(defaultInterface);
+            for (auto* iface : usedInterfaces) {
+                iface->actions.push_back(action);
             }
-            auto [operation, parsedInterfaces] = parseOperation(
-                interfaces, defaultInterface, data, "payload", "template");
-            usedInterfaces = std::move(parsedInterfaces);
-            result = std::make_unique<PublishAction>(
-                debug, esp, mqttClient, topic, std::move(operation),
-                data.get<bool>("retain"),
-                data.get<unsigned>("minimumSendInterval"),
-                data.get<double>("sendDiff"));
-            actionType = &InterfaceConfig::hasExternalAction;
-        } else if (type == "command") {
-            const std::string targetName = data["target"];
-            auto target = findInterface(interfaces, targetName);
+        } else if (std::holds_alternative<CommandActionConfig>(entry.config)) {
+            const auto& cfg = std::get<CommandActionConfig>(entry.config);
+
+            auto target = findInterface(interfaces, cfg.target);
             if (!target) {
-                debug << "Interface not found: " << targetName << std::endl;
-                return {};
-            }
-
-            auto [operation, parsedInterfaces] = parseOperation(
-                interfaces, defaultInterface, data, "command", "template");
-            usedInterfaces = std::move(parsedInterfaces);
-            result = std::make_unique<CommandAction>(
-                *target->interface, std::move(operation));
-            actionType = &InterfaceConfig::hasInternalAction;
-        } else {
-            debug << "Invalid action type: " + type << std::endl;
-        }
-
-        if (actionType != nullptr) {
-            defaultInterface->*actionType = true;
-            for (auto& interface : usedInterfaces) {
-                interface->*actionType = true;
-            }
-        }
-
-        return {std::move(result), std::move(usedInterfaces)};
-    }
-
-    void parseActions(
-        JsonObject& data,
-        std::vector<std::unique_ptr<InterfaceConfig>>& interfaces) {
-        const JsonArray& actions = data["actions"];
-        if (actions == JsonArray::invalid()) {
-            debug << "Could not parse actions." << std::endl;
-            return;
-        }
-
-        for (JsonObject& action : actions) {
-            const std::string interfaceName = action["interface"];
-            auto defaultInterface = findInterface(interfaces, interfaceName);
-
-            auto parseResult =
-                parseAction(action, defaultInterface, interfaces);
-            std::shared_ptr<Action> parsedAction = std::move(parseResult.first);
-            auto&& usedInterfaces = parseResult.second;
-            if (!parsedAction) {
-                debug << "Invalid action configuration." << std::endl;
+                this->debug << "Interface not found: " << cfg.target
+                            << std::endl;
                 continue;
             }
 
-            if (defaultInterface) {
-                usedInterfaces.insert(defaultInterface);
+            DynamicJsonBuffer buffer{512};
+            auto& root = buffer.parseObject(cfg.operationJson);
+            auto [operation, usedInterfaces] = this->parseOperation(
+                interfaces, defaultInterface, root, "command", "template");
+
+            auto action = std::make_shared<CommandAction>(
+                *target->interface, std::move(operation));
+
+            defaultInterface->hasInternalAction = true;
+            for (auto* iface : usedInterfaces) {
+                iface->hasInternalAction = true;
             }
-            for (auto& interface : usedInterfaces) {
-                interface->actions.push_back(parsedAction);
+            usedInterfaces.insert(defaultInterface);
+            for (auto* iface : usedInterfaces) {
+                iface->actions.push_back(action);
             }
         }
     }
+}
 
-    DeviceConfig readDeviceConfig(const char* filename) {
-        DeviceConfig result;
-        ParsedData data = this->jsonParser.parseFile(filename);
-        if (!data.root) {
-            return result;
-        }
+DeviceConfig ConfigFactory::buildDeviceConfig(
+    DeviceConfigDescription&& parsed) {
+    DeviceConfig result;
+    result.common = parsed.common;
+    result.debug = std::move(this->debugStreambuf);
 
-        bool isDebug = false;
-        this->jsonParser.parseTo(*data.root, isDebug, "debug");
-        if (isDebug) {
-            Serial.begin(115200);
-            result.debug = std::make_unique<PrintStreambuf>(Serial);
-            this->debugStream.add(result.debug.get());
-        }
-
-        PARSE(jsonParser, *data.root, result, debugPort);
-        PARSE(jsonParser, *data.root, result, debugTopic);
-        PARSE(jsonParser, *data.root, result, resetPin);
-        if (result.resetPin <= 16) {
-            esp.pinMode(result.resetPin, GpioMode::input);
-        }
-
-        debug << "\nStarting up...\n"
-              << "Debug port = " << result.debugPort
-              << ", reset pin = " << static_cast<int>(result.resetPin)
-              << std::endl;
-
-        PARSE(jsonParser, *data.root, result, name);
-        PARSE(jsonParser, *data.root, result.topics, availabilityTopic);
-        PARSE(jsonParser, *data.root, result.topics, statusTopic);
-
-        parseAnalogInputs(*data.root);
-        parseInterfaces(*data.root, result.interfaces);
-        parseActions(*data.root, result.interfaces);
-
-        return result;
+    if (result.common.resetPin <= 16) {
+        this->esp.pinMode(result.common.resetPin, GpioMode::input);
     }
-};
+
+    this->debug << "\nStarting up...\n"
+                << "Debug port = " << result.common.debugPort
+                << ", reset pin = " << static_cast<int>(result.common.resetPin)
+                << std::endl;
+
+    for (auto& [name, inputConfig] : parsed.analogInputs) {
+        auto analogInput =
+            std::visit([this](const auto& cfg) -> std::shared_ptr<AnalogInput> {
+            using T = std::decay_t<decltype(cfg)>;
+            if constexpr (std::is_same_v<T, Mcp3008Config>) {
+                return std::make_shared<Mcp3008AnalogInput>(
+                    cfg.sck, cfg.mosi, cfg.miso, cfg.cs);
+            }
+            return nullptr;
+        }, inputConfig.input);
+        if (analogInput) {
+            this->analogInputs[std::move(name)] = std::move(analogInput);
+        }
+    }
+
+    for (auto& [name, entry] : parsed.interfaces) {
+        auto interface = this->buildInterface(entry.config);
+        if (!interface) {
+            this->debug << "Invalid interface configuration." << std::endl;
+            continue;
+        }
+
+        auto interfaceConfig = std::make_unique<InterfaceConfig>();
+        interfaceConfig->name = name;
+        interfaceConfig->interface = std::move(interface);
+
+        if (!entry.commandTopic.empty()) {
+            this->mqttClient.subscribe(
+                entry.commandTopic.c_str(),
+                [&interfaceConfig](const MqttConnection::Message& message) {
+                std::string command{message.payload, message.payloadLength};
+                interfaceConfig->interface->execute(command);
+            });
+        }
+
+        result.interfaces.push_back(std::move(interfaceConfig));
+    }
+
+    this->buildActions(parsed.actions, result.interfaces);
+
+    return result;
+}
 
 }  // unnamed namespace
 
@@ -728,5 +426,25 @@ DeviceConfig deviceConfig;
 void initConfig(
     std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp, Rtc& rtc,
     MqttClient& mqttClient) {
-    ConfigParser(debug, debugStream, esp, rtc, mqttClient).parse();
+    SPIFFS.begin();
+    JsonParser jsonParser(debug);
+
+    ParsedData globalData = jsonParser.parseFile("/global_config.json");
+    ParsedData deviceData = jsonParser.parseFile("/device_config.json");
+
+    ConfigParser parser(debug);
+    ConfigFactory factory(debug, debugStream, esp, rtc, mqttClient);
+
+    if (deviceData.root && parser.parseDebugEnabled(*deviceData.root)) {
+        factory.initSerial();
+    }
+
+    globalConfig = globalData.root ? parser.parseGlobalConfig(*globalData.root)
+                                   : GlobalConfig{};
+
+    DeviceConfigDescription parsedDevice =
+        deviceData.root ? parser.parseDeviceConfig(*deviceData.root)
+                        : DeviceConfigDescription{};
+
+    deviceConfig = factory.buildDeviceConfig(std::move(parsedDevice));
 }

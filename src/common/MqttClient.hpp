@@ -10,23 +10,11 @@
 #include "ArduinoJson.hpp"
 #include "Backoff.hpp"
 #include "EspApi.hpp"
+#include "GlobalConfig.hpp"
 #include "MqttConnection.hpp"
 #include "Wifi.hpp"
 
 class Client;
-struct ServerConfig;
-
-struct ServerConfig {
-    std::string address;
-    uint16_t port = 0;
-    std::string username;
-    std::string password;
-};
-
-struct TopicConfig {
-    std::string availabilityTopic;
-    std::string statusTopic;
-};
 
 struct MqttConfig {
     std::string name;
