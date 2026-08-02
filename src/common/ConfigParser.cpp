@@ -348,49 +348,35 @@ std::optional<InterfaceConfigVariant> ConfigParser::parseInterface(
     const JsonObject& data) {
     std::string type = data.get<std::string>("type");
     if (type == "input") {
-        auto r = parseInput(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseInput(data));
     } else if (type == "output") {
-        auto r = parseOutput(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseOutput(data));
     } else if (type == "pwm") {
-        auto r = parsePwm(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parsePwm(data));
     } else if (type == "analog") {
-        auto r = parseAnalog(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseAnalog(data));
     } else if (type == "encoder") {
-        auto r = parseEncoder(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseEncoder(data));
     } else if (type == "dht") {
-        auto r = parseDht(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseDht(data));
     } else if (type == "dallasTemperature") {
-        auto r = parseDallasTemperature(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseDallasTemperature(data));
     } else if (type == "hm3301") {
-        auto r = parseHm3301(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseHm3301(data));
     } else if (type == "counter") {
-        auto r = parseCounter(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseCounter(data));
     } else if (type == "hc-sr04" || type == "echo-distance") {
         return parseEchoDistance(data);
     } else if (type == "mqtt") {
-        auto r = parseMqttInterface(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseMqttInterface(data));
     } else if (type == "keepalive") {
-        auto r = parseKeepalive(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseKeepalive(data));
     } else if (type == "powerSupply") {
-        auto r = parsePowerSupply(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parsePowerSupply(data));
     } else if (type == "cover") {
-        auto r = parseCover(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseCover(data));
     } else if (type == "status") {
-        auto r = parseStatus(data);
-        return r ? std::optional<InterfaceConfigVariant>(*r) : std::nullopt;
+        return toVariant(parseStatus(data));
     }
     this->debug << "Invalid interface type: " << type << std::endl;
     return std::nullopt;

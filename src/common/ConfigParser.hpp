@@ -33,6 +33,12 @@ private:
     std::ostream& debug;
 
     template <typename T>
+    std::optional<InterfaceConfigVariant> toVariant(std::optional<T> config) {
+        return config ? std::optional<InterfaceConfigVariant>(*config)
+                      : std::nullopt;
+    }
+
+    template <typename T>
     bool getRequiredValue(
         const ArduinoJson::JsonObject& data, const char* name, T& value) {
         auto rawValue = data[name];
