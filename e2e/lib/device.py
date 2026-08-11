@@ -12,6 +12,9 @@ from .gpio import Gpio
 MQTT_USERNAME = "e2e"
 MQTT_PASSWORD = "e2etest123"
 
+# flash.py is in the repo root, two levels up from e2e/
+FLASH_PY = Path(__file__).parent.parent.parent / "flash.py"
+
 
 class Device:
     def __init__(self, serial_port: str, reset_pin: int, gpio: Gpio):
@@ -43,15 +46,15 @@ class Device:
         """Upload pre-built firmware via flash.py."""
         return subprocess.run(
             [
-                "python3", "flash.py", "upload",
+                "python3", str(FLASH_PY), "-p", self._serial_port,
+                "upload",
                 "--image", str(firmware_bin),
-                "--port", self._serial_port,
             ],
             check=True,
         ).returncode
 
     def upload_config(self, config_inputs: list[Path]) -> int:
         """Build and upload SPIFFS config via flash.py."""
-        cmd = ["python3", "flash.py", "upload-fs", "--port", self._serial_port]
+        cmd = ["python3", str(FLASH_PY), "-p", self._serial_port, "upload-fs"]
         cmd += [str(p) for p in config_inputs]
         return subprocess.run(cmd, check=True).returncode
