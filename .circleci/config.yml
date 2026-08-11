@@ -25,6 +25,10 @@ jobs:
             arduino-cli core update-index
             arduino-cli core install esp8266:esp8266
       - run:
+          name: Install libraries
+          command: |
+            arduino-cli lib install "Adafruit MCP3008" "DallasTemperature" "DHT sensor library" "OneWire" "PubSubClient" "Grove - Laser PM2.5 Sensor HM3301" "HLW8012"
+      - run:
           name: Compile firmware
           command: |
             mkdir -p /tmp/sketch/home_automation
