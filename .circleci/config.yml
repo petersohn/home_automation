@@ -9,7 +9,7 @@ workflows:
 jobs:
   build-firmware:
     docker:
-      - image: arduino/cli:latest
+      - image: arduino/arduino-cli:latest
     steps:
       - checkout
       - run: arduino-cli core install esp8266:esp8266
