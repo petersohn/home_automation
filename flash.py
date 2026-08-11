@@ -67,6 +67,7 @@ class Config:
             ufs.get("build_properties") or self.upload_build_properties
         )
         self.mkspiffs_path: str | None = (data.get("mkspiffs") or {}).get("path")
+        self.port_override: str | None = None
 
     @classmethod
     def load(cls, path: Path) -> "Config":
@@ -281,6 +282,46 @@ def _expand_recipe(props: dict[str, str], recipe: str, *, context_key: str = "")
 
 def upload_recipe(props: dict[str, str]) -> str:
     return props.get("tools.esptool.upload.pattern", "")
+
+
+def upload_prebuilt_firmware(cfg: Config, image: Path, *, dry: bool = False) -> int:
+    """Upload a pre-built firmware .bin using esptool via the core's upload.py."""
+    port = cfg.port_override or cfg.port
+    extra = {
+        "serial.port": port or "",
+        "build.path": str(image.parent),
+        "build.project_name": image.stem,
+        "upload.verbose": "",
+        "upload.erase_cmd": "",
+    }
+    props = get_board_properties(cfg.fqbn, cfg.upload_board_options, extra=extra)
+    recipe = upload_recipe(props)
+    expanded = _expand_recipe(props, recipe, context_key="tools.esptool.upload.pattern")
+    tokens = [t for t in shlex.split(expanded) if t]
+    if "write_flash" not in tokens:
+        raise SystemExit(
+            "could not find `write_flash` in the expanded upload recipe:\n  " + expanded
+        )
+    idx = tokens.index("write_flash")
+    head = tokens[:idx]
+    tail = ["write_flash", "0x0", str(image)]
+    cmd = head + tail
+    return run(cmd, dry=dry)
+
+
+def upload_prebuilt_fs(cfg: Config, image: Path, *, dry: bool = False) -> int:
+    """Upload a pre-built SPIFFS image using esptool."""
+    port = cfg.port_override or cfg.port
+    extra = {
+        "serial.port": port or "",
+        "build.path": str(image.parent),
+        "build.project_name": image.stem,
+        "upload.verbose": "",
+        "upload.erase_cmd": "",
+    }
+    props = get_board_properties(cfg.fqbn, cfg.uploadfs_board_options, extra=extra)
+    layout = fs_layout(props)
+    return _esptool_upload_image(props, layout, image, dry=dry)
 
 
 # ---------------------------------------------------------------------------
@@ -550,10 +591,23 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print commands instead of running them",
     )
+    p.add_argument(
+        "-p",
+        "--port",
+        type=str,
+        default=None,
+        help="serial port override (e.g. /dev/serial0)",
+    )
     sub = p.add_subparsers(dest="command", required=True)
 
     sub.add_parser("compile", help="compile but do not upload")
-    sub.add_parser("upload", help="compile and upload firmware")
+    sub_upload = sub.add_parser("upload", help="compile and upload firmware")
+    sub_upload.add_argument(
+        "--image",
+        type=Path,
+        default=None,
+        help="pre-built firmware .bin to upload (skip compile)",
+    )
 
     ufs = sub.add_parser(
         "upload-fs",
@@ -561,9 +615,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ufs.add_argument(
         "inputs",
-        nargs="+",
+        nargs="*",
         type=Path,
         help="files or directories to pack into the filesystem image",
+    )
+    ufs.add_argument(
+        "--image",
+        type=Path,
+        default=None,
+        help="pre-built SPIFFS image to upload (skip build)",
     )
 
     ifs = sub.add_parser(
@@ -590,6 +650,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     cfg = Config.load(args.config)
+    cfg.port_override = args.port
     sketch = args.sketch or (args.config.parent / "home_automation.ino").resolve()
     if not sketch.exists():
         raise SystemExit(f"sketch not found: {sketch}")
@@ -604,6 +665,8 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.command == "upload":
+        if args.image:
+            return upload_prebuilt_firmware(cfg, args.image, dry=args.dry_run)
         return arduino_cli_upload(
             cfg,
             sketch,
@@ -613,6 +676,10 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.command == "upload-fs":
+        if args.image:
+            return upload_prebuilt_fs(cfg, args.image, dry=args.dry_run)
+        if not args.inputs:
+            raise SystemExit("upload-fs: inputs required unless --image is given")
         return upload_fs(cfg, args.inputs, dry=args.dry_run)
 
     if args.command == "inspect-fs":
