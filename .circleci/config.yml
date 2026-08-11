@@ -8,4 +8,4 @@ jobs:
     machine: true
     resource_class: petersohn/esp_rpi
     steps:
-      - run: echo "Hi I'm on Runners!"
+      - run: id
