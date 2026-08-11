@@ -25,6 +25,8 @@ class SerialCapture:
         self._thread.start()
 
     def _capture_loop(self) -> None:
+        if self._log_path is None:
+            return
         with open(self._log_path, "w") as f:
             while self._running and self._serial and self._serial.is_open:
                 data = self._serial.read(1024)
@@ -38,4 +40,5 @@ class SerialCapture:
             self._thread.join(timeout=2.0)
         if self._serial:
             self._serial.close()
+        assert self._log_path is not None
         return self._log_path
