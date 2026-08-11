@@ -73,7 +73,7 @@ jobs:
           name: Run e2e tests
           command: |
             cd e2e
-            python3 -m pytest tests/basic/ -v --ci 2>&1
+            python3 -m pytest tests/basic/ -v 2>&1
       - store_artifacts:
           path: e2e/artifacts
           destination: serial-logs
