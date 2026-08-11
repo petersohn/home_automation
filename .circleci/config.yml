@@ -26,11 +26,11 @@ jobs:
             arduino-cli core install esp8266:esp8266
       - run:
           name: Compile firmware
-          command: arduino-cli compile --fqbn esp8266:esp8266:generic -o /tmp/firmware.bin
+          command: arduino-cli compile --fqbn esp8266:esp8266:generic --output-dir /tmp/firmware
       - persist_to_workspace:
           root: /tmp
           paths:
-            - firmware.bin
+            - firmware
   e2e-tests:
     machine: true
     resource_class: petersohn/esp_rpi
@@ -40,7 +40,7 @@ jobs:
           at: /tmp
       - run:
           name: Upload firmware
-          command: python3 flash.py upload --image /tmp/firmware.bin --port /dev/serial0
+          command: python3 flash.py upload --image /tmp/firmware/home_automation.ino.bin --port /dev/serial0
       - run:
           name: Run e2e tests
           command: |
