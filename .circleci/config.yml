@@ -49,6 +49,7 @@ jobs:
           name: Install arduino-cli on RPi
           command: |
             if ! command -v arduino-cli &>/dev/null; then
+              mkdir -p $HOME/.local/bin
               curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin sh
               echo 'export PATH=$HOME/.local/bin:$PATH' >> $BASH_ENV
             fi
