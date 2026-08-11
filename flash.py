@@ -432,7 +432,7 @@ def upload_fs(
         # Provide the runtime values arduino-cli can't fill in for a bare
         # `board details` call (no actual compile/port context).
         extra = {
-            "serial.port": cfg.port or "",
+            "serial.port": cfg.port_override or cfg.port or "",
             "build.path": str(image.parent),
             "build.project_name": image.stem,
             "upload.verbose": "",
@@ -511,7 +511,7 @@ def inspect_fs(
 
     try:
         extra = {
-            "serial.port": cfg.port or "",
+            "serial.port": cfg.port_override or cfg.port or "",
             "build.path": str(image.parent),
             "build.project_name": image.stem,
             "upload.verbose": "",
