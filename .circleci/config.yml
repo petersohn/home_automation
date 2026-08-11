@@ -9,11 +9,21 @@ workflows:
 jobs:
   build-firmware:
     docker:
-      - image: arduino/arduino-cli:latest
+      - image: cimg/base:current
     steps:
       - checkout
-      - run: arduino-cli core install esp8266:esp8266
-      - run: arduino-cli compile --fqbn esp8266:esp8266:generic -o /tmp/firmware.bin
+      - run:
+          name: Install arduino-cli
+          command: |
+            curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
+      - run:
+          name: Install ESP8266 core
+          command: |
+            arduino-cli config init
+            arduino-cli core install esp8266:esp8266
+      - run:
+          name: Compile firmware
+          command: arduino-cli compile --fqbn esp8266:esp8266:generic -o /tmp/firmware.bin
       - persist_to_workspace:
           root: /tmp
           paths:
