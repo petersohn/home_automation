@@ -47,7 +47,7 @@ jobs:
           at: /tmp
       - run:
           name: Upload firmware
-          command: python3 flash.py upload --image /tmp/firmware/home_automation.ino.bin --port /dev/serial0
+          command: python3 flash.py -p /dev/serial0 upload --image /tmp/firmware/home_automation.ino.bin
       - run:
           name: Run e2e tests
           command: |
