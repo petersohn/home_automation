@@ -14,6 +14,7 @@ MQTT_PASSWORD = "e2etest123"
 
 # flash.py is in the repo root, two levels up from e2e/
 FLASH_PY = Path(__file__).parent.parent.parent / "flash.py"
+FLASH_TOML = Path(__file__).parent.parent.parent / "flash.toml"
 
 
 class Device:
@@ -46,7 +47,8 @@ class Device:
         """Upload pre-built firmware via flash.py."""
         return subprocess.run(
             [
-                "python3", str(FLASH_PY), "-p", self._serial_port,
+                "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
+                "-p", self._serial_port,
                 "upload",
                 "--image", str(firmware_bin),
             ],
@@ -55,6 +57,9 @@ class Device:
 
     def upload_config(self, config_inputs: list[Path]) -> int:
         """Build and upload SPIFFS config via flash.py."""
-        cmd = ["python3", str(FLASH_PY), "-p", self._serial_port, "upload-fs"]
+        cmd = [
+            "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
+            "-p", self._serial_port, "upload-fs",
+        ]
         cmd += [str(p) for p in config_inputs]
         return subprocess.run(cmd, check=True).returncode
