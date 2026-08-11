@@ -63,6 +63,10 @@ jobs:
               arduino-cli core install esp8266:esp8266
             fi
       - run:
+          name: Install Python dependencies
+          command: |
+            pip3 install pytest paho-mqtt pyserial RPi.GPIO
+      - run:
           name: Upload firmware
           command: python3 flash.py -p /dev/serial0 upload --image /tmp/firmware/home_automation.ino.bin
       - run:
