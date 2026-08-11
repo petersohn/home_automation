@@ -2,10 +2,37 @@ version: 2.1
 workflows:
   testing:
     jobs:
-      - runner-test
+      - build-firmware
+      - e2e-tests:
+          requires:
+            - build-firmware
 jobs:
-  runner-test:
+  build-firmware:
+    docker:
+      - image: arduino/cli:latest
+    steps:
+      - checkout
+      - run: arduino-cli core install esp8266:esp8266
+      - run: arduino-cli compile --fqbn esp8266:esp8266:generic -o /tmp/firmware.bin
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - firmware.bin
+  e2e-tests:
     machine: true
     resource_class: petersohn/esp_rpi
     steps:
-      - run: id
+      - checkout
+      - attach_workspace:
+          at: /tmp
+      - run:
+          name: Upload firmware
+          command: python3 flash.py upload --image /tmp/firmware.bin --port /dev/serial0
+      - run:
+          name: Run e2e tests
+          command: |
+            cd e2e
+            python3 -m pytest tests/basic/ -v --ci 2>&1
+      - store_artifacts:
+          path: e2e/artifacts
+          destination: serial-logs
