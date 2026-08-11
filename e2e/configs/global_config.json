@@ -1,0 +1,12 @@
+{
+    "wifiSSID": "e2e-test",
+    "wifiPassword": "testpassword",
+    "servers": [
+        {
+            "address": "192.168.10.1",
+            "port": 1883,
+            "username": "e2e",
+            "password": "e2etest123"
+        }
+    ]
+}

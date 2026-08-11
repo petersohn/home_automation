@@ -1,0 +1,22 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "availabilityTopic": "home/testDevice/available",
+    "statusTopic": "home/testDevice/status",
+    "debugTopic": "home/testDevice/debug",
+    "interfaces": [
+        {"type": "input", "name": "i1", "pin": 14},
+        {"type": "input", "name": "i2", "pin": 4},
+        {"type": "output", "name": "o1", "commandTopic": "home/testDevice/o1/set", "pin": 5},
+        {"type": "output", "name": "o2", "commandTopic": "home/testDevice/o2/set", "pin": 16, "invert": true},
+        {"type": "pwm", "name": "p1", "commandTopic": "home/testDevice/p1/set", "pin": 12},
+        {"type": "pwm", "name": "p2", "commandTopic": "home/testDevice/p2/set", "pin": 13, "invert": true},
+        {"type": "mqtt", "name": "m1", "topic": "home/testDevice/m1/in"},
+        {"type": "status", "name": "s1"}
+    ],
+    "actions": [
+        {"type": "publish", "interface": "i1", "topic": "home/testDevice/i1/state"},
+        {"type": "publish", "interface": "i2", "topic": "home/testDevice/i2/state"},
+        {"type": "publish", "interface": "m1", "topic": "home/testDevice/m1/out", "template": "%1"}
+    ]
+}
