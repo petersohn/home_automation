@@ -26,7 +26,9 @@ jobs:
             arduino-cli core install esp8266:esp8266
       - run:
           name: Compile firmware
-          command: arduino-cli compile --fqbn esp8266:esp8266:generic --output-dir /tmp/firmware $(pwd)/home_automation.ino
+          command: |
+            ln -s . home_automation
+            arduino-cli compile --fqbn esp8266:esp8266:generic --output-dir /tmp/firmware home_automation
       - persist_to_workspace:
           root: /tmp
           paths:
