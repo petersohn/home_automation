@@ -27,8 +27,9 @@ jobs:
       - run:
           name: Compile firmware
           command: |
-            ln -s . home_automation
-            arduino-cli compile --fqbn esp8266:esp8266:generic --output-dir /tmp/firmware home_automation
+            mkdir -p /tmp/sketch/home_automation
+            cp -r src *.ino /tmp/sketch/home_automation/
+            arduino-cli compile --fqbn esp8266:esp8266:generic --output-dir /tmp/firmware /tmp/sketch/home_automation
       - persist_to_workspace:
           root: /tmp
           paths:
