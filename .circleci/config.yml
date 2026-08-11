@@ -46,6 +46,22 @@ jobs:
       - attach_workspace:
           at: /tmp
       - run:
+          name: Install arduino-cli on RPi
+          command: |
+            if ! command -v arduino-cli &>/dev/null; then
+              curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin sh
+              echo 'export PATH=$HOME/.local/bin:$PATH' >> $BASH_ENV
+            fi
+      - run:
+          name: Install ESP8266 core on RPi
+          command: |
+            if ! arduino-cli core list 2>/dev/null | grep -q esp8266; then
+              arduino-cli config init
+              arduino-cli config set board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+              arduino-cli core update-index
+              arduino-cli core install esp8266:esp8266
+            fi
+      - run:
           name: Upload firmware
           command: python3 flash.py -p /dev/serial0 upload --image /tmp/firmware/home_automation.ino.bin
       - run:
