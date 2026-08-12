@@ -66,7 +66,6 @@ jobs:
           name: Install Python dependencies
           command: |
             pip3 install --break-system-packages pytest paho-mqtt pyserial RPi.GPIO
-            sudo usermod -aG gpio circleci
       - run:
           name: Upload firmware
           command: python3 flash.py -p /dev/serial0 upload --image /tmp/firmware/home_automation.ino.bin
