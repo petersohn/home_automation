@@ -14,7 +14,7 @@ def i1_setup(gpio):
     gpio.set_boot_safe_state()
 
 
-def test_input_toggle_on_off(device_config, reset_device, mqtt_client, gpio, i1_setup):
+def test_input_toggle_on_off(device_config, device, reset_device, mqtt_client, gpio, i1_setup):
     """Drive i1 high -> MQTT '1'; drive low -> MQTT '0'."""
     assert_booted(device, mqtt_client, restarted=True)
 
