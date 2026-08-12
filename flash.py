@@ -311,6 +311,8 @@ def upload_prebuilt_firmware(cfg: Config, image: Path, *, dry: bool = False) -> 
             head[i + 1] = "no_reset"
         elif t == "--after":
             head[i + 1] = "no_reset"
+        elif t == "--baud":
+            head[i + 1] = "115200"
     tail = ["write_flash", "0x0", str(image)]
     cmd = head + tail
     return run(cmd, dry=dry)
@@ -491,6 +493,8 @@ def _esptool_upload_image(
             head[i + 1] = "no_reset"
         elif t == "--after":
             head[i + 1] = "no_reset"
+        elif t == "--baud":
+            head[i + 1] = "115200"
     tail = ["write_flash", f"0x{layout['start']:X}", str(image)]
     cmd = head + tail
     return run(cmd, dry=dry)
