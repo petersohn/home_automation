@@ -2,8 +2,19 @@
 
 import argparse
 
-def calibrate():
+u0: float
+u: float
+u1: float
+u2: float
+steps: int
+r1: float
+r2: float
+rl: float
+rl1: float
+rl2: float
 
+
+def calibrate() -> None:
     r1 = (u1 * (u0 - u2) * rl1 + u2 * (u1 - u0) * rl2) / u0 / (u2 - u1)
     r2 = u2 * u1 / u0 / (u2 - u1) * (rl1 - rl2)
     print('r1={}, r2={}'.format(r1, r2))
@@ -12,38 +23,46 @@ def calibrate():
     #     u2 / u0 * (r1+r2+rl2) - r2))
 
 
-def reverse_calibrate():
+def reverse_calibrate() -> None:
     rl1 = (u0/u1 - 1) * r2 - r1
     rl2 = (u0/u2 - 1) * r2 - r1
     print('rl1={}, rl2={}'.format(rl1, rl2))
 
-def substitute():
+
+def substitute() -> None:
     print(r2 * u0 / (r1 + r2 + rl) * steps / u)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-u0', type=float, required=True)
-parser.add_argument('-u', type=float, required=True)
-parser.add_argument('--steps', '-s', type=int, required=True)
-subparsers = parser.add_subparsers()
 
-parser_calibrate = subparsers.add_parser('calibrate', aliases=['c'])
-parser_calibrate.add_argument('-rl1', type=float, required=True)
-parser_calibrate.add_argument('-rl2', type=float, required=True)
-parser_calibrate.set_defaults(func=calibrate)
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u0', type=float, required=True)
+    parser.add_argument('-u', type=float, required=True)
+    parser.add_argument('--steps', '-s', type=int, required=True)
+    subparsers = parser.add_subparsers()
 
-parser_reverse = subparsers.add_parser('reverse_calibrate', aliases=['r'])
-parser_reverse.add_argument('-r1', type=float, required=True)
-parser_reverse.add_argument('-r2', type=float, required=True)
-parser_reverse.set_defaults(func=reverse_calibrate)
+    parser_calibrate = subparsers.add_parser('calibrate', aliases=['c'])
+    parser_calibrate.add_argument('-rl1', type=float, required=True)
+    parser_calibrate.add_argument('-rl2', type=float, required=True)
+    parser_calibrate.set_defaults(func=calibrate)
 
-parser_substitute = subparsers.add_parser('substitute', aliases=['s'])
-parser_substitute.add_argument('-r1', type=float, required=True)
-parser_substitute.add_argument('-r2', type=float, required=True)
-parser_substitute.add_argument('-rl', type=float, required=True)
-parser_substitute.set_defaults(func=substitute)
+    parser_reverse = subparsers.add_parser('reverse_calibrate', aliases=['r'])
+    parser_reverse.add_argument('-r1', type=float, required=True)
+    parser_reverse.add_argument('-r2', type=float, required=True)
+    parser_reverse.set_defaults(func=reverse_calibrate)
 
-args = parser.parse_args()
-globals().update(args.__dict__)
-u2 = u
-u1 = u / steps
-args.func()
+    parser_substitute = subparsers.add_parser('substitute', aliases=['s'])
+    parser_substitute.add_argument('-r1', type=float, required=True)
+    parser_substitute.add_argument('-r2', type=float, required=True)
+    parser_substitute.add_argument('-rl', type=float, required=True)
+    parser_substitute.set_defaults(func=substitute)
+
+    args = parser.parse_args()
+    globals().update(args.__dict__)  # type: ignore[dict-item]
+    global u2, u1
+    u2 = u
+    u1 = u / steps
+    args.func()
+
+
+if __name__ == "__main__":
+    main()

@@ -8,6 +8,7 @@ import RPi.GPIO as GPIO_lib
 
 from . import pin_map
 from .gpio import Gpio
+from .mqtt_client import MqttClient
 
 MQTT_USERNAME = "e2e"
 MQTT_PASSWORD = "e2etest123"
@@ -22,9 +23,9 @@ class Device:
         self._serial_port = serial_port
         self._reset_pin = reset_pin
         self._gpio = gpio
-        self._mqtt_client = None
+        self._mqtt_client: MqttClient | None = None
 
-    def set_mqtt_client(self, mqtt_client) -> None:
+    def set_mqtt_client(self, mqtt_client: MqttClient) -> None:
         self._mqtt_client = mqtt_client
 
     def reset(self) -> None:

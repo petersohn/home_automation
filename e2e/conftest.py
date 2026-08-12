@@ -1,6 +1,7 @@
 """Session-scoped fixtures for e2e tests."""
 
 from pathlib import Path
+from collections.abc import Iterator
 
 import pytest
 
@@ -14,7 +15,7 @@ from lib.pin_map import ESP_TO_RPI, RESET_PIN, SERIAL_PORT, SERIAL_BAUD
 
 
 @pytest.fixture(scope="session")
-def mqtt_broker():
+def mqtt_broker() -> Iterator[MqttBroker]:
     broker = MqttBroker()
     if not broker.is_running():
         broker.start()
@@ -23,7 +24,7 @@ def mqtt_broker():
 
 
 @pytest.fixture(scope="session")
-def wifi_ap():
+def wifi_ap() -> Iterator[WifiAp]:
     ap = WifiAp()
     ap.up()
     yield ap
@@ -31,7 +32,7 @@ def wifi_ap():
 
 
 @pytest.fixture(scope="session")
-def mqtt_client(mqtt_broker):
+def mqtt_client(mqtt_broker: MqttBroker) -> Iterator[MqttClient]:
     client = MqttClient(
         host="localhost",
         port=1883,
@@ -52,14 +53,14 @@ def mqtt_client(mqtt_broker):
 
 
 @pytest.fixture(scope="session")
-def gpio():
+def gpio() -> Iterator[Gpio]:
     g = Gpio()
     yield g
     g.cleanup()
 
 
 @pytest.fixture(scope="session")
-def device(gpio, mqtt_client):
+def device(gpio: Gpio, mqtt_client: MqttClient) -> Iterator[Device]:
     dev = Device(
         serial_port=SERIAL_PORT,
         reset_pin=RESET_PIN,
@@ -70,11 +71,11 @@ def device(gpio, mqtt_client):
 
 
 @pytest.fixture(scope="session")
-def global_config_path():
+def global_config_path() -> Path:
     return Path(__file__).parent / "configs" / "global_config.json"
 
 
-def assert_booted(device, mqtt_client, restarted=True):
+def assert_booted(device: Device, mqtt_client: MqttClient, restarted: bool = True) -> None:
     """Helper: wait for boot, assert restarted flag in status."""
     assert device.wait_for_boot(), "Device did not boot in time"
     status = mqtt_client.get_state_json("home/testDevice/status")

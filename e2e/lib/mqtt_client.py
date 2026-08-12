@@ -4,6 +4,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
@@ -30,7 +31,7 @@ class MqttClient:
         self._thread = threading.Thread(target=self._client.loop_forever, daemon=True)
         self._thread.start()
 
-    def _on_message(self, client, userdata, msg) -> None:
+    def _on_message(self, client: mqtt.Client, userdata: object, msg: mqtt.MQTTMessage) -> None:
         payload = msg.payload.decode("utf-8") if msg.payload else ""
         with self._lock:
             self._state[msg.topic] = payload
@@ -67,7 +68,7 @@ class MqttClient:
         with self._lock:
             return self._state.get(topic)
 
-    def get_state_json(self, topic: str) -> dict | None:
+    def get_state_json(self, topic: str) -> dict[str, Any] | None:
         with self._lock:
             raw = self._state.get(topic)
             if raw is None:

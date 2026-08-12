@@ -7,7 +7,7 @@ from . import pin_map
 
 
 class Gpio:
-    def __init__(self):
+    def __init__(self) -> None:
         GPIO_lib.setmode(GPIO_lib.BCM)
         GPIO_lib.setwarnings(False)
 
