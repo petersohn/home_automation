@@ -28,13 +28,31 @@ class Device:
     def set_mqtt_client(self, mqtt_client: MqttClient) -> None:
         self._mqtt_client = mqtt_client
 
-    def reset(self) -> None:
-        """Set boot pins to input, pulse RST low 50ms."""
-        self._gpio.set_boot_safe_state()
+    def _pulse_reset(self) -> None:
+        """Pulse RST low 50ms. Boot pins must be set beforehand."""
         GPIO_lib.setup(self._reset_pin, GPIO_lib.OUT, initial=True)
         GPIO_lib.output(self._reset_pin, False)
         time.sleep(0.05)
         GPIO_lib.output(self._reset_pin, True)
+
+    def reset(self) -> None:
+        """Set boot pins to input (boot-safe), pulse RST low 50ms."""
+        self._gpio.set_boot_safe_state()
+        self._pulse_reset()
+
+    def _enter_flash_mode(self) -> None:
+        """GPIO0 low, pulse RST -> ESP enters bootloader (flash mode)."""
+        self._gpio.set_boot_safe_state()
+        rpi_gpio0 = pin_map.ESP_TO_RPI[0]
+        GPIO_lib.setup(rpi_gpio0, GPIO_lib.OUT, initial=False)
+        self._pulse_reset()
+        time.sleep(0.1)
+
+    def _exit_flash_mode(self) -> None:
+        """GPIO0 to input (pull-up), pulse RST -> ESP boots normally."""
+        self._gpio.set_boot_safe_state()
+        self._pulse_reset()
+        time.sleep(0.1)
 
     def wait_for_boot(self, timeout: float = 30.0) -> bool:
         """Wait for ESP to publish availability '1' on MQTT."""
@@ -45,22 +63,32 @@ class Device:
         )
 
     def upload_firmware(self, firmware_bin: Path) -> int:
-        """Upload pre-built firmware via flash.py."""
-        return subprocess.run(
-            [
-                "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
-                "-p", self._serial_port,
-                "upload",
-                "--image", str(firmware_bin),
-            ],
-            check=True,
-        ).returncode
+        """Upload pre-built firmware via flash.py. Puts ESP in flash mode."""
+        self._enter_flash_mode()
+        try:
+            result = subprocess.run(
+                [
+                    "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
+                    "-p", self._serial_port,
+                    "upload",
+                    "--image", str(firmware_bin),
+                ],
+                check=True,
+            )
+            return result.returncode
+        finally:
+            self._exit_flash_mode()
 
     def upload_config(self, config_inputs: list[Path]) -> int:
-        """Build and upload SPIFFS config via flash.py."""
-        cmd = [
-            "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
-            "-p", self._serial_port, "upload-fs",
-        ]
-        cmd += [str(p) for p in config_inputs]
-        return subprocess.run(cmd, check=True).returncode
+        """Build and upload SPIFFS config via flash.py. Puts ESP in flash mode."""
+        self._enter_flash_mode()
+        try:
+            cmd = [
+                "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
+                "-p", self._serial_port, "upload-fs",
+            ]
+            cmd += [str(p) for p in config_inputs]
+            result = subprocess.run(cmd, check=True)
+            return result.returncode
+        finally:
+            self._exit_flash_mode()
