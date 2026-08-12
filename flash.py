@@ -304,6 +304,13 @@ def upload_prebuilt_firmware(cfg: Config, image: Path, *, dry: bool = False) -> 
         )
     idx = tokens.index("write_flash")
     head = tokens[:idx]
+    # Use --before no_reset so esptool does not toggle DTR/RTS (not wired).
+    # Flash mode is entered manually via GPIO0 + RST before upload.
+    for i, t in enumerate(head):
+        if t == "--before":
+            head[i + 1] = "no_reset"
+        elif t == "--after":
+            head[i + 1] = "no_reset"
     tail = ["write_flash", "0x0", str(image)]
     cmd = head + tail
     return run(cmd, dry=dry)
@@ -477,6 +484,13 @@ def _esptool_upload_image(
         )
     idx = tokens.index("write_flash")
     head = tokens[:idx]  # esptool/upload.py invocation + flags
+    # Use --before/--after no_reset so esptool does not toggle DTR/RTS.
+    # Flash mode is entered manually via GPIO0 + RST before upload.
+    for i, t in enumerate(head):
+        if t == "--before":
+            head[i + 1] = "no_reset"
+        elif t == "--after":
+            head[i + 1] = "no_reset"
     tail = ["write_flash", f"0x{layout['start']:X}", str(image)]
     cmd = head + tail
     return run(cmd, dry=dry)
