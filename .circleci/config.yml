@@ -65,7 +65,7 @@ jobs:
       - run:
           name: Install Python dependencies
           command: |
-            pip3 install --break-system-packages pytest pytest-timeout paho-mqtt pyserial RPi.GPIO
+            pip3 install --break-system-packages pytest pytest-timeout paho-mqtt pyserial rpi-lgpio
       - run:
           name: Upload firmware
           command: |

@@ -36,15 +36,15 @@ def _diagnose_gpio() -> None:
         val = GPIO_lib.input(bcm)
         print(f"  {name} read={val} (input/pull)")
     # Test: set GPIO0 low, RST high, read back
-    GPIO_lib.setup(4, GPIO_lib.OUT, initial=False)
-    GPIO_lib.setup(23, GPIO_lib.OUT, initial=True)
+    GPIO_lib.setup(4, GPIO_lib.OUT, initial=0)
+    GPIO_lib.setup(23, GPIO_lib.OUT, initial=1)
     print(f"  BCM4 set low, read={GPIO_lib.input(4)}")
     print(f"  BCM23 set high, read={GPIO_lib.input(23)}")
     # Pulse RST and check
-    GPIO_lib.output(23, False)
+    GPIO_lib.output(23, 0)
     import time
     time.sleep(0.05)
-    GPIO_lib.output(23, True)
+    GPIO_lib.output(23, 1)
     time.sleep(0.2)
     print(f"  after RST pulse, BCM23 read={GPIO_lib.input(23)}")
     GPIO_lib.setup(4, GPIO_lib.IN)

@@ -44,10 +44,10 @@ def test_mqtt_command_to_output(
     try:
         mqtt_client.publish("home/testDevice/o1/set", "on")
         time.sleep(0.5)
-        assert gpio.read(5) is True
+        assert gpio.read(5) == 1
 
         mqtt_client.publish("home/testDevice/o1/set", "off")
         time.sleep(0.5)
-        assert gpio.read(5) is False
+        assert gpio.read(5) == 0
     finally:
         gpio.set_boot_safe_state()

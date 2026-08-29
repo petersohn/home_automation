@@ -30,10 +30,10 @@ class Device:
 
     def _pulse_reset(self) -> None:
         """Pulse RST low 50ms. Boot pins must be set beforehand."""
-        GPIO_lib.setup(self._reset_pin, GPIO_lib.OUT, initial=True)
-        GPIO_lib.output(self._reset_pin, False)
+        GPIO_lib.setup(self._reset_pin, GPIO_lib.OUT, initial=1)
+        GPIO_lib.output(self._reset_pin, 0)
         time.sleep(0.05)
-        GPIO_lib.output(self._reset_pin, True)
+        GPIO_lib.output(self._reset_pin, 1)
 
     def reset(self) -> None:
         """Set boot pins to input (boot-safe), pulse RST low 50ms."""
@@ -44,7 +44,7 @@ class Device:
         """GPIO0 low, pulse RST -> ESP enters bootloader (flash mode)."""
         self._gpio.set_boot_safe_state()
         rpi_gpio0 = pin_map.ESP_TO_RPI[0]
-        GPIO_lib.setup(rpi_gpio0, GPIO_lib.OUT, initial=False)
+        GPIO_lib.setup(rpi_gpio0, GPIO_lib.OUT, initial=0)
         self._pulse_reset()
         time.sleep(0.1)
 

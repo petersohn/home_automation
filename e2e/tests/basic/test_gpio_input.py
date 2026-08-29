@@ -17,7 +17,7 @@ pytestmark = pytest.mark.skip(reason="disabled until test_status_online_on_boot 
 @pytest.fixture
 def i1_setup(gpio: Gpio) -> Iterator[None]:
     """Set up RPi to drive ESP GPIO14 (i1)."""
-    gpio.setup_output(14, value=False)
+    gpio.setup_output(14, value=0)
     yield
     gpio.set_boot_safe_state()
 
@@ -33,8 +33,8 @@ def test_input_toggle_on_off(
     """Drive i1 high -> MQTT '1'; drive low -> MQTT '0'."""
     assert_booted(device, mqtt_client, restarted=True)
 
-    gpio.write(14, True)
+    gpio.write(14, 1)
     assert mqtt_client.wait_for_state("home/testDevice/i1/state", "1", timeout=10.0)
 
-    gpio.write(14, False)
+    gpio.write(14, 0)
     assert mqtt_client.wait_for_state("home/testDevice/i1/state", "0", timeout=10.0)

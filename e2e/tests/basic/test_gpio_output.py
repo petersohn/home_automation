@@ -43,11 +43,11 @@ def test_output_on_off(
 
     mqtt_client.publish("home/testDevice/o1/set", "on")
     time.sleep(0.5)
-    assert gpio.read(5) is True
+    assert gpio.read(5) == 1
 
     mqtt_client.publish("home/testDevice/o1/set", "off")
     time.sleep(0.5)
-    assert gpio.read(5) is False
+    assert gpio.read(5) == 0
 
 
 def test_output_toggle(
@@ -67,11 +67,11 @@ def test_output_toggle(
 
     mqtt_client.publish("home/testDevice/o1/set", "toggle")
     time.sleep(0.5)
-    assert gpio.read(5) is (not initial)
+    assert gpio.read(5) == (1 - initial)
 
     mqtt_client.publish("home/testDevice/o1/set", "toggle")
     time.sleep(0.5)
-    assert gpio.read(5) is initial
+    assert gpio.read(5) == initial
 
 
 def test_output_invert(
@@ -87,8 +87,8 @@ def test_output_invert(
 
     mqtt_client.publish("home/testDevice/o2/set", "on")
     time.sleep(0.5)
-    assert gpio.read(16) is False
+    assert gpio.read(16) == 0
 
     mqtt_client.publish("home/testDevice/o2/set", "off")
     time.sleep(0.5)
-    assert gpio.read(16) is True
+    assert gpio.read(16) == 1
