@@ -1,5 +1,9 @@
 """ESP GPIO pin -> RPi BCM pin mapping. Optimized for physical alignment."""
 
+from typing import Literal
+
+PinValue = Literal[0, 1]
+
 ESP_TO_RPI = {
     0: 4,    # ESP GPIO0  -> RPi BCM4  (pin 7)   boot strapping, direct
     2: 3,    # ESP GPIO2  -> RPi BCM3  (pin 5)   boot strapping, direct
@@ -18,8 +22,8 @@ SERIAL_PORT = "/dev/serial0"
 SERIAL_BAUD = 115200
 
 # RPi BCM pins for ESP boot strapping (set to input at boot)
-BOOT_PINS = [
-    ESP_TO_RPI[0],   # BCM4  - GPIO0, must be HIGH
-    ESP_TO_RPI[2],   # BCM3  - GPIO2, must be HIGH
-    ESP_TO_RPI[15],  # BCM2  - GPIO15, must be LOW
+BOOT_PINS: list[tuple[int, PinValue]] = [
+    (0, 1),   # BCM4  - GPIO0, must be HIGH
+    (2, 1),  # BCM3  - GPIO2, must be HIGH
+    (15, 0), # BCM2  - GPIO15, must be LOW
 ]
