@@ -43,8 +43,7 @@ class Device:
     def _enter_flash_mode(self) -> None:
         """GPIO0 low, pulse RST -> ESP enters bootloader (flash mode)."""
         self._gpio.set_boot_safe_state()
-        rpi_gpio0 = pin_map.ESP_TO_RPI[0]
-        GPIO_lib.setup(rpi_gpio0, GPIO_lib.OUT, initial=0)
+        self._gpio.write(0, 0)
         self._pulse_reset()
         time.sleep(0.1)
 
