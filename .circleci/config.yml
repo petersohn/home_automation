@@ -1,8 +1,6 @@
 version: 2.1
 workflows:
   testing:
-    # TEMPORARILY DISABLED: re-enable by removing the `when` line below.
-    when: false
     jobs:
       - build-firmware
       - e2e-tests:
