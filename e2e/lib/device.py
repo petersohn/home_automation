@@ -31,6 +31,7 @@ class Device:
     def _pulse_reset(self) -> None:
         """Pulse RST low 50ms. Boot pins must be set beforehand."""
         GPIO_lib.setup(self._reset_pin, GPIO_lib.OUT, initial=1)
+        GPIO_lib.output(self._reset_pin, 1)
         GPIO_lib.output(self._reset_pin, 0)
         time.sleep(0.05)
         GPIO_lib.output(self._reset_pin, 1)

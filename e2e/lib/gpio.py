@@ -18,8 +18,12 @@ class Gpio:
         GPIO_lib.setup(ESP_TO_RPI[pin], GPIO_lib.IN)
 
     def setup_output(self, pin: int, value: PinValue = 0) -> None:
-        """Set RPi pin as output. pin is ESP GPIO number. value 0 or 1."""
-        GPIO_lib.setup(ESP_TO_RPI[pin], GPIO_lib.OUT, initial=value)
+        """Set RPi pin as output. pin is an ESP GPIO number. value 0 or 1."""
+        rpi_pin = ESP_TO_RPI[pin]
+        GPIO_lib.setup(rpi_pin, GPIO_lib.OUT, initial=value)
+        # rpi-lgpio ignores `initial` when the pin is already an output,
+        # so always drive the value explicitly.
+        GPIO_lib.output(rpi_pin, value)
 
     def write(self, pin: int, value: PinValue) -> None:
         """Drive ESP input pin high/low via RPi output. value 0 or 1."""

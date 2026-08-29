@@ -78,6 +78,11 @@ def global_config_path() -> Path:
 def assert_booted(device: Device, mqtt_client: MqttClient, restarted: bool = True) -> None:
     """Helper: wait for boot, assert restarted flag in status."""
     assert device.wait_for_boot(), "Device did not boot in time"
+    # The device publishes availability and status back-to-back; availability
+    # may arrive slightly before status, so wait for the status message too.
+    assert mqtt_client.wait_for_any_state(
+        "home/testDevice/status", timeout=10.0
+    ), "No status message received"
     status = mqtt_client.get_state_json("home/testDevice/status")
     assert status is not None, "No status message received"
     assert status.get("restarted") is restarted, (
