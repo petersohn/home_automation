@@ -659,12 +659,32 @@ markers =
     rsn_pairwise=CCMP
     ```
   - `/etc/default/hostapd`: `DAEMON_CONF="/etc/hostapd/hostapd.conf"`
-  - `/etc/dhcpcd.conf`:
-    ```
-    interface wlan0
-    static ip_address=192.168.10.1/24
-    nohook wpa_supplicant
-    ```
+  - Static AP gateway IP. Modern Raspberry Pi OS uses NetworkManager (dhcpcd
+    is not installed as a service, so `/etc/dhcpcd.conf` static IPs are
+    never applied — this silently breaks DHCP and all e2e boot tests):
+    - Mark wlan0 unmanaged by NetworkManager:
+      `/etc/NetworkManager/conf.d/unmanage-wlan0.conf`:
+      ```
+      [keyfile]
+      unmanaged-devices=interface-name:wlan0
+      ```
+      then `sudo systemctl reload NetworkManager`
+    - Assign the IP at boot via a oneshot unit
+      `/etc/systemd/system/e2e-ap-ip.service`:
+      ```
+      [Unit]
+      Description=Static IP 192.168.10.1/24 on wlan0 for e2e WiFi AP
+      After=hostapd.service network.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/sbin/ip addr replace 192.168.10.1/24 dev wlan0
+
+      [Install]
+      WantedBy=multi-user.target
+      ```
+      then `sudo systemctl daemon-reload && sudo systemctl enable --now e2e-ap-ip`
   - `sudo systemctl enable hostapd dnsmasq`
 - Wiring: RPi BCM14 (TXD, pin 8) → ESP GPIO3 (RXD), RPi BCM15 (RXD, pin 10)
   → ESP GPIO1 (TXD), GND shared

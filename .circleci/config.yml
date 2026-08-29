@@ -1,7 +1,6 @@
 version: 2.1
 workflows:
   testing:
-    when: false
     jobs:
       - build-firmware
       - e2e-tests:
