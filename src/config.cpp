@@ -411,11 +411,16 @@ DeviceConfig ConfigFactory::buildDeviceConfig(
         interfaceConfig->interface = std::move(interface);
 
         if (!entry.commandTopic.empty()) {
+            // The unique_ptr is moved into the vector below; capture the raw
+            // pointer (stable, the pointee is heap-allocated) instead of a
+            // reference to the local unique_ptr, which would dangle after
+            // the move.
+            InterfaceConfig* interfacePtr = interfaceConfig.get();
             this->mqttClient.subscribe(
                 entry.commandTopic.c_str(),
-                [&interfaceConfig](const MqttConnection::Message& message) {
+                [interfacePtr](const MqttConnection::Message& message) {
                 std::string command{message.payload, message.payloadLength};
-                interfaceConfig->interface->execute(command);
+                interfacePtr->interface->execute(command);
             });
         }
 

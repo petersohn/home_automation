@@ -27,11 +27,25 @@ class MqttClient:
         self._client = mqtt.Client()
         self._client.username_pw_set(username, password)
         self._client.on_message = self._on_message
+        # paho does not restore subscriptions after a reconnect (e.g. broker
+        # restart); resubscribe on every (re)connect.
+        self._client.on_connect = self._on_connect
         self._client.connect(host, port)
         self._thread = threading.Thread(target=self._client.loop_forever, daemon=True)
         self._thread.start()
 
+    def _on_connect(self, client: mqtt.Client, userdata: object, flags: dict, rc: int) -> None:
+        for topic in self._subscribed_topics:
+            client.subscribe(topic)
+
     def _on_message(self, client: mqtt.Client, userdata: object, msg: mqtt.MQTTMessage) -> None:
+        # MQTT spec: a PUBLISH from the broker has the RETAIN flag set only
+        # for stale copies delivered on (re)subscribe; live forwards have
+        # retain=0 even for retained topics. Dropping retained deliveries
+        # keeps the state map fresh (mosquitto persistence survives broker
+        # restarts, so retained snapshots are otherwise stale).
+        if msg.retain:
+            return
         payload = msg.payload.decode("utf-8") if msg.payload else ""
         with self._lock:
             self._state[msg.topic] = payload

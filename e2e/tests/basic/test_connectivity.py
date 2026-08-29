@@ -40,6 +40,9 @@ def test_wifi(
         assert status.get("restarted") is False, "Expected restarted=false after reconnect"
     finally:
         wifi_ap.up()
+        # Drain the device's reconnect publishes so they cannot pollute
+        # the next test's boot assertions.
+        mqtt_client.wait_for_any_state("home/testDevice/status", timeout=60.0)
 
 
 def test_mqtt(
@@ -72,3 +75,4 @@ def test_mqtt(
     finally:
         mqtt_broker.start()
         mqtt_client.reconnect()
+        mqtt_client.wait_for_any_state("home/testDevice/status", timeout=60.0)
