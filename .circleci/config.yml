@@ -18,22 +18,32 @@ jobs:
       - run:
           name: Install arduino-cli
           command: |
-            curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin sh
             echo 'export PATH=$HOME/.local/bin:$PATH' >> $BASH_ENV
+            export PATH=$HOME/.local/bin:$PATH
+            if ! command -v arduino-cli &>/dev/null; then
+              curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=$HOME/.local/bin sh
+            fi
       - run:
           name: Install ESP8266 core
           command: |
-            arduino-cli config init
-            arduino-cli config set board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
-            arduino-cli core update-index
-            arduino-cli core install esp8266:esp8266
+            export PATH=$HOME/.local/bin:$PATH
+            if ! arduino-cli core list 2>/dev/null | grep -q esp8266; then
+              arduino-cli config init
+              arduino-cli config set board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+              arduino-cli core update-index
+              arduino-cli core install esp8266:esp8266
+            fi
       - run:
           name: Install libraries
           command: |
-            arduino-cli lib install "Adafruit MCP3008" "DallasTemperature" "DHT sensor library" "OneWire" "PubSubClient" "Grove - Laser PM2.5 Sensor HM3301" "HLW8012"
+            export PATH=$HOME/.local/bin:$PATH
+            for lib in "Adafruit MCP3008" "DallasTemperature" "DHT sensor library" "OneWire" "PubSubClient" "Grove - Laser PM2.5 Sensor HM3301" "HLW8012"; do
+              arduino-cli lib list | grep -qF "$lib" || arduino-cli lib install "$lib"
+            done
       - save_cache:
           key: v1-arduino-deps-{{ checksum ".circleci/config.yml" }}
           paths:
+            - ~/.local/bin
             - ~/.arduino15
             - ~/Arduino
       - run:
