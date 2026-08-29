@@ -11,8 +11,6 @@ from lib.mqtt_client import MqttClient
 from lib.gpio import Gpio
 from lib.pin_map import ESP_TO_RPI
 
-pytestmark = pytest.mark.skip(reason="disabled until test_status_online_on_boot passes")
-
 
 @pytest.fixture
 def i1_setup(gpio: Gpio) -> Iterator[None]:

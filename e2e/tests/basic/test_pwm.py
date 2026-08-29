@@ -11,8 +11,6 @@ from lib.device import Device
 from lib.gpio import Gpio
 from lib.mqtt_client import MqttClient
 
-pytestmark = pytest.mark.skip(reason="disabled until test_status_online_on_boot passes")
-
 
 @pytest.fixture
 def pwm_setup(gpio: Gpio) -> Iterator[None]:
