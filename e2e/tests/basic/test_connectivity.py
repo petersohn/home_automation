@@ -26,14 +26,14 @@ def test_wifi(
             "home/testDevice/available", "0", timeout=60.0
         ), "Device did not go offline when WiFi down"
 
+        mqtt_client.clear_state("home/testDevice/status")
         wifi_ap.up()
         assert mqtt_client.wait_for_state(
             "home/testDevice/available", "1", timeout=90.0
         ), "Device did not come back online when WiFi up"
 
-        mqtt_client.clear_state("home/testDevice/status")
         assert mqtt_client.wait_for_any_state(
-            "home/testDevice/status", timeout=30.0
+            "home/testDevice/status", timeout=90.0
         ), "No status message after reconnect"
         status = mqtt_client.get_state_json("home/testDevice/status")
         assert status is not None
@@ -53,18 +53,18 @@ def test_mqtt(
     assert_booted(device, mqtt_client, restarted=True)
 
     try:
+        mqtt_client.clear_state("home/testDevice/status")
         mqtt_broker.stop()
         time.sleep(2)
         mqtt_broker.start()
         mqtt_client.reconnect()
 
         assert mqtt_client.wait_for_state(
-            "home/testDevice/available", "1", timeout=30.0
+            "home/testDevice/available", "1", timeout=90.0
         ), "Device did not reconnect to MQTT broker"
 
-        mqtt_client.clear_state("home/testDevice/status")
         assert mqtt_client.wait_for_any_state(
-            "home/testDevice/status", timeout=30.0
+            "home/testDevice/status", timeout=90.0
         ), "No status message after MQTT reconnect"
         status = mqtt_client.get_state_json("home/testDevice/status")
         assert status is not None

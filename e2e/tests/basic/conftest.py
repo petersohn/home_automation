@@ -28,16 +28,9 @@ def device_config(
     yield config_dir
 
 
-@pytest.fixture
-def reset_device(device: Device, mqtt_client: MqttClient, gpio: Gpio) -> None:
-    """Reset device before each test, clear MQTT state."""
-    device.reset()
-    mqtt_client.clear_all()
-
-
-@pytest.fixture
-def serial(reset_device: None, request: pytest.FixtureRequest) -> Iterator[SerialCapture]:
-    """Capture serial output to file per test."""
+@pytest.fixture(autouse=True)
+def serial(request: pytest.FixtureRequest) -> Iterator[SerialCapture]:
+    """Capture serial output to file per test (autouse: capture everything)."""
     cap = SerialCapture(
         port=SERIAL_PORT,
         baud=SERIAL_BAUD,
@@ -46,3 +39,11 @@ def serial(reset_device: None, request: pytest.FixtureRequest) -> Iterator[Seria
     cap.start(request.node.name)
     yield cap
     cap.stop()
+
+
+@pytest.fixture
+def reset_device(serial: SerialCapture, device: Device, mqtt_client: MqttClient, gpio: Gpio) -> None:
+    """Reset device before each test, clear MQTT state. Runs after serial
+    capture starts so boot output is logged."""
+    device.reset()
+    mqtt_client.clear_all()
