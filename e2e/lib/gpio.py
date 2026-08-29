@@ -44,7 +44,10 @@ class Gpio:
     def set_boot_safe_state(self) -> None:
         """Set boot strapping pins to input so ESP internal pulls work."""
         for pin, value in BOOT_PINS:
-            self.setup_output(pin, value)
+            if value is None:
+                self.setup_input(pin)
+            else:
+                self.setup_output(pin, value)
 
     def cleanup(self) -> None:
         GPIO_lib.cleanup()
