@@ -18,6 +18,8 @@ ESP_TO_RPI = {
 
 RESET_PIN = 23  # RPi BCM23 (pin 16) -> ESP RST, direct
 
+ENABLE_PIN = 8  # RPi BCM8 (pin 24) -> ESP EN/CH_PD, direct
+
 SERIAL_PORT = "/dev/serial0"
 SERIAL_BAUD = 115200
 

@@ -11,7 +11,7 @@ from lib.mqtt_broker import MqttBroker
 from lib.mqtt_client import MqttClient
 from lib.serial_capture import SerialCapture
 from lib.wifi_ap import WifiAp
-from lib.pin_map import ESP_TO_RPI, RESET_PIN, SERIAL_PORT, SERIAL_BAUD
+from lib.pin_map import ESP_TO_RPI, RESET_PIN, ENABLE_PIN, SERIAL_PORT, SERIAL_BAUD
 
 
 @pytest.fixture(scope="session")
@@ -55,7 +55,9 @@ def mqtt_client(mqtt_broker: MqttBroker) -> Iterator[MqttClient]:
 @pytest.fixture(scope="session")
 def gpio() -> Iterator[Gpio]:
     g = Gpio()
+    g.setup_output(ENABLE_PIN, value=1)
     yield g
+    g.write(ENABLE_PIN, 0)
     g.cleanup()
 
 
