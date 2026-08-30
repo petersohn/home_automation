@@ -10,10 +10,12 @@ public:
     void reset();
     unsigned long getCycles() const;
     unsigned long getMaxCycleTime() const;
+    float getAvgCycleTime() const;
 
 private:
     EspApi& esp;
     unsigned long previousCycle = 0;
+    unsigned long sumCycleTime = 0;
     unsigned long maxCycleTime = 0;
     unsigned long cycles = 0;
     bool started = false;

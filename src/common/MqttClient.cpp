@@ -41,9 +41,7 @@ const char* MqttClient::getStatusMessage(bool restarted) {
     message["uptime"] = this->esp.millis();
     message["freeMemory"] = this->esp.getFreeHeap();
 
-    auto time = this->esp.millis() - this->previousStatusSend;
-    float avgCycleTime =
-        static_cast<float>(time) / this->cycleTimer.getCycles();
+    float avgCycleTime = this->cycleTimer.getAvgCycleTime();
     message["avgCycleTime"] = avgCycleTime;
     message["maxCycleTime"] = this->cycleTimer.getMaxCycleTime();
 
@@ -321,7 +319,6 @@ void MqttClient::sendStatusMessage(bool restarted) {
     this->nextStatusSend +=
         ((now - this->nextStatusSend) / statusSendInterval + 1) *
         statusSendInterval;
-    this->previousStatusSend = now;
     this->cycleTimer.reset();
 }
 

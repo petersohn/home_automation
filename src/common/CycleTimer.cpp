@@ -4,9 +4,10 @@ CycleTimer::CycleTimer(EspApi& esp) : esp(esp) {}
 
 void CycleTimer::tick() {
     const auto now = this->esp.millis();
-    ++this->cycles;
     if (this->started) {
         const auto cycleTime = now - this->previousCycle;
+        ++this->cycles;
+        this->sumCycleTime += cycleTime;
         if (cycleTime > this->maxCycleTime) {
             this->maxCycleTime = cycleTime;
         }
@@ -18,6 +19,7 @@ void CycleTimer::tick() {
 void CycleTimer::reset() {
     this->started = false;
     this->cycles = 0;
+    this->sumCycleTime = 0;
     this->maxCycleTime = 0;
 }
 
@@ -27,4 +29,10 @@ unsigned long CycleTimer::getCycles() const {
 
 unsigned long CycleTimer::getMaxCycleTime() const {
     return this->maxCycleTime;
+}
+
+float CycleTimer::getAvgCycleTime() const {
+    return this->cycles == 0
+               ? 0
+               : static_cast<float>(this->sumCycleTime) / this->cycles;
 }

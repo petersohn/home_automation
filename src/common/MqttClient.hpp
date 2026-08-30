@@ -79,8 +79,6 @@ private:
     bool initialized = false;
     bool restarted = true;
 
-    unsigned long previousStatusSend = 0;
-
     static constexpr size_t statusMsgBufSize = 350;
     static constexpr size_t statusMsgSize = 250;
 

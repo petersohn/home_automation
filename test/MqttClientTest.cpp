@@ -371,7 +371,7 @@ TEST_F(MqttClientTest, CycleTime) {
         {{10, true}},
         {
             {20, true, 10, 10.0},
-            {60020, false, 1000, 750.0},
+            {60020, false, 1000, 59000.0 / 79},
         },
         {{20, true}, {60020, true}});
 }
