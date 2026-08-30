@@ -16,6 +16,7 @@
 #include "WifiStream.hpp"
 #include "common/Action.hpp"
 #include "common/BackoffImpl.hpp"
+#include "common/CycleTimer.hpp"
 #include "common/Interface.hpp"
 #include "common/MqttClient.hpp"
 #include "config.hpp"
@@ -55,13 +56,15 @@ WifiConnection wifiConnection(debug, esp, wifiBackoff, wifi);
 Lock mqttLock;
 BackoffImpl mqttBackoff(debug, "mqtt: ", esp, rtc, 210000, 2100000);
 MqttConnectionImpl mqttConnection(debug, mqttLock);
-MqttClient mqttClient(debug, esp, wifi, mqttBackoff, mqttConnection, []() {
-    for (const auto& interface : deviceConfig.interfaces) {
-        if (interface->hasExternalAction) {
-            interface->interface->start();
+CycleTimer cycleTimer(esp);
+MqttClient mqttClient(
+    debug, esp, wifi, mqttBackoff, mqttConnection, cycleTimer, []() {
+        for (const auto& interface : deviceConfig.interfaces) {
+            if (interface->hasExternalAction) {
+                interface->interface->start();
+            }
         }
-    }
-});
+    });
 std::unique_ptr<WifiStreambuf> wifiStream;
 std::unique_ptr<MqttStreambuf> mqttStream;
 
@@ -92,6 +95,8 @@ void setup() {
 }
 
 void loop() {
+    cycleTimer.tick();
+
     if (millis() >= timeLimit) {
         debug << "Approaching timer overflow. Rebooting." << std::endl;
         mqttClient.disconnect();

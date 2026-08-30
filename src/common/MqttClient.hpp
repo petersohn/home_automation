@@ -9,6 +9,7 @@
 
 #include "ArduinoJson.hpp"
 #include "Backoff.hpp"
+#include "CycleTimer.hpp"
 #include "EspApi.hpp"
 #include "GlobalConfig.hpp"
 #include "MqttConnection.hpp"
@@ -26,7 +27,8 @@ class MqttClient {
 public:
     MqttClient(
         std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff,
-        MqttConnection& connection, std::function<void()> onConnected);
+        MqttConnection& connection, CycleTimer& cycleTimer,
+        std::function<void()> onConnected);
 
     void setConfig(MqttConfig config_);
     void loop();
@@ -57,6 +59,7 @@ private:
     Wifi& wifi;
     Backoff& backoff;
     MqttConnection& connection;
+    CycleTimer& cycleTimer;
     std::function<void()> onConnected;
 
     MqttConfig config;
@@ -77,9 +80,6 @@ private:
     bool restarted = true;
 
     unsigned long previousStatusSend = 0;
-    unsigned long previousCycle = 0;
-    unsigned long maxCycleTime = 0;
-    unsigned long cycles = 0;
 
     static constexpr size_t statusMsgBufSize = 350;
     static constexpr size_t statusMsgSize = 250;

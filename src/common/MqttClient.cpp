@@ -19,12 +19,14 @@ constexpr unsigned availabilityReceiveTimeout = 2000;
 
 MqttClient::MqttClient(
     std::ostream& debug, EspApi& esp, Wifi& wifi, Backoff& backoff,
-    MqttConnection& connection, std::function<void()> onConnected)
+    MqttConnection& connection, CycleTimer& cycleTimer,
+    std::function<void()> onConnected)
     : debug(debug)
     , esp(esp)
     , wifi(wifi)
     , backoff(backoff)
     , connection(connection)
+    , cycleTimer(cycleTimer)
     , onConnected(std::move(onConnected))
     , initState(InitState::Begin)
     , currentBackoff(initialBackoff) {}
@@ -40,9 +42,10 @@ const char* MqttClient::getStatusMessage(bool restarted) {
     message["freeMemory"] = this->esp.getFreeHeap();
 
     auto time = this->esp.millis() - this->previousStatusSend;
-    float avgCycleTime = static_cast<float>(time) / this->cycles;
+    float avgCycleTime =
+        static_cast<float>(time) / this->cycleTimer.getCycles();
     message["avgCycleTime"] = avgCycleTime;
-    message["maxCycleTime"] = this->maxCycleTime;
+    message["maxCycleTime"] = this->cycleTimer.getMaxCycleTime();
 
     message.printTo(this->statusMsg);
     return this->statusMsg;
@@ -319,15 +322,11 @@ void MqttClient::sendStatusMessage(bool restarted) {
         ((now - this->nextStatusSend) / statusSendInterval + 1) *
         statusSendInterval;
     this->previousStatusSend = now;
-    this->cycles = 0;
-    this->maxCycleTime = 0;
+    this->cycleTimer.reset();
 }
 
 void MqttClient::loop() {
     auto now = this->esp.millis();
-    ++this->cycles;
-    auto cycleTime = now - this->previousCycle;
-    this->maxCycleTime = std::max(this->maxCycleTime, cycleTime);
 
     if (now >= this->nextConnectionAttempt) {
         switch (this->connectIfNeeded()) {
@@ -357,7 +356,6 @@ void MqttClient::loop() {
     }
 
     this->connection.loop();
-    this->previousCycle = now;
 }
 
 void MqttClient::connectedLoop() {}

@@ -3,6 +3,7 @@
 #include "FakeMqttConnection.hpp"
 #include "TestHelpers.hpp"
 #include "common/ArduinoJson.hpp"
+#include "common/CycleTimer.hpp"
 #include "common/MqttClient.hpp"
 #include "tools/string.hpp"
 
@@ -92,8 +93,10 @@ public:
         this->connectionAttempts.emplace_back(this->esp.millis(), success);
     }};
     DummyBackoff backoff;
+    CycleTimer cycleTimer{this->esp};
     MqttClient mqttClient{this->debug,   this->esp,        this->wifi,
-                          this->backoff, this->connection, []() {}};
+                          this->backoff, this->connection, this->cycleTimer,
+                          []() {}};
 
     size_t connectionId;
     std::vector<StatusMessage> statusMessages;
@@ -143,7 +146,10 @@ public:
     }
 
     void loopUntil(unsigned long time, unsigned long delay = 100) {
-        this->delayUntil(time, delay, [&]() { this->mqttClient.loop(); });
+        this->delayUntil(time, delay, [&]() {
+            this->cycleTimer.tick();
+            this->mqttClient.loop();
+        });
     }
 
     void sendStatusMessage(const std::string& mac) {
