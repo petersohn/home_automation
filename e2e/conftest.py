@@ -4,6 +4,7 @@ from pathlib import Path
 from collections.abc import Iterator
 
 import pytest
+import RPi.GPIO as GPIO_lib
 
 from lib.device import Device, MQTT_USERNAME, MQTT_PASSWORD
 from lib.gpio import Gpio
@@ -55,9 +56,10 @@ def mqtt_client(mqtt_broker: MqttBroker) -> Iterator[MqttClient]:
 @pytest.fixture(scope="session")
 def gpio() -> Iterator[Gpio]:
     g = Gpio()
-    g.setup_output(ENABLE_PIN, value=1)
+    GPIO_lib.setup(ENABLE_PIN, GPIO_lib.OUT, initial=1)
+    GPIO_lib.output(ENABLE_PIN, 1)
     yield g
-    g.write(ENABLE_PIN, 0)
+    GPIO_lib.output(ENABLE_PIN, 0)
     g.cleanup()
 
 
