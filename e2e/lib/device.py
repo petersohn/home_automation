@@ -4,11 +4,10 @@ import subprocess
 import time
 from pathlib import Path
 
-import RPi.GPIO as GPIO_lib
-
 from . import pin_map
 from .gpio import Gpio
 from .mqtt_client import MqttClient
+from .rpi_gpio import RpiGpio
 
 MQTT_USERNAME = "e2e"
 MQTT_PASSWORD = "e2etest123"
@@ -19,22 +18,37 @@ FLASH_TOML = Path(__file__).parent.parent.parent / "flash.toml"
 
 
 class Device:
-    def __init__(self, serial_port: str, reset_pin: int, gpio: Gpio):
+    def __init__(
+        self,
+        serial_port: str,
+        reset_pin: int,
+        enable_pin: int,
+        gpio: Gpio,
+        rpi: RpiGpio,
+    ):
         self._serial_port = serial_port
         self._reset_pin = reset_pin
+        self._enable_pin = enable_pin
         self._gpio = gpio
+        self._rpi = rpi
         self._mqtt_client: MqttClient | None = None
+        # Power the ESP on. Teardown: disable().
+        self._rpi.setup_output(self._enable_pin, 1)
+
+    def disable(self) -> None:
+        """Drive the enable pin low, powering the ESP off."""
+        self._rpi.write(self._enable_pin, 0)
 
     def set_mqtt_client(self, mqtt_client: MqttClient) -> None:
-        self._mqtt_client = mqtt_client
+        self._mqtt_client = None if mqtt_client is None else mqtt_client
 
     def _pulse_reset(self) -> None:
         """Pulse RST low 50ms. Boot pins must be set beforehand."""
-        GPIO_lib.setup(self._reset_pin, GPIO_lib.OUT, initial=1)
-        GPIO_lib.output(self._reset_pin, 1)
-        GPIO_lib.output(self._reset_pin, 0)
+        self._rpi.setup_output(self._reset_pin, 1)
+        self._rpi.write(self._reset_pin, 1)
+        self._rpi.write(self._reset_pin, 0)
         time.sleep(0.05)
-        GPIO_lib.output(self._reset_pin, 1)
+        self._rpi.write(self._reset_pin, 1)
 
     def reset(self) -> None:
         """Set boot pins to input (boot-safe), pulse RST low 50ms."""

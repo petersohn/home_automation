@@ -6,9 +6,8 @@ from pathlib import Path
 
 from lib.device import Device
 from lib.gpio import Gpio
-from lib.pin_map import SERIAL_PORT, RESET_PIN, ESP_TO_RPI
-
-import RPi.GPIO as GPIO_lib
+from lib.rpi_gpio import RpiGpio
+from lib.pin_map import SERIAL_PORT, RESET_PIN, ENABLE_PIN
 
 
 def _diagnose_gpio() -> None:
@@ -31,24 +30,25 @@ def _diagnose_gpio() -> None:
     except Exception as e:
         print(f"  serial port {serial_port}: ERROR {e}")
     # Read back GPIO0 (BCM4) and RST (BCM23) state after setup
+    rpi = RpiGpio()
     for name, bcm in [("GPIO0/BCM4", 4), ("RST/BCM23", 23)]:
-        GPIO_lib.setup(bcm, GPIO_lib.IN)
-        val = GPIO_lib.input(bcm)
+        rpi.setup_input(bcm)
+        val = rpi.read(bcm)
         print(f"  {name} read={val} (input/pull)")
     # Test: set GPIO0 low, RST high, read back
-    GPIO_lib.setup(4, GPIO_lib.OUT, initial=0)
-    GPIO_lib.setup(23, GPIO_lib.OUT, initial=1)
-    print(f"  BCM4 set low, read={GPIO_lib.input(4)}")
-    print(f"  BCM23 set high, read={GPIO_lib.input(23)}")
+    rpi.setup_output(4, 0)
+    rpi.setup_output(23, 1)
+    print(f"  BCM4 set low, read={rpi.read(4)}")
+    print(f"  BCM23 set high, read={rpi.read(23)}")
     # Pulse RST and check
-    GPIO_lib.output(23, 0)
+    rpi.write(23, 0)
     import time
     time.sleep(0.05)
-    GPIO_lib.output(23, 1)
+    rpi.write(23, 1)
     time.sleep(0.2)
-    print(f"  after RST pulse, BCM23 read={GPIO_lib.input(23)}")
-    GPIO_lib.setup(4, GPIO_lib.IN)
-    GPIO_lib.setup(23, GPIO_lib.IN)
+    print(f"  after RST pulse, BCM23 read={rpi.read(23)}")
+    rpi.setup_input(4)
+    rpi.setup_input(23)
     print("=== end diagnostics ===", flush=True)
 
 
@@ -57,9 +57,16 @@ def main() -> int:
         print(f"usage: {sys.argv[0]} <firmware.bin>", file=sys.stderr)
         return 1
     firmware = Path(sys.argv[1])
-    gpio = Gpio()
+    rpi = RpiGpio()
+    gpio = Gpio(rpi)
     _diagnose_gpio()
-    device = Device(serial_port=SERIAL_PORT, reset_pin=RESET_PIN, gpio=gpio)
+    device = Device(
+        serial_port=SERIAL_PORT,
+        reset_pin=RESET_PIN,
+        enable_pin=ENABLE_PIN,
+        gpio=gpio,
+        rpi=rpi,
+    )
     code = device.upload_firmware(firmware)
     gpio.cleanup()
     return code

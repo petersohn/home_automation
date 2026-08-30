@@ -4,7 +4,6 @@ from pathlib import Path
 from collections.abc import Iterator
 
 import pytest
-import RPi.GPIO as GPIO_lib
 
 from lib.device import Device, MQTT_USERNAME, MQTT_PASSWORD
 from lib.gpio import Gpio
@@ -12,7 +11,8 @@ from lib.mqtt_broker import MqttBroker
 from lib.mqtt_client import MqttClient
 from lib.serial_capture import SerialCapture
 from lib.wifi_ap import WifiAp
-from lib.pin_map import ESP_TO_RPI, RESET_PIN, ENABLE_PIN, SERIAL_PORT, SERIAL_BAUD
+from lib.rpi_gpio import RpiGpio
+from lib.pin_map import RESET_PIN, ENABLE_PIN, SERIAL_PORT, SERIAL_BAUD
 
 
 @pytest.fixture(scope="session")
@@ -55,23 +55,27 @@ def mqtt_client(mqtt_broker: MqttBroker) -> Iterator[MqttClient]:
 
 @pytest.fixture(scope="session")
 def gpio() -> Iterator[Gpio]:
-    g = Gpio()
-    GPIO_lib.setup(ENABLE_PIN, GPIO_lib.OUT, initial=1)
-    GPIO_lib.output(ENABLE_PIN, 1)
+    rpi = RpiGpio()
+    g = Gpio(rpi)
     yield g
-    GPIO_lib.output(ENABLE_PIN, 0)
-    g.cleanup()
+    rpi.cleanup()
 
 
 @pytest.fixture(scope="session")
 def device(gpio: Gpio, mqtt_client: MqttClient) -> Iterator[Device]:
+    rpi = RpiGpio()
     dev = Device(
         serial_port=SERIAL_PORT,
         reset_pin=RESET_PIN,
+        enable_pin=ENABLE_PIN,
         gpio=gpio,
+        rpi=rpi,
     )
     dev.set_mqtt_client(mqtt_client)
     yield dev
+    # Power the ESP off before gpio cleanup resets the pins.
+    dev.disable()
+    rpi.cleanup()
 
 
 @pytest.fixture(scope="session")

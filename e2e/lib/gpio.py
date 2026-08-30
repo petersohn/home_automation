@@ -1,37 +1,33 @@
-"""RPi.GPIO wrapper for driving ESP GPIO pins and reading PWM."""
+"""ESP GPIO test API: ESP-numbered pins translated to RPi BCM pins."""
 
 import time
 from typing import cast
 
-import RPi.GPIO as GPIO_lib
-
+from .rpi_gpio import RpiGpio
 from .pin_map import ESP_TO_RPI, BOOT_PINS, PinValue
 
 
 class Gpio:
-    def __init__(self) -> None:
-        GPIO_lib.setmode(GPIO_lib.BCM)
-        GPIO_lib.setwarnings(False)
+    """Test-side API for driving/reading ESP GPIO pins by ESP number."""
+
+    def __init__(self, rpi: RpiGpio) -> None:
+        self._rpi = rpi
 
     def setup_input(self, pin: int) -> None:
         """Set RPi pin as input. pin is an ESP GPIO number."""
-        GPIO_lib.setup(ESP_TO_RPI[pin], GPIO_lib.IN)
+        self._rpi.setup_input(ESP_TO_RPI[pin])
 
     def setup_output(self, pin: int, value: PinValue = 0) -> None:
         """Set RPi pin as output. pin is an ESP GPIO number. value 0 or 1."""
-        rpi_pin = ESP_TO_RPI[pin]
-        GPIO_lib.setup(rpi_pin, GPIO_lib.OUT, initial=value)
-        # rpi-lgpio ignores `initial` when the pin is already an output,
-        # so always drive the value explicitly.
-        GPIO_lib.output(rpi_pin, value)
+        self._rpi.setup_output(ESP_TO_RPI[pin], value)
 
     def write(self, pin: int, value: PinValue) -> None:
         """Drive ESP input pin high/low via RPi output. value 0 or 1."""
-        GPIO_lib.output(ESP_TO_RPI[pin], value)
+        self._rpi.write(ESP_TO_RPI[pin], value)
 
     def read(self, pin: int) -> PinValue:
         """Read ESP output pin via RPi input. Returns 0 or 1."""
-        return cast(PinValue, int(GPIO_lib.input(ESP_TO_RPI[pin])))
+        return cast(PinValue, self._rpi.read(ESP_TO_RPI[pin]))
 
     def read_pwm(self, pin: int, sample_ms: int = 10) -> float:
         """Sample pin rapidly for sample_ms, return duty cycle ratio 0.0-1.0."""
@@ -40,7 +36,7 @@ class Gpio:
         total = 0
         end = time.time() + sample_ms / 1000.0
         while time.time() < end:
-            if GPIO_lib.input(rpi_pin):
+            if self._rpi.read(rpi_pin):
                 high += 1
             total += 1
         return high / total if total else 0.0
@@ -54,4 +50,4 @@ class Gpio:
                 self.setup_output(pin, value)
 
     def cleanup(self) -> None:
-        GPIO_lib.cleanup()
+        self._rpi.cleanup()
