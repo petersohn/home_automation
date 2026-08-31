@@ -2,7 +2,6 @@
 
 from collections.abc import Iterator
 from pathlib import Path
-import time
 
 from conftest import assert_booted
 from lib.device import Device
@@ -39,11 +38,9 @@ def test_mqtt_command_to_output(
     gpio.setup_input(5)
     try:
         mqtt_client.publish("home/testDevice/o1/set", "on")
-        time.sleep(0.5)
-        assert gpio.read(5) == 1
+        assert gpio.wait_for(5, 1)
 
         mqtt_client.publish("home/testDevice/o1/set", "off")
-        time.sleep(0.5)
-        assert gpio.read(5) == 0
+        assert gpio.wait_for(5, 0)
     finally:
         gpio.set_boot_safe_state()

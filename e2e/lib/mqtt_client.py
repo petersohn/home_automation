@@ -8,6 +8,8 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 
+from .wait import wait_for
+
 
 @dataclass
 class Message:
@@ -56,27 +58,33 @@ class MqttClient:
             self._subscribed_topics.append(topic)
 
     def publish(self, topic: str, payload: str, retain: bool = False) -> None:
-        self._client.publish(topic, payload, retain=retain)
+        # paho returns MQTT_ERR_NO_CONN and drops the message silently when
+        # not connected; fail fast instead.
+        result = self._client.publish(topic, payload, retain=retain)
+        if result.rc != mqtt.MQTT_ERR_SUCCESS:
+            raise ConnectionError(
+                f"publish({topic!r}) failed with rc={result.rc}"
+            )
+
+    def _locked_state_matches(self, topic: str, expected: str) -> bool:
+        with self._lock:
+            return self._state.get(topic) == expected
+
+    def _locked_state_exists(self, topic: str) -> bool:
+        with self._lock:
+            return topic in self._state
 
     def wait_for_state(self, topic: str, expected: str, timeout: float) -> bool:
         """Wait until state[topic] matches expected. Returns True if matched."""
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            with self._lock:
-                if self._state.get(topic) == expected:
-                    return True
-            time.sleep(0.1)
-        return False
+        return wait_for(
+            lambda: self._locked_state_matches(topic, expected), timeout=timeout
+        )
 
     def wait_for_any_state(self, topic: str, timeout: float) -> bool:
         """Wait until any message received on topic. Returns True if received."""
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            with self._lock:
-                if topic in self._state:
-                    return True
-            time.sleep(0.1)
-        return False
+        return wait_for(
+            lambda: self._locked_state_exists(topic), timeout=timeout
+        )
 
     def get_state(self, topic: str) -> str | None:
         with self._lock:

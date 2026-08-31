@@ -4,6 +4,7 @@ import time
 from typing import cast
 
 from .rpi_gpio import RpiGpio
+from .wait import wait_for
 from .pin_map import ESP_TO_RPI, BOOT_PINS, PinValue
 
 
@@ -40,6 +41,27 @@ class Gpio:
                 high += 1
             total += 1
         return high / total if total else 0.0
+
+    def wait_for(
+        self, pin: int, expected: PinValue, timeout: float = 10.0
+    ) -> bool:
+        """Poll pin until it reads expected. Returns True if matched in time."""
+        return wait_for(lambda: self.read(pin) == expected, timeout=timeout, interval=0.02)
+
+    def wait_for_pwm(
+        self,
+        pin: int,
+        low: float,
+        high: float,
+        timeout: float = 10.0,
+        sample_ms: int = 10,
+    ) -> bool:
+        """Poll pin until duty cycle lands in [low, high]. Returns True if in time."""
+        return wait_for(
+            lambda: low <= self.read_pwm(pin, sample_ms=sample_ms) <= high,
+            timeout=timeout,
+            interval=0.02,
+        )
 
     def set_boot_safe_state(self) -> None:
         """Set boot strapping pins to input so ESP internal pulls work."""

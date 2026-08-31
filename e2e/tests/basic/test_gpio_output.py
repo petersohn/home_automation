@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator
 from pathlib import Path
-import time
+from typing import cast
 
 import pytest
 
@@ -10,6 +10,7 @@ from conftest import assert_booted
 from lib.device import Device
 from lib.gpio import Gpio
 from lib.mqtt_client import MqttClient
+from lib.pin_map import PinValue
 
 
 @pytest.fixture
@@ -40,12 +41,10 @@ def test_output_on_off(
     assert_booted(device, mqtt_client, restarted=True)
 
     mqtt_client.publish("home/testDevice/o1/set", "on")
-    time.sleep(0.5)
-    assert gpio.read(5) == 1
+    assert gpio.wait_for(5, 1)
 
     mqtt_client.publish("home/testDevice/o1/set", "off")
-    time.sleep(0.5)
-    assert gpio.read(5) == 0
+    assert gpio.wait_for(5, 0)
 
 
 def test_output_toggle(
@@ -60,16 +59,14 @@ def test_output_toggle(
     assert_booted(device, mqtt_client, restarted=True)
 
     mqtt_client.publish("home/testDevice/o1/set", "on")
-    time.sleep(0.5)
+    assert gpio.wait_for(5, 1)
     initial = gpio.read(5)
 
     mqtt_client.publish("home/testDevice/o1/set", "toggle")
-    time.sleep(0.5)
-    assert gpio.read(5) == (1 - initial)
+    assert gpio.wait_for(5, cast(PinValue, 1 - initial))
 
     mqtt_client.publish("home/testDevice/o1/set", "toggle")
-    time.sleep(0.5)
-    assert gpio.read(5) == initial
+    assert gpio.wait_for(5, initial)
 
 
 def test_output_invert(
@@ -84,9 +81,7 @@ def test_output_invert(
     assert_booted(device, mqtt_client, restarted=True)
 
     mqtt_client.publish("home/testDevice/o2/set", "on")
-    time.sleep(0.5)
-    assert gpio.read(16) == 0
+    assert gpio.wait_for(16, 0)
 
     mqtt_client.publish("home/testDevice/o2/set", "off")
-    time.sleep(0.5)
-    assert gpio.read(16) == 1
+    assert gpio.wait_for(16, 1)
