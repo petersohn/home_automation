@@ -10,6 +10,7 @@ jobs:
   build-firmware:
     docker:
       - image: cimg/base:current
+    resource_class: large
     steps:
       - checkout
       - restore_cache:
