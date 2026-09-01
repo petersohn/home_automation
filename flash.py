@@ -197,7 +197,7 @@ def get_board_properties(
 
 
 def fs_layout(props: dict[str, str]) -> dict[str, int]:
-    """Extract the LittleFS flash layout from board properties."""
+    """Extract the SPIFFS flash layout from board properties."""
     try:
         start = _parse_int(props["build.spiffs_start"])
         end = _parse_int(props["build.spiffs_end"])
@@ -284,6 +284,37 @@ def upload_recipe(props: dict[str, str]) -> str:
     return props.get("tools.esptool.upload.pattern", "")
 
 
+def _esptool_command(props: dict[str, str], tail: list[str]) -> list[str]:
+    """Expand the core's esptool upload recipe into a command with the given
+    `write_flash ...` tail.
+
+    Swaps in manual flash mode: --before/--after no_reset (DTR/RTS not wired;
+    flash mode is entered via GPIO0 + RST beforehand) and the board's baud.
+    Handles both `--flag value` and `--flag=value` forms; bounds-checks so a
+    trailing `--flag` with no value is left alone."""
+    expanded = _expand_recipe(
+        props, upload_recipe(props), context_key="tools.esptool.upload.pattern"
+    )
+    tokens = [t for t in shlex.split(expanded) if t]
+    if "write_flash" not in tokens:
+        raise SystemExit(
+            "could not find `write_flash` in the expanded upload recipe:\n  " + expanded
+        )
+    idx = tokens.index("write_flash")
+    head = tokens[:idx]  # esptool/upload.py invocation + flags
+    baud = props.get("upload.speed", "115200")
+    override = {"--before": "no_reset", "--after": "no_reset", "--baud": str(baud)}
+    for i, t in enumerate(head):
+        if t in override:
+            if i + 1 < len(head):
+                head[i + 1] = override[t]
+        elif "=" in t:
+            flag, _, _ = t.partition("=")
+            if flag in override:
+                head[i] = f"{flag}={override[flag]}"
+    return head + tail
+
+
 def upload_prebuilt_firmware(cfg: Config, image: Path, *, dry: bool = False) -> int:
     """Upload a pre-built firmware .bin using esptool via the core's upload.py."""
     port = cfg.port_override or cfg.port
@@ -295,27 +326,7 @@ def upload_prebuilt_firmware(cfg: Config, image: Path, *, dry: bool = False) -> 
         "upload.erase_cmd": "",
     }
     props = get_board_properties(cfg.fqbn, cfg.upload_board_options, extra=extra)
-    recipe = upload_recipe(props)
-    expanded = _expand_recipe(props, recipe, context_key="tools.esptool.upload.pattern")
-    tokens = [t for t in shlex.split(expanded) if t]
-    if "write_flash" not in tokens:
-        raise SystemExit(
-            "could not find `write_flash` in the expanded upload recipe:\n  " + expanded
-        )
-    idx = tokens.index("write_flash")
-    head = tokens[:idx]
-    # Use --before no_reset so esptool does not toggle DTR/RTS (not wired).
-    # Flash mode is entered manually via GPIO0 + RST before upload.
-    baud = props.get("upload.speed", "115200")
-    for i, t in enumerate(head):
-        if t == "--before":
-            head[i + 1] = "no_reset"
-        elif t == "--after":
-            head[i + 1] = "no_reset"
-        elif t == "--baud":
-            head[i + 1] = str(baud)
-    tail = ["write_flash", "0x0", str(image)]
-    cmd = head + tail
+    cmd = _esptool_command(props, ["write_flash", "0x0", str(image)])
     return run(cmd, dry=dry)
 
 
@@ -471,34 +482,10 @@ def _esptool_upload_image(
     *,
     dry: bool = False,
 ) -> int:
-    """Invoke esptool via the core's upload.py with the FS image + address.
-
-    We expand the core's `tools.esptool.upload.pattern` ourselves so we can
-    swap the `write_flash 0x0 <bin>` tail for `write_flash <start> <image>`.
-    This reuses the exact same esptool/python3/upload.py the firmware upload
-    uses (same baud, reset method, port), only the address + file differ.
-    """
-    recipe = upload_recipe(props)
-    expanded = _expand_recipe(props, recipe, context_key="tools.esptool.upload.pattern")
-    tokens = [t for t in shlex.split(expanded) if t]
-    if "write_flash" not in tokens:
-        raise SystemExit(
-            "could not find `write_flash` in the expanded upload recipe:\n  " + expanded
-        )
-    idx = tokens.index("write_flash")
-    head = tokens[:idx]  # esptool/upload.py invocation + flags
-    # Use --before/--after no_reset so esptool does not toggle DTR/RTS.
-    # Flash mode is entered manually via GPIO0 + RST before upload.
-    baud = props.get("upload.speed", "115200")
-    for i, t in enumerate(head):
-        if t == "--before":
-            head[i + 1] = "no_reset"
-        elif t == "--after":
-            head[i + 1] = "no_reset"
-        elif t == "--baud":
-            head[i + 1] = str(baud)
-    tail = ["write_flash", f"0x{layout['start']:X}", str(image)]
-    cmd = head + tail
+    """Invoke esptool via the core's upload.py with the FS image + address."""
+    cmd = _esptool_command(
+        props, ["write_flash", f"0x{layout['start']:X}", str(image)]
+    )
     return run(cmd, dry=dry)
 
 
@@ -631,7 +618,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ufs = sub.add_parser(
         "upload-fs",
-        help="build a LittleFS image from the given files/dirs and upload it",
+        help="build a SPIFFS image from the given files/dirs and upload it",
     )
     ufs.add_argument(
         "inputs",
@@ -648,7 +635,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ifs = sub.add_parser(
         "inspect-fs",
-        help="build the LittleFS image and unpack it so contents can be inspected",
+        help="build the SPIFFS image and unpack it so contents can be inspected",
     )
     ifs.add_argument(
         "inputs",

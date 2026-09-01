@@ -41,8 +41,17 @@ def test_wifi(
     finally:
         wifi_ap.up()
         # Drain the device's reconnect publishes so they cannot pollute
-        # the next test's boot assertions.
-        mqtt_client.wait_for_any_state("home/testDevice/status", timeout=60.0)
+        # the next test's boot assertions. Best effort: drain is only a
+        # hygiene step, so just report if it times out.
+        drained = mqtt_client.wait_for_any_state(
+            "home/testDevice/status", timeout=60.0
+        )
+        if not drained:
+            print(
+                "warning: no status message after WiFi recovery; "
+                "later tests may see stale state",
+                flush=True,
+            )
 
 
 def test_mqtt(
@@ -75,4 +84,12 @@ def test_mqtt(
     finally:
         mqtt_broker.start()
         mqtt_client.reconnect()
-        mqtt_client.wait_for_any_state("home/testDevice/status", timeout=60.0)
+        drained = mqtt_client.wait_for_any_state(
+            "home/testDevice/status", timeout=60.0
+        )
+        if not drained:
+            print(
+                "warning: no status message after broker recovery; "
+                "later tests may see stale state",
+                flush=True,
+            )

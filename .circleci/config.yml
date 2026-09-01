@@ -15,6 +15,7 @@ jobs:
       - restore_cache:
           keys:
             - v1-arduino-deps-{{ checksum ".circleci/config.yml" }}
+            - v1-arduino-deps-
       - run:
           name: Install arduino-cli
           command: |

@@ -37,7 +37,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('-u0', type=float, required=True)
     parser.add_argument('-u', type=float, required=True)
-    parser.add_argument('--steps', '-s', type=int, required=True)
+    def positive_steps(value: str) -> int:
+        steps = int(value)
+        if steps < 2:
+            raise argparse.ArgumentTypeError(
+                '--steps must be >= 2, got {}'.format(steps))
+        return steps
+
+    parser.add_argument(
+        '--steps', '-s', type=positive_steps, required=True,
+        help='number of steps (>= 2, since u1 = u/steps must differ from u2)')
     subparsers = parser.add_subparsers()
 
     parser_calibrate = subparsers.add_parser('calibrate', aliases=['c'])

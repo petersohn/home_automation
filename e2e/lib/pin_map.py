@@ -23,7 +23,7 @@ ENABLE_PIN = 8  # RPi BCM8 (pin 24) -> ESP EN/CH_PD, direct
 SERIAL_PORT = "/dev/serial0"
 SERIAL_BAUD = 115200
 
-# RPi BCM pins for ESP boot strapping (set to input at boot)
+# ESP GPIO boot strapping pins and required state at reset.
 BOOT_PINS: list[tuple[int, PinValue]] = [
     (0, 1),   # BCM4  - GPIO0, must be HIGH
     (2, 1),  # BCM3  - GPIO2, must be HIGH

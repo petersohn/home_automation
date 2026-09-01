@@ -371,6 +371,9 @@ TEST_F(MqttClientTest, CycleTime) {
         {{10, true}},
         {
             {20, true, 10, 10.0},
+            // Status at t=20 resets the timer; ticks at 1020..40020 (1000ms)
+            // and 40520..60020 (500ms) give 80 ticks -> 79 intervals over
+            // 59000ms, so the avg is 59000/79 (~746.8).
             {60020, false, 1000, 59000.0 / 79},
         },
         {{20, true}, {60020, true}});

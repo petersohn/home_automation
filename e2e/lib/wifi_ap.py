@@ -31,9 +31,13 @@ class WifiAp:
         )
 
     def is_up(self) -> bool:
+        # Both units are required: hostapd alone gives no DHCP (dnsmasq),
+        # and dnsmasq without hostapd gives no association.
         result = subprocess.run(
-            ["systemctl", "is-active", "hostapd"],
+            ["systemctl", "is-active", "hostapd", "dnsmasq"],
             capture_output=True,
             text=True,
         )
-        return result.stdout.strip() == "active"
+        # is-active prints one status per unit and exits non-zero if any
+        # is not active.
+        return result.returncode == 0

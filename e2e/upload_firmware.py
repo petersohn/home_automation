@@ -67,9 +67,10 @@ def main() -> int:
         gpio=gpio,
         rpi=rpi,
     )
-    code = device.upload_firmware(firmware)
+
+    device.upload_firmware(firmware)
     gpio.cleanup()
-    return code
+    return 0
 
 
 if __name__ == "__main__":

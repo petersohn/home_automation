@@ -8,6 +8,7 @@ public:
     explicit CycleTimer(EspApi& esp);
     void tick();
     void reset();
+    /** Test/diagnostic API: number of ticks counted since last reset(). */
     unsigned long getCycles() const;
     unsigned long getMaxCycleTime() const;
     float getAvgCycleTime() const;

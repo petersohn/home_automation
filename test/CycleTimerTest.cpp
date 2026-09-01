@@ -34,7 +34,7 @@ TEST_F(CycleTimerTest, CountsTimeBetweenTicks) {
 
     EXPECT_EQ(timer.getCycles(), 2);
     EXPECT_EQ(timer.getMaxCycleTime(), 40);
-    EXPECT_EQ(timer.getAvgCycleTime(), 25);
+    EXPECT_FLOAT_EQ(timer.getAvgCycleTime(), 25);
 }
 
 TEST_F(CycleTimerTest, LongGapIsCountedWhenTickingContinues) {
@@ -78,5 +78,5 @@ TEST_F(CycleTimerTest, ResetAfterLongGap) {
 
     EXPECT_EQ(timer.getCycles(), 1);
     EXPECT_EQ(timer.getMaxCycleTime(), 10);
-    EXPECT_EQ(timer.getAvgCycleTime(), 10);
+    EXPECT_FLOAT_EQ(timer.getAvgCycleTime(), 10);
 }

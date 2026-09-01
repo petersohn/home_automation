@@ -76,11 +76,11 @@ class Device:
             "home/testDevice/available", "1", timeout
         )
 
-    def upload_firmware(self, firmware_bin: Path) -> int:
+    def upload_firmware(self, firmware_bin: Path) -> None:
         """Upload pre-built firmware via flash.py. Puts ESP in flash mode."""
         self._enter_flash_mode()
         try:
-            result = subprocess.run(
+            subprocess.run(
                 [
                     "python3", str(FLASH_PY), "-c", str(FLASH_TOML),
                     "-p", self._serial_port,
@@ -89,11 +89,10 @@ class Device:
                 ],
                 check=True,
             )
-            return result.returncode
         finally:
             self._exit_flash_mode()
 
-    def upload_config(self, config_inputs: list[Path]) -> int:
+    def upload_config(self, config_inputs: list[Path]) -> None:
         """Build and upload SPIFFS config via flash.py. Puts ESP in flash mode."""
         self._enter_flash_mode()
         try:
@@ -102,7 +101,6 @@ class Device:
                 "-p", self._serial_port, "upload-fs",
             ]
             cmd += [str(p) for p in config_inputs]
-            result = subprocess.run(cmd, check=True)
-            return result.returncode
+            subprocess.run(cmd, check=True)
         finally:
             self._exit_flash_mode()

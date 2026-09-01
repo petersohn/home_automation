@@ -3,18 +3,11 @@
 import json
 import threading
 import time
-from dataclasses import dataclass
 from typing import Any
 
 import paho.mqtt.client as mqtt
 
 from .wait import wait_for
-
-
-@dataclass
-class Message:
-    topic: str
-    payload: str
 
 
 class MqttClient:

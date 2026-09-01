@@ -54,16 +54,21 @@ def mqtt_client(mqtt_broker: MqttBroker) -> Iterator[MqttClient]:
 
 
 @pytest.fixture(scope="session")
-def gpio() -> Iterator[Gpio]:
+def rpi() -> Iterator[RpiGpio]:
+    """Single RPi.GPIO owner: all pins are reset together in one cleanup."""
     rpi = RpiGpio()
-    g = Gpio(rpi)
-    yield g
+    yield rpi
     rpi.cleanup()
 
 
 @pytest.fixture(scope="session")
-def device(gpio: Gpio, mqtt_client: MqttClient) -> Iterator[Device]:
-    rpi = RpiGpio()
+def gpio(rpi: RpiGpio) -> Iterator[Gpio]:
+    g = Gpio(rpi)
+    yield g
+
+
+@pytest.fixture(scope="session")
+def device(wifi_ap: WifiAp, rpi: RpiGpio, gpio: Gpio, mqtt_client: MqttClient) -> Iterator[Device]:
     dev = Device(
         serial_port=SERIAL_PORT,
         reset_pin=RESET_PIN,
@@ -73,9 +78,8 @@ def device(gpio: Gpio, mqtt_client: MqttClient) -> Iterator[Device]:
     )
     dev.set_mqtt_client(mqtt_client)
     yield dev
-    # Power the ESP off before gpio cleanup resets the pins.
+    # Power the ESP off before rpi cleanup resets the pins.
     dev.disable()
-    rpi.cleanup()
 
 
 @pytest.fixture(scope="session")
