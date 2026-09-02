@@ -742,7 +742,7 @@ TEST_F(OperationParser2Test, UsedInterfaces) {
     auto operation = parser.parse("%1 + [itf2].1");
     ASSERT_NE(operation, nullptr);
     for (const auto* itf : parser.getUsedInterfaces()) {
-        std::cout << itf->name << std::endl;
+        std::cout << itf->name << "\n";
     }
     std::unordered_set<InterfaceConfig*> expectedUsedInterfaces{
         this->interfaces[0].get(), this->interfaces[1].get()};

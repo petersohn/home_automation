@@ -77,7 +77,7 @@ std::string diff(const CoverSequence& actual, const CoverSequence& expected) {
 
 #define GET_PARAM(name, n)               \
     auto name = std::get<n>(GetParam()); \
-    std::cout << #name "=" << name << std::endl
+    std::cout << #name "=" << name << "\n"
 
 enum Pin : uint8_t {
     UpOutput = 1,
@@ -179,7 +179,7 @@ public:
 
     void loop() {
         auto now = this->esp.millis();
-        std::cout << "Loop begin, time=" << now << std::endl;
+        std::cout << "Loop begin, time=" << now << "\n";
         int delta = now - this->previousTime;
         const bool upOn = this->esp.digitalRead(UpOutput) != 0;
         const bool downOn = this->esp.digitalRead(DownOutput) != 0;
@@ -191,15 +191,15 @@ public:
 
             if (this->latching) {
                 if (upOn) {
-                    std::cout << "Start moving up" << std::endl;
+                    std::cout << "Start moving up" << "\n";
                     this->movingUp = true;
                     this->movingDown = false;
                 } else if (downOn) {
-                    std::cout << "Start moving down" << std::endl;
+                    std::cout << "Start moving down" << "\n";
                     this->movingUp = false;
                     this->movingDown = true;
                 } else if (this->esp.digitalRead(StopOutput) != 0) {
-                    std::cout << "Stop" << std::endl;
+                    std::cout << "Stop" << "\n";
                     this->movingUp = false;
                     this->movingDown = false;
                 }
@@ -241,7 +241,7 @@ public:
                   << " movingUp=" << this->movingUp
                   << " movingDown=" << this->movingDown
                   << " position=" << newPosition << " movedUp=" << movedUp
-                  << " movedDown=" << movedDown << std::endl;
+                  << " movedDown=" << movedDown << "\n";
 
         this->esp.digitalWrite(UpInput, movedUp);
         this->esp.digitalWrite(DownInput, movedDown);
@@ -251,21 +251,21 @@ public:
 
         this->updateInterface();
 
-        std::cout << "Loop end" << std::endl;
+        std::cout << "Loop end" << "\n";
     }
 
     void open() {
-        std::cout << "Open" << std::endl;
+        std::cout << "Open" << "\n";
         this->interface.interface->execute("OPEN");
     }
 
     void close() {
-        std::cout << "Close" << std::endl;
+        std::cout << "Close" << "\n";
         this->interface.interface->execute("CLOSE");
     }
 
     void stop() {
-        std::cout << "Stop" << std::endl;
+        std::cout << "Stop" << "\n";
         this->interface.interface->execute("STOP");
     }
 
@@ -316,7 +316,7 @@ public:
             EXPECT_EQ(this->getValue(0), "OPEN");
         }
         EXPECT_EQ(this->getValue(1), std::to_string(position));
-        std::cout << "---- Calibration done ----" << std::endl;
+        std::cout << "---- Calibration done ----" << "\n";
     }
 };
 
@@ -640,7 +640,7 @@ TEST_P(CalibrateFixture, Calibrate) {
     GET_PARAM(start, 3);
 
     if (delay == 500) {
-        std::cout << "Cannot test with too large delay" << std::endl;
+        std::cout << "Cannot test with too large delay" << "\n";
         GTEST_SKIP();
     }
 
@@ -851,7 +851,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     std::cerr << "Phase 1: opening time is not known, only position sensors "
                  "are reported."
-              << std::endl;
+              << "\n";
 
     this->open();
     auto phase1 = this->loopFor(10000, delay);
@@ -875,7 +875,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     std::cerr << "Phase 2: closing time is not known, only position sensors "
                  "are reported."
-              << std::endl;
+              << "\n";
 
     this->close();
     auto phase2 = this->loopFor(10000, delay);
@@ -896,7 +896,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     std::cerr << "Phase 3: opening time is known, positions are interpolated "
                  "between position sensors."
-              << std::endl;
+              << "\n";
 
     this->open();
     auto phase3 = this->loopFor(10000, delay);
@@ -927,7 +927,7 @@ TEST_P(MultiplePositionSensorsFixture, MultiplePositionSensors) {
 
     std::cerr << "Phase 4: closing time is known, positions are interpolated "
                  "between position sensors."
-              << std::endl;
+              << "\n";
 
     this->close();
     auto phase4 = this->loopFor(10000, delay);

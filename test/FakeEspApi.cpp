@@ -18,7 +18,7 @@ void FakeEspApi::digitalWrite(uint8_t pin, uint8_t val) {
     const bool value = val != 0;
     if (value != this->pinValues[pin]) {
         std::cout << "Pin " << static_cast<int>(pin)
-                  << " value=" << static_cast<int>(val) << std::endl;
+                  << " value=" << static_cast<int>(val) << "\n";
         this->pinValues[pin] = value;
     }
 }
@@ -41,7 +41,7 @@ void FakeEspApi::delay(unsigned long ms) {
 }
 
 void FakeEspApi::restart(bool /*hard*/) {
-    std::cout << "REBOOT" << std::endl;
+    std::cout << "REBOOT" << "\n";
     this->restarted = true;
     this->time = 0;
 }

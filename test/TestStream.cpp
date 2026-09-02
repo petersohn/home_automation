@@ -11,9 +11,9 @@ int TestStreambuf::sync() {
         s.resize(s.size() - 1);
     }
     if (this->esp) {
-        std::cout << this->esp->millis() << " " << s << std::endl;
+        std::cout << this->esp->millis() << " " << s << "\n";
     } else {
-        std::cout << s << std::endl;
+        std::cout << s << "\n";
     }
     this->expectations.erase(
         std::remove_if(

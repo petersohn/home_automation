@@ -8,7 +8,7 @@ Rtc::Data FakeRtc::get(unsigned id) {
 }
 
 void FakeRtc::set(unsigned id, Data value) {
-    std::cout << "RTC set " << id << " = " << value << std::endl;
+    std::cout << "RTC set " << id << " = " << value << "\n";
     this->data[id] = value;
 }
 

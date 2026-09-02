@@ -42,7 +42,16 @@ jobs:
             cmake --build build -j2
       - run:
           name: Run unit tests
-          command: ./build/home_automation_test
+          command: |
+            ./build/home_automation_test > /tmp/unit_tests.log 2>&1
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              tail -n 2000 /tmp/unit_tests.log
+            fi
+            exit $rc
+      - store_artifacts:
+          path: /tmp/unit_tests.log
+          destination: unit_tests.log
   build-firmware:
     docker:
       - image: cimg/base:current

@@ -113,7 +113,7 @@ public:
                 return;
             }
 
-            std::cout << message.payload << std::endl;
+            std::cout << message.payload << "\n";
             DynamicJsonBuffer buffer(200);
             auto& json = buffer.parseObject(message.payload);
             auto name = json.get<std::string>("name");

@@ -52,8 +52,7 @@ bool FakeMqttServer::unsubscribe(size_t id, const std::string& topic) {
 }
 
 void FakeMqttServer::publish(size_t id, const FakeMessage& message) {
-    std::cout << "publish " << message.topic << " " << message.payload
-              << std::endl;
+    std::cout << "publish " << message.topic << " " << message.payload << "\n";
     for (auto it =
              this->subscriptions.lower_bound(std::make_pair(message.topic, 0));
          it != this->subscriptions.end() && it->first.first == message.topic;
