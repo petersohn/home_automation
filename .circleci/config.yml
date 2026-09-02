@@ -3,10 +3,44 @@ workflows:
   testing:
     jobs:
       - build-firmware
+      - unit-tests
       - e2e-tests:
           requires:
             - build-firmware
 jobs:
+  unit-tests:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-pip-cmake-{{ checksum "CMakeLists.txt" }}
+            - v1-pip-cmake-
+      - run:
+          name: Fetch submodules
+          command: |
+            git submodule update --init --recursive
+      - run:
+          name: Install CMake
+          command: |
+            if ! $HOME/.local/bin/cmake --version &>/dev/null || ! $HOME/.local/bin/cmake --version | head -1 | grep -qE 'cmake version (4\.[1-9]|[5-9]\.)'; then
+              pip3 install --user cmake
+            fi
+            echo 'export PATH=$HOME/.local/bin:$PATH' >> $BASH_ENV
+      - save_cache:
+          key: v1-pip-cmake-{{ checksum "CMakeLists.txt" }}
+          paths:
+            - ~/.local/bin/cmake
+            - ~/.local/lib
+      - run:
+          name: Build tests
+          command: |
+            cmake -S . -B build
+            cmake --build build -j2
+      - run:
+          name: Run unit tests
+          command: ./build/home_automation_test
   build-firmware:
     docker:
       - image: cimg/base:current
