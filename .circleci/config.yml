@@ -11,6 +11,7 @@ jobs:
   unit-tests:
     docker:
       - image: cimg/base:current
+    resource_class: medium.gen2
     steps:
       - checkout
       - restore_cache:
