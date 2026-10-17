@@ -38,38 +38,66 @@ VALID_CERT_NAME = "signing_test.pem"
 WHITESPACE_CERT_NAME = "signing_test_whitespace.pem"
 INVALID_CERT_CASES = [
     pytest.param(
-        "malformed", "signing_test_malformed.pem", "ERROR invalid certificate",
+        (
+            "malformed",
+            "signing_test_malformed.pem",
+            "ERROR invalid certificate",
+        ),
         id="malformed",
     ),
     pytest.param(
-        "DER", "signing_test_der.der", "ERROR invalid certificate", id="der"
+        ("DER", "signing_test_der.der", "ERROR invalid certificate"), id="der"
     ),
     pytest.param(
-        "trailing junk", "signing_test_trailing_junk.pem",
-        "ERROR invalid certificate", id="trailing-junk",
+        (
+            "trailing junk",
+            "signing_test_trailing_junk.pem",
+            "ERROR invalid certificate",
+        ),
+        id="trailing-junk",
     ),
     pytest.param(
-        "other PEM block", "signing_test_other_pem_block.pem",
-        "ERROR invalid certificate", id="other-pem-block",
+        (
+            "other PEM block",
+            "signing_test_other_pem_block.pem",
+            "ERROR invalid certificate",
+        ),
+        id="other-pem-block",
     ),
     pytest.param(
-        "concatenated", "signing_test_concatenated.pem",
-        "ERROR invalid certificate", id="concatenated",
+        (
+            "concatenated",
+            "signing_test_concatenated.pem",
+            "ERROR invalid certificate",
+        ),
+        id="concatenated",
     ),
     pytest.param(
-        "oversized", "signing_test_oversized.pem",
-        "ERROR invalid certificate", id="oversized",
+        (
+            "oversized",
+            "signing_test_oversized.pem",
+            "ERROR invalid certificate",
+        ),
+        id="oversized",
     ),
     pytest.param(
-        "unsupported curve", "signing_test_unsupported_curve.pem",
-        "ERROR unsupported key", id="unsupported-curve",
+        (
+            "unsupported curve",
+            "signing_test_unsupported_curve.pem",
+            "ERROR unsupported key",
+        ),
+        id="unsupported-curve",
     ),
     pytest.param(
-        "unsupported algorithm", "signing_test_unsupported_algorithm.pem",
-        "ERROR unsupported key", id="unsupported-algorithm",
+        (
+            "unsupported algorithm",
+            "signing_test_unsupported_algorithm.pem",
+            "ERROR unsupported key",
+        ),
+        id="unsupported-algorithm",
     ),
     pytest.param(
-        "missing", None, "ERROR certificate unavailable", id="missing"
+        ("missing", None, "ERROR certificate unavailable"), id="missing"
     ),
 ]
 
