@@ -17,6 +17,7 @@ class MqttClient:
         self._username = username
         self._password = password
         self._state: dict[str, str] = {}
+        self._event_count: dict[str, int] = {}
         self._lock = threading.Lock()
         self._subscribed_topics: list[str] = []
         self._client = mqtt.Client()
@@ -44,6 +45,7 @@ class MqttClient:
         payload = msg.payload.decode("utf-8") if msg.payload else ""
         with self._lock:
             self._state[msg.topic] = payload
+            self._event_count[msg.topic] = self._event_count.get(msg.topic, 0) + 1
 
     def subscribe(self, topic: str) -> None:
         if topic not in self._subscribed_topics:
@@ -67,6 +69,19 @@ class MqttClient:
         with self._lock:
             return topic in self._state
 
+    def _locked_event_count(self, topic: str) -> int:
+        with self._lock:
+            return self._event_count.get(topic, 0)
+
+    def _locked_state_matches_after(
+        self, topic: str, expected: str, previous_event_count: int
+    ) -> bool:
+        with self._lock:
+            return (
+                self._state.get(topic) == expected
+                and self._event_count.get(topic, 0) > previous_event_count
+            )
+
     def wait_for_state(self, topic: str, expected: str, timeout: float) -> bool:
         """Wait until state[topic] matches expected. Returns True if matched."""
         return wait_for(
@@ -77,6 +92,37 @@ class MqttClient:
         """Wait until any message received on topic. Returns True if received."""
         return wait_for(
             lambda: self._locked_state_exists(topic), timeout=timeout
+        )
+
+    def get_event_count(self, topic: str) -> int:
+        """Return count of non-retained MQTT messages observed for topic."""
+        return self._locked_event_count(topic)
+
+    def wait_for_next_state(
+        self, topic: str, previous_event_count: int, timeout: float
+    ) -> str | None:
+        """Wait for a message after a baseline, including identical payloads."""
+        received = wait_for(
+            lambda: self._locked_event_count(topic) > previous_event_count,
+            timeout=timeout,
+        )
+        if not received:
+            return None
+        return self.get_state(topic)
+
+    def wait_for_state_after(
+        self,
+        topic: str,
+        expected: str,
+        previous_event_count: int,
+        timeout: float,
+    ) -> bool:
+        """Wait for expected state published in a new MQTT event."""
+        return wait_for(
+            lambda: self._locked_state_matches_after(
+                topic, expected, previous_event_count
+            ),
+            timeout=timeout,
         )
 
     def get_state(self, topic: str) -> str | None:

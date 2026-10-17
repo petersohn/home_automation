@@ -282,10 +282,16 @@ ECDSA P-256 key that is pinned on the device. It provides no confidentiality,
 replay (freshness) protection, or denial-of-service protection, and it is not
 an OTA update mechanism. This interface uses no GPIO pin.
 
+**No replay protection:** envelopes contain no nonce, counter, or timestamp.
+Anyone able to replay a previously valid signed envelope can submit it again;
+the signature remains valid indefinitely unless the pinned key is replaced.
+
 The pinned key is stored on the device as an X.509 certificate file in SPIFFS.
 The private signing key is never provisioned to the device: only the public
 certificate is uploaded. The key used for testing must never be trusted in
-production devices.
+production devices. Trust is by pinned key only: no CA-chain, hostname, or
+certificate-expiration/time checks are performed. Rotation requires provisioning
+the replacement certificate and rebooting the device.
 
 The following additional values are supported:
 *   `certificate`: Absolute path of a PEM-encoded X.509 certificate file in
@@ -323,9 +329,11 @@ Example configuration with a publish action reporting the results:
 }
 ```
 
-The reported values are the verification results, described below. The value
-stays empty until the first command arrives, and results are not persisted
-across reboot.
+The interface emits one initial empty value through its action during startup,
+then emits no repeated value while idle. Each received command produces a fresh
+event, even when result text matches the previous result. Leave `minimumSendInterval`
+and `sendDiff` unset or zero on the publish action so identical results are not
+suppressed. Results are not persisted across reboot.
 
 The expected command format is a single JSON object with two base64 fields:
 
@@ -341,6 +349,102 @@ not a DER-encoded ASN.1 sequence. For example, an OpenSSL production command
 converted into the raw `r || s` form. Only the decoded payload bytes are
 signed; JSON key order and whitespace are ignored.
 
+The following reproducible host example signs exact payload bytes and writes
+the JSON envelope. It requires the pinned host dependency from
+`e2e/signing_fixtures/requirements.txt`; device firmware needs no Python signing
+package. Use a production key, not one of the test fixture keys.
+
+First create a production key and its matching public certificate. Keep the
+private key outside every SPIFFS input directory:
+
+```sh
+umask 077
+export CONFIG_DIR="$HOME/device-spiffs"
+export SIGNING_KEY="$HOME/.local/share/device-signing/private-key.pem"
+mkdir -p "$(dirname "$SIGNING_KEY")" "$CONFIG_DIR"
+openssl ecparam -name prime256v1 -genkey -noout -out "$SIGNING_KEY"
+openssl req -new -x509 -key "$SIGNING_KEY" -sha256 -days 3650 \
+  -subj "/CN=device signing key" -out "$CONFIG_DIR/signing.pem"
+cp example_config/global_config.json "$CONFIG_DIR/global_config.json"
+```
+
+```sh
+python3 -m pip install -r e2e/signing_fixtures/requirements.txt
+python3 - <<'PY' > /tmp/signed-command.json
+import base64
+import json
+import os
+from pathlib import Path
+
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+
+data = b"hello device"
+key = serialization.load_pem_private_key(
+    Path(os.environ["SIGNING_KEY"]).read_bytes(), password=None
+)
+der = key.sign(data, ec.ECDSA(hashes.SHA256()))
+r, s = decode_dss_signature(der)
+raw64 = r.to_bytes(32, "big") + s.to_bytes(32, "big")
+print(json.dumps({
+    "data": base64.b64encode(data).decode("ascii"),
+    "signature": base64.b64encode(raw64).decode("ascii"),
+}, separators=(",", ":")))
+PY
+```
+
+Create `$CONFIG_DIR/device_config.json` with the interface and action (add other
+interfaces as needed), then deploy and exercise it:
+
+```sh
+cat > "$CONFIG_DIR/device_config.json" <<'JSON'
+{
+  "name": "signedDevice",
+  "availabilityTopic": "device/available",
+  "statusTopic": "device/status",
+  "interfaces": [
+    {
+      "type": "signatureVerify",
+      "name": "sv",
+      "commandTopic": "device/sv/set",
+      "certificate": "/signing.pem"
+    }
+  ],
+  "actions": [
+    {
+      "type": "publish",
+      "interface": "sv",
+      "topic": "device/sv/state",
+      "template": "%1"
+    }
+  ]
+}
+JSON
+python3 flash.py upload-fs "$CONFIG_DIR"
+```
+
+The result is not retained. Start a subscriber in Terminal 1 and wait for the
+subscription confirmation (`-d` shows the broker's SUBACK) before publishing
+the command from Terminal 2:
+
+Terminal 1:
+
+```sh
+mosquitto_sub -h "$MQTT_HOST" -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
+  -d -C 1 -t 'device/sv/state'
+```
+
+Terminal 2, after subscription confirmation:
+
+```sh
+mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" \
+  -t 'device/sv/set' -f /tmp/signed-command.json
+```
+
+The private key must never be under `$CONFIG_DIR` (or any input passed to
+`flash.py`). Only the certificate is copied to SPIFFS.
+
 Limits and overload behavior:
 
 *   Commands are at most 512 bytes and payloads at most 256 decoded bytes;
@@ -349,11 +453,16 @@ Limits and overload behavior:
 *   The MQTT packet buffer is 1024 bytes, including topic and protocol
     overhead. Choose a `commandTopic` short enough to leave room for the
     largest expected command; packets exceeding the buffer may be dropped
-    before the interface ever sees them.
+    before the interface ever sees them, with no result event.
 *   If a command arrives while the device is still verifying the previous
-    one, it is dropped and reported with a single coalesced error, instead of
-    queuing more commands.
+    one, it is dropped and reported with a single coalesced `ERROR busy` event,
+    instead of queuing more commands.
 *   The signature must decode to exactly 64 bytes.
+*   MQTT/network disconnection can drop a command before delivery or a result
+    before the client receives it. There is no transport acknowledgment or
+    automatic command/result retry; the sender must decide how to handle a
+    missing result. An oversized packet rejected by MQTT never reaches the
+    interface and cannot produce `ERROR command too large`.
 
 Possible values reported by the interface:
 

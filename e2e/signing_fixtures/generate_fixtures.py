@@ -1,314 +1,210 @@
 #!/usr/bin/env python3
-"""Generate the test-only signing fixtures for the signatureVerify e2e tests.
+"""Generate test-only signing keys, certificates, and device regressions.
 
-Everything produced by this script is public, dedicated TEST MATERIAL:
-    - The private keys are purpose-generated fixture keys. They sign nothing
-      but e2e test vectors. They must NEVER be uploaded to a device or used
-      in production; only files under device/ may be provisioned into a
-      SPIFFS image, and those are certificates, not keys.
-    - The certificates are self-signed; trust comes purely from provisioning
-      in the e2e config, never from a CA.
+The private keys and vectors are host-only test material. The device/ directory
+contains public certificates and intentionally invalid certificate fixtures;
+never copy host/ into a SPIFFS image or use these keys in production.
 
-Host tooling: openssl (EC/RSA key generation, X.509 certificates,
-ECDSA-SHA256 signatures) plus a minimal DER-to-raw conversion implemented
-with the Python standard library only (no cryptography module dependency).
+Requires cryptography==45.0.7. ECDSA signatures use P-256 with SHA-256 and are
+converted from DER to raw64 as big-endian r padded to 32 bytes followed by s.
 
-Raw64 signature format (as consumed by the device firmware):
-    ECDSA P-256 signatures are stored as exactly 64 bytes:
-    big-endian r padded to 32 bytes, followed by big-endian s padded to 32
-    bytes, with leading zeros. openssl outputs DER
-    (SEQUENCE { INTEGER r, INTEGER s }); this script converts DER to the raw
-    form, then reconstructs DER for round-trip verification to prove the
-    conversion is correct.
-
-Outputs (relative to this directory):
-    host/signing_test_private_key.pem          P-256 signing key (NEVER upload)
-    host/signing_test_wrong_private_key.pem    second P-256 key (NEVER upload)
-    host/vectors.json                          data / raw64 signature vectors
-    device/signing_test.pem                    self-signed cert for the main key
-    device/signing_test_wrong_key.pem          cert for the second key
-    device/signing_test_unsupported_curve.pem  P-384 cert (unsupported curve)
-    device/signing_test_unsupported_algorithm.pem RSA cert (unsupported key)
-    device/signing_test_concatenated.pem       two certs in one file (rejected)
-    device/signing_test_malformed.pem          garbage (rejected)
-
-Run from the repository root or this directory:
+Run from the repository root:
     python3 e2e/signing_fixtures/generate_fixtures.py
+
+To validate regeneration without touching checked-in fixtures:
+    python3 e2e/signing_fixtures/generate_fixtures.py --output-dir /tmp/signing-fixtures
 """
 
 from __future__ import annotations
 
+import argparse
 import datetime
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
+from typing import Any
+
+from cryptography import __version__ as cryptography_version
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.asymmetric.utils import (
+    decode_dss_signature,
+    encode_dss_signature,
+)
+from cryptography.exceptions import InvalidSignature
+from cryptography.x509.oid import NameOID
 
 HERE = Path(__file__).resolve().parent
-HOST_DIR = HERE / "host"
-DEVICE_DIR = HERE / "device"
+MAX_CERTIFICATE_BYTES = 4096
 
-MAIN_KEY = HOST_DIR / "signing_test_private_key.pem"
-WRONG_KEY = HOST_DIR / "signing_test_wrong_private_key.pem"
-
-CERT_VALID = DEVICE_DIR / "signing_test.pem"
-CERT_WRONG_KEY = DEVICE_DIR / "signing_test_wrong_key.pem"
-CERT_UNSUPPORTED_CURVE = DEVICE_DIR / "signing_test_unsupported_curve.pem"
-CERT_UNSUPPORTED_ALGORITHM = DEVICE_DIR / "signing_test_unsupported_algorithm.pem"
-CERT_CONCATENATED = DEVICE_DIR / "signing_test_concatenated.pem"
-CERT_MALFORMED = DEVICE_DIR / "signing_test_malformed.pem"
-
-VECTORS_PATH = HOST_DIR / "vectors.json"
-
-# Deterministic payload vectors.
 PAYLOAD_EMPTY = b""
 PAYLOAD_BINARY = b"\x00\x42\xfe\xff\x80\x7f\x01\x10\x00"
-PAYLOAD_MAX256 = bytes((i * 37 + 11) % 256 for i in range(256))
-# Changed-data case: one byte flipped -> same signature no longer verifies.
-PAYLOAD_ALTERED = bytes(PAYLOAD_BINARY[:1]) + bytes([PAYLOAD_BINARY[1] ^ 0x01]) + bytes(
-    PAYLOAD_BINARY[2:]
+PAYLOAD_MAX256 = bytes((index * 37 + 11) % 256 for index in range(256))
+PAYLOAD_ALTERED = (
+    PAYLOAD_BINARY[:1]
+    + bytes([PAYLOAD_BINARY[1] ^ 0x01])
+    + PAYLOAD_BINARY[2:]
 )
 
 
-def run(cmd: list[str]) -> bytes:
-    print("+", " ".join(str(c) for c in cmd))
-    result = subprocess.run(
-        [str(c) for c in cmd], capture_output=True, check=False
+def certificate_for(private_key: Any, common_name: str) -> x509.Certificate:
+    """Build a long-lived self-signed X.509 certificate for test provisioning."""
+    name = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "home-automation-e2e"),
+            x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+        ]
     )
-    if result.returncode != 0:
-        sys.stderr.write(result.stderr.decode(errors="replace"))
-        raise SystemExit(f"command failed (rc={result.returncode}): {cmd}")
-    return result.stdout
-
-
-def openssl(*args: str) -> bytes:
-    return run(["openssl", *args])
-
-
-# ---------------------------------------------------------------------------
-# DER <-> raw signature conversion
-# ---------------------------------------------------------------------------
-
-
-def _read_len(data: bytes, pos: int) -> tuple[int, int]:
-    first = data[pos]
-    if first < 0x80:
-        return first, pos + 1
-    count = first & 0x7F
-    if count == 0 or pos + 1 + count > len(data):
-        raise ValueError("bad DER length")
-    value = int.from_bytes(data[pos + 1 : pos + 1 + count], "big")
-    return value, pos + 1 + count
-
-
-def _read_integer(data: bytes, pos: int) -> tuple[bytes, int]:
-    if data[pos] != 0x02:
-        raise ValueError("expected INTEGER tag")
-    length, pos = _read_len(data, pos + 1)
-    content = data[pos : pos + length]
-    if pos + length > len(data):
-        raise ValueError("truncated INTEGER")
-    # DER integers are positive: a leading 0x00 byte is padding.
-    stripped = content.lstrip(b"\x00")
-    return stripped, pos + length
-
-
-def der_signature_to_raw(der: bytes) -> bytes:
-    """DER ECDSA-Sig-Value -> raw r||s, each 32 bytes big-endian."""
-    if len(der) < 2 or der[0] != 0x30:
-        raise ValueError("not a DER SEQUENCE")
-    seq_len, pos = _read_len(der, 1)
-    if seq_len != len(der) - pos:
-        raise ValueError("trailing bytes after SEQUENCE")
-    r_bytes, pos = _read_integer(der, pos)
-    s_bytes, pos = _read_integer(der, pos)
-    if pos != len(der):
-        raise ValueError("extra content after INTEGERs")
-    if len(r_bytes) > 32 or len(s_bytes) > 32:
-        raise ValueError("integer too large for P-256")
-    return r_bytes.rjust(32, b"\x00") + s_bytes.rjust(32, b"\x00")
-
-
-def _len_der(length: int) -> bytes:
-    if length < 0x80:
-        return bytes([length])
-    encoded = length.to_bytes((length.bit_length() + 7) // 8, "big")
-    return bytes([0x80 | len(encoded)]) + encoded
-
-
-def _integer_der(value: int) -> bytes:
-    content = value.to_bytes((max(value.bit_length(), 1) + 7) // 8, "big")
-    if content[0] & 0x80 or value == 0:
-        content = b"\x00" + content
-    return b"\x02" + _len_der(len(content)) + content
-
-
-def raw_signature_to_der(raw: bytes) -> bytes:
-    """Raw r||s (64 bytes) -> DER ECDSA-Sig-Value, for round-trip checks."""
-    if len(raw) != 64:
-        raise ValueError("raw signature must be 64 bytes")
-    r = int.from_bytes(raw[:32], "big")
-    s = int.from_bytes(raw[32:], "big")
-    content = _integer_der(r) + _integer_der(s)
-    return b"\x30" + _len_der(len(content)) + content
-
-
-# ---------------------------------------------------------------------------
-# Fixture material
-# ---------------------------------------------------------------------------
-
-
-def generate_keys_and_certs() -> None:
-    HOST_DIR.mkdir(parents=True, exist_ok=True)
-    DEVICE_DIR.mkdir(parents=True, exist_ok=True)
-
-    openssl(
-        "ecparam", "-name", "prime256v1", "-genkey", "-noout",
-        "-out", MAIN_KEY,
-    )
-    openssl(
-        "ecparam", "-name", "prime256v1", "-genkey", "-noout",
-        "-out", WRONG_KEY,
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=36500))
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .sign(private_key, hashes.SHA256())
     )
 
-    subject = "/O=home-automation-e2e/CN=TEST-ONLY signing fixture key"
-    for key, out in [
-        (MAIN_KEY, CERT_VALID),
-        (WRONG_KEY, CERT_WRONG_KEY),
-    ]:
-        run([
-            "openssl", "req", "-new", "-x509",
-            "-key", key,
-            "-sha256", "-days", "36500",
-            "-subj", subject,
-            "-addext", "basicConstraints=critical,CA:FALSE",
-            "-out", out,
-        ])
 
-    # Unsupported-key fixtures: correct self-signed structure, wrong key type.
-    p384_key = HERE / ".gen_p384_key.pem"
-    rsa_key = HERE / ".gen_rsa_key.pem"
-    openssl("ecparam", "-name", "secp384r1", "-genkey", "-noout", "-out", p384_key)
-    openssl("genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:2048",
-            "-out", rsa_key)
-    for key, out in [(p384_key, CERT_UNSUPPORTED_CURVE),
-                     (rsa_key, CERT_UNSUPPORTED_ALGORITHM)]:
-        openssl("req", "-new", "-x509", "-key", key, "-sha256", "-days", "1",
-                "-subj", subject, "-out", out)
-    p384_key.unlink()
-    rsa_key.unlink()
-
-    CERT_CONCATENATED.write_bytes(
-        CERT_VALID.read_bytes() + CERT_WRONG_KEY.read_bytes()
+def write_private_key(path: Path, private_key: Any) -> None:
+    path.write_bytes(
+        private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
     )
-    CERT_MALFORMED.write_bytes(
+
+
+def sign_raw64(private_key: ec.EllipticCurvePrivateKey, data: bytes) -> bytes:
+    """Sign data with ECDSA-SHA256 and convert DER signature to raw r||s."""
+    der_signature = private_key.sign(data, ec.ECDSA(hashes.SHA256()))
+    r, s = decode_dss_signature(der_signature)
+    return r.to_bytes(32, "big") + s.to_bytes(32, "big")
+
+
+def verify_raw64(
+    public_key: ec.EllipticCurvePublicKey,
+    data: bytes,
+    raw_signature: bytes,
+    should_verify: bool,
+) -> None:
+    """Check raw-to-DER conversion and expected valid/invalid test vectors."""
+    if len(raw_signature) != 64:
+        raise ValueError("raw signature must be exactly 64 bytes")
+    signature = encode_dss_signature(
+        int.from_bytes(raw_signature[:32], "big"),
+        int.from_bytes(raw_signature[32:], "big"),
+    )
+    try:
+        public_key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
+        verified = True
+    except InvalidSignature:
+        verified = False
+    if verified != should_verify:
+        raise ValueError(
+            f"unexpected vector verification: expected {should_verify}, got {verified}"
+        )
+
+
+def create_fixture_tree(output_dir: Path) -> None:
+    host_dir = output_dir / "host"
+    device_dir = output_dir / "device"
+    host_dir.mkdir(parents=True, exist_ok=True)
+    device_dir.mkdir(parents=True, exist_ok=True)
+
+    main_key = ec.generate_private_key(ec.SECP256R1())
+    wrong_key = ec.generate_private_key(ec.SECP256R1())
+    p384_key = ec.generate_private_key(ec.SECP384R1())
+    rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    write_private_key(host_dir / "signing_test_private_key.pem", main_key)
+    write_private_key(host_dir / "signing_test_wrong_private_key.pem", wrong_key)
+
+    main_certificate = certificate_for(main_key, "TEST-ONLY signing fixture key")
+    wrong_certificate = certificate_for(wrong_key, "TEST-ONLY wrong signing fixture key")
+    unsupported_curve_certificate = certificate_for(
+        p384_key, "TEST-ONLY unsupported P-384 fixture"
+    )
+    unsupported_algorithm_certificate = certificate_for(
+        rsa_key, "TEST-ONLY unsupported RSA fixture"
+    )
+
+    valid_pem = main_certificate.public_bytes(serialization.Encoding.PEM)
+    wrong_pem = wrong_certificate.public_bytes(serialization.Encoding.PEM)
+    (device_dir / "signing_test.pem").write_bytes(valid_pem)
+    (device_dir / "signing_test_wrong_key.pem").write_bytes(wrong_pem)
+    (device_dir / "signing_test_unsupported_curve.pem").write_bytes(
+        unsupported_curve_certificate.public_bytes(serialization.Encoding.PEM)
+    )
+    (device_dir / "signing_test_unsupported_algorithm.pem").write_bytes(
+        unsupported_algorithm_certificate.public_bytes(serialization.Encoding.PEM)
+    )
+
+    # Derived strict-PEM fixtures are regenerated with each certificate. This
+    # prevents stale key material in whitespace/DER/trailing-content cases.
+    (device_dir / "signing_test_whitespace.pem").write_bytes(
+        b" \t\r\n" + valid_pem + b"\n\t "
+    )
+    (device_dir / "signing_test_der.der").write_bytes(
+        main_certificate.public_bytes(serialization.Encoding.DER)
+    )
+    (device_dir / "signing_test_trailing_junk.pem").write_bytes(
+        valid_pem + b"trailing garbage bytes\n"
+    )
+    public_key_pem = main_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    (device_dir / "signing_test_other_pem_block.pem").write_bytes(
+        valid_pem + public_key_pem
+    )
+    (device_dir / "signing_test_concatenated.pem").write_bytes(valid_pem + wrong_pem)
+    (device_dir / "signing_test_malformed.pem").write_bytes(
         b"-----BEGIN CERTIFICATE-----\n"
         b"VGhpcyBmaWxlIGlzIG5vdCBhIGNlcnRpZmljYXRlIQ==\n"
         b"-----END CERTIFICATE-----\n"
         b"trailing garbage bytes\n"
     )
-
-
-def extract_pubkey(cert: Path) -> bytes:
-    return openssl("x509", "-in", cert, "-pubkey", "-noout")
-
-
-def sign(key: Path, data: bytes) -> bytes:
-    tmp = HERE / ".gen_sig.der"
-    self_dir_data = HERE / ".gen_data.bin"
-    self_dir_data.write_bytes(data)
-    openssl(
-        "dgst", "-sha256", "-sign", key,
-        "-out", tmp, self_dir_data,
+    if len(valid_pem) >= MAX_CERTIFICATE_BYTES:
+        raise ValueError("generated certificate unexpectedly exceeds size limit")
+    (device_dir / "signing_test_oversized.pem").write_bytes(
+        valid_pem + b" " * (MAX_CERTIFICATE_BYTES + 1 - len(valid_pem))
     )
-    der = tmp.read_bytes()
-    tmp.unlink()
-    self_dir_data.unlink()
-    return der_signature_to_raw(der)
-
-
-def verify(cert: Path, data: bytes, raw: bytes, must_pass: bool) -> None:
-    """Round-trip check: raw -> DER -> openssl verify against cert pubkey."""
-    pub = CERT_VALID if must_pass else cert
-    check_data = HERE / ".gen_verify_data.bin"
-    check_sig = HERE / ".gen_verify_sig.der"
-    check_pub = HERE / ".gen_verify_pub.pem"
-    check_data.write_bytes(data)
-    check_sig.write_bytes(raw_signature_to_der(raw))
-    openssl("x509", "-in", pub, "-pubkey", "-noout", "-out", check_pub)
-    result = subprocess.run(
-        [
-            "openssl", "dgst", "-sha256",
-            "-verify", str(check_pub),
-            "-signature", str(check_sig), str(check_data),
-        ],
-        capture_output=True,
-        check=False,
-    )
-    check_data.unlink()
-    check_sig.unlink()
-    check_pub.unlink()
-    verified = (
-        result.returncode == 0 and b"Verified OK" in result.stdout
-    )
-    if must_pass != verified:
-        raise SystemExit(
-            f"unexpected verification result for cert={pub.name}: "
-            f"rc={result.returncode}, expected pass={must_pass}"
-        )
-
-
-def openssl_version() -> str:
-    return openssl("version", "-a").decode().splitlines()[0].strip()
-
-
-def generate_vectors() -> None:
-    main_pub = extract_pubkey(CERT_VALID)
 
     vectors = {
-        "empty": (PAYLOAD_EMPTY, sign(MAIN_KEY, PAYLOAD_EMPTY)),
-        "binary": (PAYLOAD_BINARY, sign(MAIN_KEY, PAYLOAD_BINARY)),
-        "binary_max256": (PAYLOAD_MAX256, sign(MAIN_KEY, PAYLOAD_MAX256)),
-        # Altered data paired with the ORIGINAL binary signature: the device
-        # must answer FAIL, so this raw signature must NOT match on the host.
+        "empty": (PAYLOAD_EMPTY, sign_raw64(main_key, PAYLOAD_EMPTY)),
+        "binary": (PAYLOAD_BINARY, sign_raw64(main_key, PAYLOAD_BINARY)),
+        "binary_max256": (PAYLOAD_MAX256, sign_raw64(main_key, PAYLOAD_MAX256)),
         "binary_altered_data": (
             PAYLOAD_ALTERED,
-            sign(MAIN_KEY, PAYLOAD_BINARY),
+            sign_raw64(main_key, PAYLOAD_BINARY),
         ),
-        # Same curve, different key: must verify FAIL against the pinned cert.
-        "binary_wrong_key": (
-            PAYLOAD_BINARY,
-            sign(WRONG_KEY, PAYLOAD_BINARY),
-        ),
+        "binary_wrong_key": (PAYLOAD_BINARY, sign_raw64(wrong_key, PAYLOAD_BINARY)),
     }
-
-    # All vectors that must verify are checked here against the main key's
-    # own key (round trip through DER proves the raw conversion). The FAIL
-    # vectors are checked against the pinned cert and must NOT verify.
-    verify(CERT_VALID, PAYLOAD_EMPTY, vectors["empty"][1], must_pass=True)
-    verify(CERT_VALID, PAYLOAD_BINARY, vectors["binary"][1], must_pass=True)
-    verify(CERT_VALID, PAYLOAD_MAX256, vectors["binary_max256"][1], must_pass=True)
-    verify(CERT_VALID, PAYLOAD_ALTERED, vectors["binary_altered_data"][1],
-           must_pass=False)
-    verify(CERT_VALID, PAYLOAD_BINARY, vectors["binary_wrong_key"][1],
-           must_pass=False)
+    main_public_key = main_key.public_key()
+    verify_raw64(main_public_key, PAYLOAD_EMPTY, vectors["empty"][1], True)
+    verify_raw64(main_public_key, PAYLOAD_BINARY, vectors["binary"][1], True)
+    verify_raw64(main_public_key, PAYLOAD_MAX256, vectors["binary_max256"][1], True)
+    verify_raw64(
+        main_public_key, PAYLOAD_ALTERED, vectors["binary_altered_data"][1], False
+    )
+    verify_raw64(main_public_key, PAYLOAD_BINARY, vectors["binary_wrong_key"][1], False)
 
     document = {
         "meta": {
-            "purpose": "Test-only signature vectors for signatureVerify e2e "
-                       "tests. Keys are dedicated public fixtures, never "
-                       "trusted in production; never upload the key files.",
-            "generated": datetime.datetime.now(datetime.timezone.utc)
-            .strftime("%Y-%m-%d"),
+            "purpose": "Test-only signature vectors; never trust fixture keys in production.",
+            "generated": datetime.datetime.now(datetime.timezone.utc).strftime(
+                "%Y-%m-%d"
+            ),
             "generator": "e2e/signing_fixtures/generate_fixtures.py",
-            "host_tooling": openssl_version(),
+            "host_tooling": f"cryptography {cryptography_version}",
             "curve": "NIST P-256 (secp256r1)",
             "hash": "SHA-256",
-            "signature_format": "raw64: big-endian r padded to 32 bytes, "
-                                "big-endian s padded to 32 bytes "
-                                "(DER -> raw conversion documented in "
-                                "generate_fixtures.py)",
+            "signature_format": "raw64: big-endian r and s, each zero-padded to 32 bytes",
             "valid_key_cert": "device/signing_test.pem",
             "valid_key": "host/signing_test_private_key.pem",
             "wrong_key": "host/signing_test_wrong_private_key.pem",
@@ -323,22 +219,27 @@ def generate_vectors() -> None:
         "vectors": {
             name: {
                 "data_hex": data.hex(),
-                "signature_hex": raw.hex(),
-                "signature_len": len(raw),
+                "signature_hex": signature.hex(),
+                "signature_len": len(signature),
             }
-            for name, (data, raw) in vectors.items()
+            for name, (data, signature) in vectors.items()
         },
     }
-    VECTORS_PATH.write_text(json.dumps(document, indent=2) + "\n")
-    print(f"wrote {VECTORS_PATH.relative_to(HERE)}")
-    assert main_pub.startswith(b"-----BEGIN PUBLIC KEY-----")
+    (host_dir / "vectors.json").write_text(json.dumps(document, indent=2) + "\n")
+    print(f"fixtures regenerated under {output_dir}")
+    print("host/ contains private keys; only device/ certificates belong in SPIFFS")
 
 
 def main() -> None:
-    os.chdir(HERE)
-    generate_keys_and_certs()
-    generate_vectors()
-    print("fixtures regenerated; remember: host/ files must never be uploaded")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=HERE,
+        help="fixture root containing host/ and device/ (default: this directory)",
+    )
+    args = parser.parse_args()
+    create_fixture_tree(args.output_dir.expanduser().resolve())
 
 
 if __name__ == "__main__":
