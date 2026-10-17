@@ -12,6 +12,7 @@ set (CMAKE_CXX_FLAGS_DEBUG "${CXX_COMMON_FLAGS} -O0 -g")
 set (CMAKE_CXX_FLAGS_RELEASE "${CXX_COMMON_FLAGS} -O2")
 
 include_directories(src)
+include_directories(test)
 include_directories(test/ArduinoJson)
 include_directories(test/googletest/googlemock/include)
 
@@ -22,10 +23,18 @@ file(GLOB common_sources src/common/*.cpp)
 file(GLOB operation_sources src/operation/*.cpp)
 file(GLOB tools_sources src/tools/*.cpp)
 
+# Vendored public-domain libb64 decoder, verbatim copy of the decoder bundled
+# with ESP8266 core 3.1.2 (see test/libb64/README.md). Compiled with warnings
+# disabled: third-party code is not held to the project warning policy.
+add_library(native_libb64 STATIC EXCLUDE_FROM_ALL test/libb64/cdecode.cpp)
+target_include_directories(native_libb64 PRIVATE test/libb64)
+target_compile_options(native_libb64 PRIVATE -w)
+
 add_executable(home_automation_test
     ${test_sources} ${operation_sources} ${common_sources} ${tools_sources})
-target_link_libraries(home_automation_test gtest gtest_main)
+target_link_libraries(home_automation_test gtest gtest_main native_libb64)
 
 add_executable(operation_tester
     ${operation_sources}  ${common_sources} ${tools_sources}
     bin/operation_tester.cpp)
+target_link_libraries(operation_tester native_libb64)
