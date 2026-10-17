@@ -327,7 +327,7 @@ def upload_prebuilt_firmware(cfg: Config, image: Path, *, dry: bool = False) -> 
     }
     props = get_board_properties(cfg.fqbn, cfg.upload_board_options, extra=extra)
     cmd = _esptool_command(props, ["write_flash", "0x0", str(image)])
-    return run(cmd, dry=dry)
+    return run_esptool(cmd, dry=dry)
 
 
 def upload_prebuilt_fs(cfg: Config, image: Path, *, dry: bool = False) -> int:
@@ -486,7 +486,30 @@ def _esptool_upload_image(
     cmd = _esptool_command(
         props, ["write_flash", f"0x{layout['start']:X}", str(image)]
     )
-    return run(cmd, dry=dry)
+    return run_esptool(cmd, dry=dry)
+
+
+def run_esptool(cmd: list[str], *, dry: bool = False) -> int:
+    """Run the core upload recipe and reject its swallowed fatal diagnostic.
+
+    ESP8266 core 3.1.2's upload.py can print this diagnostic but return zero.
+    Keep invoking the expanded recipe for custom-recipe compatibility; this
+    marker check only covers wrappers that emit the core's fatal-error text.
+    """
+    if dry:
+        return run(cmd, dry=True)
+
+    print("+", " ".join(_shquote(c) for c in cmd), file=sys.stderr)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.stdout:
+        sys.stdout.write(result.stdout)
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+    if result.returncode != 0:
+        return result.returncode
+    if "A fatal esptool.py error occurred:" in result.stdout + result.stderr:
+        return 1
+    return 0
 
 
 def inspect_fs(

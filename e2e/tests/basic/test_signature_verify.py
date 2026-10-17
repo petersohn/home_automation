@@ -232,6 +232,25 @@ def restore_basic_config(
 
 
 @pytest.fixture
+def provisioning_complete(
+    request: pytest.FixtureRequest,
+    device_config: Path,
+    device: Device,
+    global_config_path: Path,
+    mqtt_client: MqttClient,
+) -> None:
+    """Provision this test's signing config before serial capture starts."""
+    for fixture_name in (
+        "valid_signing_config",
+        "whitespace_signing_config",
+        "invalid_certificate_config",
+    ):
+        if fixture_name in request.fixturenames:
+            request.getfixturevalue(fixture_name)
+            break
+
+
+@pytest.fixture
 def valid_signing_config(
     device_config: Path,
     device: Device,

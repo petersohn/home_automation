@@ -28,8 +28,15 @@ def device_config(
     yield config_dir
 
 
+@pytest.fixture
+def provisioning_complete(device_config: Path) -> None:
+    """Finish package config upload before per-test serial capture starts."""
+
+
 @pytest.fixture(autouse=True)
-def serial(request: pytest.FixtureRequest) -> Iterator[SerialCapture]:
+def serial(
+    request: pytest.FixtureRequest, provisioning_complete: None
+) -> Iterator[SerialCapture]:
     """Capture serial output to file per test (autouse: capture everything)."""
     cap = SerialCapture(
         port=SERIAL_PORT,
