@@ -20,21 +20,101 @@ class MqttClient:
         self._event_count: dict[str, int] = {}
         self._lock = threading.Lock()
         self._subscribed_topics: list[str] = []
+        self._connected = False
+        self._ready = False
+        self._ready_generation = 0
+        self._pending_subscriptions: set[int] = set()
+        self._subscription_failed = False
         self._client = mqtt.Client()
         self._client.username_pw_set(username, password)
         self._client.on_message = self._on_message
         # paho does not restore subscriptions after a reconnect (e.g. broker
         # restart); resubscribe on every (re)connect.
         self._client.on_connect = self._on_connect
+        self._client.on_disconnect = self._on_disconnect
+        self._client.on_subscribe = self._on_subscribe
         self._client.connect(host, port)
-        self._thread = threading.Thread(target=self._client.loop_forever, daemon=True)
-        self._thread.start()
+        loop_rc = self._client.loop_start()
+        if loop_rc != mqtt.MQTT_ERR_SUCCESS:
+            raise RuntimeError(f"Failed to start MQTT network loop: rc={loop_rc}")
 
-    def _on_connect(self, client: mqtt.Client, userdata: object, flags: dict, rc: int) -> None:
-        for topic in self._subscribed_topics:
-            client.subscribe(topic)
+    def _subscribe_locked(self, topic: str) -> None:
+        rc, mid = self._client.subscribe(topic)
+        if rc == mqtt.MQTT_ERR_SUCCESS:
+            self._pending_subscriptions.add(mid)
+        else:
+            self._subscription_failed = True
 
-    def _on_message(self, client: mqtt.Client, userdata: object, msg: mqtt.MQTTMessage) -> None:
+    def _update_ready_locked(self) -> None:
+        ready = (
+            self._connected
+            and not self._pending_subscriptions
+            and not self._subscription_failed
+        )
+        if ready and not self._ready:
+            self._ready_generation += 1
+        self._ready = ready
+
+    def _on_connect(
+        self, client: mqtt.Client, userdata: object, flags: dict, rc: int, *args: object
+    ) -> None:
+        with self._lock:
+            reason_code = getattr(rc, "value", rc)
+            try:
+                self._connected = int(reason_code) == 0
+            except (TypeError, ValueError):
+                self._connected = False
+            self._ready = False
+            self._pending_subscriptions.clear()
+            self._subscription_failed = False
+            if self._connected:
+                for topic in self._subscribed_topics:
+                    self._subscribe_locked(topic)
+            self._update_ready_locked()
+
+    def _on_disconnect(
+        self, client: mqtt.Client, userdata: object, *args: object
+    ) -> None:
+        with self._lock:
+            self._connected = False
+            self._ready = False
+            self._pending_subscriptions.clear()
+
+    @staticmethod
+    def _subscription_succeeded(reason_codes: tuple[object, ...]) -> bool:
+        if not reason_codes:
+            return True
+        codes = reason_codes[0]
+        if not isinstance(codes, (list, tuple)):
+            codes = (codes,)
+        for code in codes:
+            is_failure = getattr(code, "is_failure", False)
+            if callable(is_failure):
+                is_failure = is_failure()
+            if is_failure:
+                return False
+            value = getattr(code, "value", code)
+            try:
+                if int(value) >= 128:
+                    return False
+            except (TypeError, ValueError):
+                pass
+        return True
+
+    def _on_subscribe(
+        self, client: mqtt.Client, userdata: object, mid: int, *args: object
+    ) -> None:
+        with self._lock:
+            if mid not in self._pending_subscriptions:
+                return
+            self._pending_subscriptions.remove(mid)
+            if not self._subscription_succeeded(args):
+                self._subscription_failed = True
+            self._update_ready_locked()
+
+    def _on_message(
+        self, client: mqtt.Client, userdata: object, msg: mqtt.MQTTMessage
+    ) -> None:
         # MQTT spec: a PUBLISH from the broker has the RETAIN flag set only
         # for stale copies delivered on (re)subscribe; live forwards have
         # retain=0 even for retained topics. Dropping retained deliveries
@@ -48,9 +128,14 @@ class MqttClient:
             self._event_count[msg.topic] = self._event_count.get(msg.topic, 0) + 1
 
     def subscribe(self, topic: str) -> None:
-        if topic not in self._subscribed_topics:
-            self._client.subscribe(topic)
+        with self._lock:
+            if topic in self._subscribed_topics:
+                return
             self._subscribed_topics.append(topic)
+            if self._connected:
+                self._ready = False
+                self._subscribe_locked(topic)
+                self._update_ready_locked()
 
     def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         # paho returns MQTT_ERR_NO_CONN and drops the message silently when
@@ -125,6 +210,25 @@ class MqttClient:
             timeout=timeout,
         )
 
+    def _locked_ready(self, after_generation: int | None) -> bool:
+        with self._lock:
+            return self._ready and (
+                after_generation is None
+                or self._ready_generation > after_generation
+            )
+
+    def wait_ready(
+        self, timeout: float, after_generation: int | None = None
+    ) -> bool:
+        """Wait for CONNACK and successful SUBACKs for all tracked topics."""
+        return wait_for(
+            lambda: self._locked_ready(after_generation), timeout=timeout
+        )
+
+    def get_ready_generation(self) -> int:
+        with self._lock:
+            return self._ready_generation
+
     def get_state(self, topic: str) -> str | None:
         with self._lock:
             return self._state.get(topic)
@@ -151,9 +255,7 @@ class MqttClient:
         """Clear state and resubscribe after broker restart."""
         self.clear_all()
         self._client.reconnect()
-        for topic in self._subscribed_topics:
-            self._client.subscribe(topic)
 
     def disconnect(self) -> None:
         self._client.disconnect()
-        self._thread.join(timeout=5.0)
+        self._client.loop_stop()

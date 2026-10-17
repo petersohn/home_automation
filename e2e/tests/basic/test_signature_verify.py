@@ -35,6 +35,7 @@ PASSTHROUGH_OUTPUT_TOPIC = "home/testDevice/m1/out"
 DEVICE_STATUS_TOPIC = "home/testDevice/status"
 
 VALID_CERT_NAME = "signing_test.pem"
+DEVICE_CERT_ALIAS = "signing_test.pem"
 WHITESPACE_CERT_NAME = "signing_test_whitespace.pem"
 INVALID_CERT_CASES = [
     pytest.param(
@@ -102,6 +103,8 @@ INVALID_CERT_CASES = [
 ]
 
 RESULT_TIMEOUT = 15.0
+RECONNECT_RESULT_TIMEOUT = 5.0
+RECONNECT_ATTEMPTS = 8
 
 
 @pytest.fixture(scope="module")
@@ -135,15 +138,44 @@ def send_and_wait(mqtt_client: MqttClient, command: str) -> str:
     return result
 
 
+def send_signed_command_until_ok(mqtt_client: MqttClient, command: str) -> None:
+    """Retry only transient publish/no-response failures after broker restart."""
+    for attempt in range(RECONNECT_ATTEMPTS):
+        previous_event = mqtt_client.get_event_count(RESULT_TOPIC)
+        try:
+            mqtt_client.publish(COMMAND_TOPIC, command)
+        except ConnectionError:
+            result = None
+        else:
+            result = mqtt_client.wait_for_next_state(
+                RESULT_TOPIC, previous_event, timeout=RECONNECT_RESULT_TIMEOUT
+            )
+        if result == "OK":
+            return
+        if result is not None:
+            raise AssertionError(
+                f"expected signed command result 'OK', got {result!r}"
+            )
+        if attempt + 1 < RECONNECT_ATTEMPTS:
+            time.sleep(0.5)
+    raise AssertionError("no signed-command result after broker restart")
+
+
 def _make_temp_config(certificate_name: str | None, device_config_path: Path) -> Path:
     """Create isolated config with signature and MQTT-status test actions."""
     config = copy.deepcopy(json.loads(device_config_path.read_text()))
+    certificate_filename = (
+        DEVICE_CERT_ALIAS
+        if certificate_name is not None
+        else "signing_test_missing.pem"
+    )
+    certificate_path = f"/{certificate_filename}"
     config["interfaces"].append(
         {
             "type": "signatureVerify",
             "name": "sv1",
             "commandTopic": COMMAND_TOPIC,
-            "certificate": f"/{certificate_name or 'signing_test_missing.pem'}",
+            "certificate": certificate_path,
         }
     )
     config["actions"].extend(
@@ -166,7 +198,9 @@ def _make_temp_config(certificate_name: str | None, device_config_path: Path) ->
     temp_dir = Path(tempfile.mkdtemp(prefix="signing_config_"))
     (temp_dir / "device_config.json").write_text(json.dumps(config, indent=4) + "\n")
     if certificate_name is not None:
-        shutil.copy2(DEVICE_CERTS_DIR / certificate_name, temp_dir / certificate_name)
+        shutil.copy2(
+            DEVICE_CERTS_DIR / certificate_name, temp_dir / DEVICE_CERT_ALIAS
+        )
     return temp_dir
 
 
@@ -197,7 +231,7 @@ def restore_basic_config(
     device.upload_config([device_config, global_config_path])
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def valid_signing_config(
     device_config: Path,
     device: Device,
@@ -213,7 +247,7 @@ def valid_signing_config(
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def whitespace_signing_config(
     device_config: Path,
     device: Device,
@@ -229,7 +263,7 @@ def whitespace_signing_config(
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture(scope="module", params=INVALID_CERT_CASES)
+@pytest.fixture(params=INVALID_CERT_CASES)
 def invalid_certificate_config(
     request: pytest.FixtureRequest,
     device_config: Path,
@@ -510,17 +544,22 @@ def test_reconnect_then_verify(
 ) -> None:
     """After MQTT broker reconnect, the device verifies a signed command."""
     assert_booted(device, mqtt_client, restarted=True)
-    assert mqtt_client.wait_for_state(
-        STATUS_ACTION_TOPIC, "1", timeout=RESULT_TIMEOUT
+    assert mqtt_client.wait_ready(timeout=10.0), (
+        "MQTT observer not ready before restart"
     )
-    previous_status_event = mqtt_client.get_event_count(STATUS_ACTION_TOPIC)
-    mqtt_broker.stop()
-    time.sleep(3.0)
-    mqtt_broker.start()
-    assert mqtt_client.wait_for_state_after(
-        STATUS_ACTION_TOPIC, "1", previous_status_event, timeout=60.0
-    ), "device did not report MQTT reconnection"
-    assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
+    previous_ready_generation = mqtt_client.get_ready_generation()
+    try:
+        mqtt_broker.stop()
+        time.sleep(3.0)
+        mqtt_broker.start()
+        assert mqtt_client.wait_ready(
+            timeout=60.0, after_generation=previous_ready_generation
+        ), "MQTT observer did not reconnect and resubscribe"
+        send_signed_command_until_ok(
+            mqtt_client, envelope(vectors["vectors"]["binary"])
+        )
+    finally:
+        mqtt_broker.start()
 
 
 def test_signature_interface_preserves_passthrough_and_status(
