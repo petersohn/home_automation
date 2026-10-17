@@ -14,6 +14,7 @@
         - [`pwm`](#pwm)
         - [`mqtt`](#mqtt)
         - [`status`](#status)
+        - [`signatureVerify`](#signatureverify)
         - [`encoder`](#encoder)
         - [`keepalive`](#keepalive)
         - [`powerSupply`](#powersupply)
@@ -272,6 +273,100 @@ The following additional value is supported:
 Reports the MQTT connection state of the device. The value is `1` when
 connected and `0` when disconnected. This interface uses no GPIO pin and takes
 no additional parameters.
+
+### `signatureVerify`
+
+Verifies signed data sent to the device through MQTT. It does not apply any
+update: the interface only proves the authenticity of a payload against an
+ECDSA P-256 key that is pinned on the device. It provides no confidentiality,
+replay (freshness) protection, or denial-of-service protection, and it is not
+an OTA update mechanism. This interface uses no GPIO pin.
+
+The pinned key is stored on the device as an X.509 certificate file in SPIFFS.
+The private signing key is never provisioned to the device: only the public
+certificate is uploaded. The key used for testing must never be trusted in
+production devices.
+
+The following additional values are supported:
+*   `certificate`: Absolute path of a PEM-encoded X.509 certificate file in
+    SPIFFS (required). The file must contain exactly one PEM `CERTIFICATE`
+    block with whitespace only around it: DER, other PEM blocks, concatenated
+    certificates, and junk are rejected. Its public key must be ECDSA P-256,
+    and the file must not be larger than 4096 bytes. The certificate is
+    read and parsed once at startup. No certificate chain, hostname, or
+    expiration checks are performed: trust comes entirely from provisioning,
+    so the pinned key is the only trusted one. If the file is missing,
+    unreadable, or invalid, the interface still starts (other interfaces are
+    not affected), but commands fail with an error result until the
+    certificate is corrected and the device is rebooted.
+
+Example configuration with a publish action reporting the results:
+
+```json
+{
+    "interfaces": [
+        {
+            "type": "signatureVerify",
+            "name": "sv",
+            "commandTopic": "device/sv/set",
+            "certificate": "/signing.pem"
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "sv",
+            "topic": "device/sv/state",
+            "template": "%1"
+        }
+    ]
+}
+```
+
+The reported values are the verification results, described below. The value
+stays empty until the first command arrives, and results are not persisted
+across reboot.
+
+The expected command format is a single JSON object with two base64 fields:
+
+```json
+{"data":"<base64 payload>","signature":"<base64 signature>"}
+```
+
+The payload bytes are hashed with SHA-256. The signature must be a *raw* ECDSA
+signature over the SHA-256 digest: the 64-byte value is the big-endian `r`
+integer followed by the big-endian `s` integer (32 bytes, zero-padded, each),
+not a DER-encoded ASN.1 sequence. For example, an OpenSSL production command
+`openssl dgst -sha256 -sign key.pem` produces DER output that first has to be
+converted into the raw `r || s` form. Only the decoded payload bytes are
+signed; JSON key order and whitespace are ignored.
+
+Limits and overload behavior:
+
+*   Commands are at most 512 bytes and payloads at most 256 decoded bytes;
+    bigger commands are answered with an error without being fully stored.
+    Empty payloads are allowed.
+*   The MQTT packet buffer is 1024 bytes, including topic and protocol
+    overhead. Choose a `commandTopic` short enough to leave room for the
+    largest expected command; packets exceeding the buffer may be dropped
+    before the interface ever sees them.
+*   If a command arrives while the device is still verifying the previous
+    one, it is dropped and reported with a single coalesced error, instead of
+    queuing more commands.
+*   The signature must decode to exactly 64 bytes.
+
+Possible values reported by the interface:
+
+| Value | Meaning |
+|---|---|
+| `OK` | The signature is valid. |
+| `FAIL invalid signature` | A well-formed 64-byte signature does not verify against the pinned key (e.g. wrong signing key or modified data). |
+| `ERROR <message>` | Malformed envelope, base64, size limit, wrong signature length, certificate or setup failure, or overload. |
+
+Errors fail closed: no error state can produce an `OK` result. A wrong
+signature (`FAIL`), a dropped command, and most errors are recoverable by a
+later valid command; a certificate problem persists until re-provisioning and
+reboot.
 
 ### `encoder`
 

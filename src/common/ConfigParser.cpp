@@ -350,6 +350,27 @@ std::optional<StatusConfig> ConfigParser::parseStatus(const JsonObject&) {
     return StatusConfig{};
 }
 
+std::optional<SignatureVerifyConfig> ConfigParser::parseSignatureVerify(
+    const JsonObject& data) {
+    SignatureVerifyConfig result;
+    JsonVariant rawCertificate = data["certificate"];
+    if (!rawCertificate.is<const char*>()) {
+        this->debug << "Invalid certificate: "
+                    << rawCertificate.as<std::string>() << std::endl;
+        return std::nullopt;
+    }
+    result.certificate = rawCertificate.as<std::string>();
+    // Only absolute SPIFFS paths are accepted. Whether the file exists is
+    // checked at config factory time, not here: an absent file yields an
+    // error-state verifier at runtime, not a dropped interface.
+    if (result.certificate.empty() || result.certificate.front() != '/') {
+        this->debug << "Invalid certificate: " << result.certificate
+                    << std::endl;
+        return std::nullopt;
+    }
+    return result;
+}
+
 std::optional<InterfaceConfigVariant> ConfigParser::parseInterface(
     const JsonObject& data) {
     std::string type = data.get<std::string>("type");
@@ -383,6 +404,8 @@ std::optional<InterfaceConfigVariant> ConfigParser::parseInterface(
         return toVariant(parseCover(data));
     } else if (type == "status") {
         return toVariant(parseStatus(data));
+    } else if (type == "signatureVerify") {
+        return toVariant(parseSignatureVerify(data));
     }
     this->debug << "Invalid interface type: " << type << std::endl;
     return std::nullopt;

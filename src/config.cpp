@@ -2,12 +2,15 @@
 
 #include <FS.h>
 
+#include <cstddef>
 #include <memory>
+#include <new>
 #include <optional>
 #include <unordered_map>
 #include <utility>
 #include <variant>
 
+#include "BearSslSignatureVerifier.hpp"
 #include "CounterInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "DebugStream.hpp"
@@ -37,6 +40,7 @@
 #include "common/Cover.hpp"
 #include "common/MqttClient.hpp"
 #include "common/SensorInterface.hpp"
+#include "common/SignatureVerifyInterface.hpp"
 #include "operation/OperationParser.hpp"
 #include "operation/OperationParser2.hpp"
 #include "tools/collection.hpp"
@@ -84,6 +88,8 @@ private:
     std::unique_ptr<Interface> buildPowerSupply(const PowerSupplyConfig& c);
     std::unique_ptr<Interface> buildCover(const CoverConfig& c);
     std::unique_ptr<Interface> buildStatus(const StatusConfig& c);
+    std::unique_ptr<Interface> buildSignatureVerify(
+        const SignatureVerifyConfig& c);
 
     AnalogInputWithChannel getEspAnalogInput();
     std::optional<AnalogInputWithChannel> resolveAnalogInput(
@@ -208,6 +214,63 @@ std::unique_ptr<Interface> ConfigFactory::buildStatus(const StatusConfig&) {
     return std::make_unique<StatusInterface>(this->mqttClient);
 }
 
+std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
+    const SignatureVerifyConfig& c) {
+    // The whole certificate must fit one bounded read; oversized files are
+    // rejected before allocating the payload buffer.
+    static constexpr size_t maxCertificateSize = 4096;
+
+    std::unique_ptr<SignatureVerifier> verifier;
+    File certificateFile = SPIFFS.open(c.certificate.c_str(), "r");
+    if (!certificateFile) {
+        this->debug << "Could not open certificate: " << c.certificate
+                    << std::endl;
+        // Missing or unreadable file: the interface is still created, but
+        // kept in an error state; every command fails closed.
+        verifier = std::make_unique<BearSslSignatureVerifier>(
+            SignatureError::certificateUnavailable);
+        return std::make_unique<SignatureVerifyInterface>(std::move(verifier));
+    }
+
+    const size_t certificateSize = certificateFile.size();
+    if (certificateSize == 0) {
+        this->debug << "Empty certificate file: " << c.certificate << std::endl;
+        verifier = std::make_unique<BearSslSignatureVerifier>(
+            SignatureError::invalidCertificate);
+    } else if (certificateSize > maxCertificateSize) {
+        this->debug << "Certificate too large: " << c.certificate << std::endl;
+        verifier = std::make_unique<BearSslSignatureVerifier>(
+            SignatureError::invalidCertificate);
+    } else {
+        std::unique_ptr<uint8_t[]> certificateBytes(
+            new (std::nothrow) uint8_t[certificateSize]);
+        if (!certificateBytes) {
+            this->debug << "Out of memory for certificate: " << c.certificate
+                        << std::endl;
+            verifier = std::make_unique<BearSslSignatureVerifier>(
+                SignatureError::internalError);
+        } else {
+            const int readLength =
+                certificateFile.read(certificateBytes.get(), certificateSize);
+            if (readLength < 0 ||
+                static_cast<size_t>(readLength) != certificateSize) {
+                this->debug << "Could not read certificate: " << c.certificate
+                            << std::endl;
+                verifier = std::make_unique<BearSslSignatureVerifier>(
+                    SignatureError::certificateUnavailable);
+            } else {
+                // The backend copies all key material, so the temporary
+                // certificate buffer below can be released when this block
+                // exits while the verifier stays valid.
+                verifier = std::make_unique<BearSslSignatureVerifier>(
+                    certificateBytes.get(), certificateSize);
+            }
+        }
+    }
+    certificateFile.close();
+    return std::make_unique<SignatureVerifyInterface>(std::move(verifier));
+}
+
 std::unique_ptr<Interface> ConfigFactory::createSensorInterface(
     const SensorConfig& timing, std::unique_ptr<Sensor>&& sensor,
     const std::string& name) {
@@ -274,6 +337,8 @@ std::unique_ptr<Interface> ConfigFactory::buildInterface(
             return this->buildCover(c);
         } else if constexpr (std::is_same_v<T, StatusConfig>) {
             return this->buildStatus(c);
+        } else if constexpr (std::is_same_v<T, SignatureVerifyConfig>) {
+            return this->buildSignatureVerify(c);
         } else {
             static_assert(
                 !std::is_same_v<T, T>, "unhandled InterfaceConfigVariant type");

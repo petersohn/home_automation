@@ -18,13 +18,15 @@
 #include "OutputConfig.hpp"
 #include "PowerSupplyConfig.hpp"
 #include "PwmConfig.hpp"
+#include "SignatureVerifyConfig.hpp"
 #include "StatusConfig.hpp"
 
 using InterfaceConfigVariant = std::variant<
     InputConfig, OutputConfig, PwmConfig, AnalogConfig, EncoderConfig,
     DhtConfig, DallasTemperatureConfig, Hm3301Config, CounterConfig,
     EchoDistanceConfig, EchoDistanceReaderConfig, MqttInterfaceConfig,
-    KeepaliveConfig, PowerSupplyConfig, CoverConfig, StatusConfig>;
+    KeepaliveConfig, PowerSupplyConfig, CoverConfig, StatusConfig,
+    SignatureVerifyConfig>;
 
 struct InterfaceEntry {
     std::string name;

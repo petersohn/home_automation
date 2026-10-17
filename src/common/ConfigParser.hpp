@@ -86,6 +86,8 @@ private:
     std::optional<CoverConfig> parseCover(const ArduinoJson::JsonObject& data);
     std::optional<StatusConfig> parseStatus(
         const ArduinoJson::JsonObject& data);
+    std::optional<SignatureVerifyConfig> parseSignatureVerify(
+        const ArduinoJson::JsonObject& data);
 
     std::optional<AnalogInputConfig> parseAnalogInput(
         const ArduinoJson::JsonObject& data);

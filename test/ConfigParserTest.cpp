@@ -440,6 +440,64 @@ TEST_F(ConfigParserTest, ParseStatus_Valid) {
             result.interfaces.at("stat").config));
 }
 
+TEST_F(ConfigParserTest, ParseSignatureVerify_Valid) {
+    auto& root = parse(R"({"interfaces":[
+        {"type":"signatureVerify","name":"sv","commandTopic":"dev/test/sv/set",
+         "certificate":"/signing.pem"}
+    ]})");
+    auto result = parser.parseDeviceConfig(root);
+    ASSERT_EQ(result.interfaces.size(), 1u);
+    auto& entry = result.interfaces.at("sv");
+    EXPECT_EQ(entry.name, "sv");
+    EXPECT_EQ(entry.commandTopic, "dev/test/sv/set");
+    auto& cfg = std::get<SignatureVerifyConfig>(entry.config);
+    EXPECT_EQ(cfg.certificate, "/signing.pem");
+}
+
+TEST_F(ConfigParserTest, ParseSignatureVerify_MissingCertificate_Skipped) {
+    auto& root =
+        parse(R"({"interfaces":[{"type":"signatureVerify","name":"sv"}]})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(result.interfaces.size(), 0u);
+}
+
+TEST_F(ConfigParserTest, ParseSignatureVerify_EmptyCertificatePath_Skipped) {
+    auto& root = parse(
+        R"({"interfaces":[{"type":"signatureVerify","name":"sv","certificate":""}]})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(result.interfaces.size(), 0u);
+}
+
+TEST_F(ConfigParserTest, ParseSignatureVerify_CertificateWrongType_Skipped) {
+    auto& root = parse(
+        R"({"interfaces":[{"type":"signatureVerify","name":"sv","certificate":5}]})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(result.interfaces.size(), 0u);
+}
+
+TEST_F(ConfigParserTest, ParseSignatureVerify_CertificateArrayValue_Skipped) {
+    auto& root = parse(
+        R"({"interfaces":[{"type":"signatureVerify","name":"sv","certificate":["/signing.pem"]}]})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(result.interfaces.size(), 0u);
+}
+
+TEST_F(ConfigParserTest, ParseSignatureVerify_RelativeCertificatePath_Skipped) {
+    auto& root = parse(
+        R"({"interfaces":[{"type":"signatureVerify","name":"sv","certificate":"signing.pem"}]})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(result.interfaces.size(), 0u);
+}
+
+TEST_F(
+    ConfigParserTest,
+    ParseSignatureVerify_RelativeSubdirectoryCertificatePath_Skipped) {
+    auto& root = parse(
+        R"({"interfaces":[{"type":"signatureVerify","name":"sv","certificate":"certs/signing.pem"}]})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(result.interfaces.size(), 0u);
+}
+
 TEST_F(ConfigParserTest, ParseInterface_InvalidType_Skipped) {
     auto& root = parse(R"({"interfaces":[{"type":"nonexistent","name":"x"}]})");
     auto result = parser.parseDeviceConfig(root);
