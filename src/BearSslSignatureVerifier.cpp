@@ -137,7 +137,14 @@ BearSslSignatureVerifier::BearSslSignatureVerifier(
         this->initError = SignatureError::invalidCertificate;
         return;
     }
-    if (!this->certificate.append(certificateBytes, certificateLength) ||
+
+    size_t certificateStartOffset = 0;
+    while (isPemWhitespace(certificateBytes[certificateStartOffset])) {
+        ++certificateStartOffset;
+    }
+    if (!this->certificate.append(
+            certificateBytes + certificateStartOffset,
+            certificateLength - certificateStartOffset) ||
         this->certificate.getCount() != 1) {
         this->initError = SignatureError::invalidCertificate;
         return;

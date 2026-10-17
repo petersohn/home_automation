@@ -147,7 +147,7 @@ def create_fixture_tree(output_dir: Path) -> None:
     # Derived strict-PEM fixtures are regenerated with each certificate. This
     # prevents stale key material in whitespace/DER/trailing-content cases.
     (device_dir / "signing_test_whitespace.pem").write_bytes(
-        b" \t\r\n" + valid_pem + b"\n\t "
+        b" \t\r\n \t" + valid_pem + b"\n\t "
     )
     (device_dir / "signing_test_der.der").write_bytes(
         main_certificate.public_bytes(serialization.Encoding.DER)
