@@ -38,8 +38,7 @@ public:
     // Parses one strict PEM certificate from the byte view. Initialization
     // failures (malformed, empty, multiple certificates, unsupported key) are
     // retained in the state, never thrown.
-    BearSslSignatureVerifier(
-        const uint8_t* certificateBytes, size_t certificateLength);
+    explicit BearSslSignatureVerifier(SignatureBytes certificateBytes);
 
     // Error-state verifier that performs no parsing; every attempted
     // verification fails closed with the retained error. Used when the

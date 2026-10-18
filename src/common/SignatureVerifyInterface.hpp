@@ -19,34 +19,20 @@
 // layer, including the "ERROR " prefix; verifier implementations stay
 // structured.
 //
-// Scheduling contract (at most one of the following happens per update):
+// Scheduling contract:
 //
-// 1. If the initial empty event was not emitted yet, the single value {""} is
-//    emitted and the update ends. A command queued before that update is
-//    processed on the next update. The initial event is emitted exactly once.
-// 2. Otherwise, if a verification result is pending (the interface is
-//    busy), it is emitted and the update ends. This pending notification
-//    cannot be starved by later arrivals.
-// 3. Otherwise queued error presentations are emitted, one per update. The
-//    coalesced overflow "ERROR busy" is enqueued into the pending event slot
-//    right after a verification result is presented, so it goes out through
-//    rule 2 on the following update, before any further command processing.
-//    The oversized-input error is emitted here, once, before any command
-//    processing.
-// 4. Otherwise, if a command is queued, exactly one command is dequeued,
-//    decoded, and verified; the result becomes the pending event emitted on
-//    a later update. At most one verification runs in a single update.
+// The first update emits the initial empty value exactly once. On each later
+// update, the interface either reports one rejected arrival burst or decodes,
+// verifies, and emits the result for its single queued command in that same
+// update. Multiple execute() calls between updates discard every command in
+// that burst and produce one "ERROR busy" event without verification.
+// Oversized commands are rejected before copying; a single oversized arrival
+// produces "ERROR command too large", while any multiple-arrival burst is
+// reported as busy regardless of command sizes. Arrivals after a busy burst
+// remain discarded until the next update clears it.
 //
-// execute() keeps a single command slot. When the slot is already occupied
-// the command is dropped and a single coalesced "ERROR busy" event is
-// scheduled to be emitted after the currently pending result. Oversized
-// commands (longer than maxCommandSize bytes) are rejected in execute()
-// without copying the payload: only an error code is queued.
-//
-// Pending state is fixed size: one command slot, one pending event slot, and
-// two coalescing flags. No growable pending container exists, so arrivals
-// while busy can never accumulate without bound; drops are coalesced into
-// the busy error instead.
+// Pending memory is bounded to one command of at most maxCommandSize bytes
+// and a few flags; discarded commands are never retained.
 //
 // Presentation strings (stable contract):
 //   valid                            -> "OK"
@@ -77,9 +63,7 @@ private:
     // Commands longer than this are rejected in execute() without copying.
     static constexpr std::size_t maxCommandSize = 512;
 
-    enum class Stage { initialPending, idle, busy };
-    enum class PendingEvent { none, ok, fail, error };
-    enum class PendingError {
+    enum class Error {
         none,
         invalidJson,
         invalidFields,
@@ -90,40 +74,25 @@ private:
         invalidCertificate,
         unsupportedKey,
         certificateUnavailable,
-        internalError,
-        // Coalesced overflow marker, not produced by decoding or the
-        // verifier: it is enqueued into the pending event slot right after a
-        // verification result is presented and is presented as "ERROR busy".
-        busy
+        internalError
     };
 
-    Stage stage = Stage::initialPending;
-    PendingEvent pendingEvent = PendingEvent::none;
-    PendingError pendingError = PendingError::none;
+    bool initialEventPending = true;
     std::unique_ptr<SignatureVerifier> verifier;
 
-    // Single command slot: an occupied slot makes a new arrival overflow
-    // instead of queueing.
+    // A burst holds at most one bounded command. A second arrival discards it
+    // and marks the whole burst busy until update().
     std::string pendingCommand;
     bool hasPendingCommand = false;
+    bool oversizedPending = false;
+    bool busyPending = false;
 
-    // Coalescing error flags: further arrivals of the same condition keep
-    // the flag set instead of queueing more events.
-    bool busyErrorQueued = false;
-    bool oversizedQueued = false;
+    // Decodes and verifies one command, returning its stable presentation.
+    std::vector<std::string> processCommand(const std::string& command);
 
-    // Decodes and verifies at most one queued command, turning the outcome
-    // into the pending event presented on a following update.
-    void processPendingCommand(const std::string& command);
-
-    // Stable presentation values for the pending event, including the
-    // "ERROR " prefix; verifier and envelope layers stay structured.
-    std::vector<std::string> pendingPresentation() const;
-
-    // Error-code message mapping, shared by the presentation builder.
-    static const char* errorMessage(PendingError error);
-    static PendingError errorFor(EnvelopeError error);
-    static PendingError errorFor(SignatureError error);
+    static const char* errorMessage(Error error);
+    static Error errorFor(EnvelopeError error);
+    static Error errorFor(SignatureError error);
 };
 
 #endif  // COMMON_SIGNATUREVERIFYINTERFACE_HPP

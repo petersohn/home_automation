@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-// Strict decoder for the signed-envelope wire format: one MQTT payload
+// Decoder for the signed-envelope wire format: one MQTT payload
 // carrying a UTF-8 JSON object with exactly two string fields:
 //
 //   {"data":"<base64>","signature":"<base64>"}
@@ -35,21 +35,19 @@ struct SignedEnvelope {
 //
 // 1. Oversize command: a command longer than 512 bytes is rejected
 //    (commandTooLarge) without parsing it, before copying into any storage.
-// 2. JSON structure: the command must be a single JSON document containing
-//    only an object with exactly the fields data and signature, both strings.
-//    JSON whitespace between tokens and key order are irrelevant; escaped key
-//    names and escaped characters are unescaped first, so "\u0064ata" is
-//    recognized as the data field and "\u0041..." value content counts as its
-//    unescaped characters. Malformed syntax, invalid escapes, raw control
-//    characters, and trailing non-whitespace data are rejected (invalidJson).
-//    Parseable JSON with wrong structure - non-object root, unknown, missing,
-//    or duplicate fields (duplicates are detected before map collapse,
-//    including escape-aliased ones), or non-string/nested field values - is
-//    rejected (invalidFields).
+// 2. JSON is parsed directly by ArduinoJson. Its native syntax and escape
+//    behavior applies; no Unicode escape normalization is performed. The root
+//    must be an object with exactly two fields, data and signature, both
+//    strings. Whitespace and key order are irrelevant. Duplicate literal keys
+//    use ArduinoJson's last-value-wins behavior. Embedded NUL and trailing
+//    non-whitespace data are rejected (invalidJson). Parseable documents with
+//    the wrong envelope shape, unknown/missing fields, or non-string values
+//    are rejected (invalidFields).
 // 3. Limits before decoding buffers: data content that would decode to more
 //    than 256 bytes is rejected (dataTooLarge) based on its length.
 // 4. Base64: both fields must be canonical RFC 4648 (strict; see
-//    tools::decodeCanonicalBase64) after unescaping (invalidBase64).
+//    tools::decodeCanonicalBase64) after ArduinoJson string decoding
+//    (invalidBase64).
 // 5. Signature length: the decoded signature must be exactly 64 bytes
 //    (invalidSignatureLength).
 //

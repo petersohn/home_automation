@@ -2,15 +2,6 @@
 
 #include <utility>
 
-// Portable state machine exposing signed-envelope verification through the
-// Interface/Actions contract. Scheduling follows the contract documented in
-// the header: at most one action per update, in priority order. The coalesced
-// overflow notification reuses the pending event slot: it is enqueued when a
-// verification result is presented, so it is emitted on the following update,
-// right after that result and before any queued error presentation or command
-// processing. This keeps the pending notification unstarvable while allowing
-// the command that was queued at overflow time to be processed first.
-
 namespace {
 
 std::vector<std::string> singleValue(const std::string& value) {
@@ -24,194 +15,149 @@ SignatureVerifyInterface::SignatureVerifyInterface(
     : verifier(std::move(verifier)) {}
 
 void SignatureVerifyInterface::start() {
-    // Nothing to do: the initial empty event is emitted by the first update
-    // through the normal interface/action path, exactly once.
+    // The initial empty event is emitted by the first update.
 }
 
 void SignatureVerifyInterface::execute(const std::string& command) {
-    // Oversized commands are rejected before any copy: only the error code
-    // is queued, the command slot stays untouched.
+    if (this->busyPending) {
+        return;
+    }
+
+    if (this->hasPendingCommand || this->oversizedPending) {
+        // Any second arrival makes the whole burst busy, even if one or both
+        // commands exceeded the limit. Release retained command memory now.
+        this->pendingCommand.clear();
+        this->hasPendingCommand = false;
+        this->oversizedPending = false;
+        this->busyPending = true;
+        return;
+    }
+
     if (command.size() > maxCommandSize) {
-        this->oversizedQueued = true;
+        this->oversizedPending = true;
         return;
     }
-    // A single command slot: an occupied slot makes the new arrival overflow
-    // into one coalesced busy notification instead of queueing.
-    if (this->hasPendingCommand) {
-        this->busyErrorQueued = true;
-        return;
-    }
+
     this->pendingCommand = command;
     this->hasPendingCommand = true;
 }
 
 void SignatureVerifyInterface::update(Actions action) {
-    // Priority 1: the initial empty event is emitted exactly once, even when
-    // a command or an error is already queued; those are handled on the next
-    // updates.
-    if (this->stage == Stage::initialPending) {
-        this->stage = Stage::idle;
+    if (this->initialEventPending) {
+        this->initialEventPending = false;
         action.fire(singleValue(""));
         return;
     }
-    // Priority 2: a pending verification result is presented and can never be
-    // starved. Nothing else happens in this update.
-    if (this->pendingEvent != PendingEvent::none) {
-        // The presentation is built from the pending slots before they are
-        // cleared, so it reflects the result being presented, never the
-        // coalesced busy notification staged below for the next update.
-        const std::vector<std::string> presentation =
-            this->pendingPresentation();
-        this->pendingEvent = PendingEvent::none;
-        this->pendingError = PendingError::none;
-        this->stage = Stage::idle;
-        if (this->busyErrorQueued) {
-            // An overflow was observed while the presented result's command
-            // was queued: the coalesced busy notification becomes the next
-            // pending event, so it is emitted after this result and before
-            // any further command processing.
-            this->busyErrorQueued = false;
-            this->pendingEvent = PendingEvent::error;
-            this->pendingError = PendingError::busy;
-        }
-        action.fire(presentation);
+
+    if (this->busyPending) {
+        this->busyPending = false;
+        action.fire(singleValue("ERROR busy"));
         return;
     }
-    // Priority 3: queued error presentations, one per update. The oversized
-    // input error is emitted before any command processing; the coalesced
-    // busy overflow notification is handled through the pending event slot
-    // above, right after the result it follows.
-    if (this->oversizedQueued) {
-        this->oversizedQueued = false;
+
+    if (this->oversizedPending) {
+        this->oversizedPending = false;
         action.fire(singleValue("ERROR command too large"));
         return;
     }
-    // Priority 4: at most one queued command per update is decoded and
-    // verified; its result becomes the pending event presented on a later
-    // update. Idle updates never repeat an earlier event.
+
     if (this->hasPendingCommand) {
-        const std::string command = std::move(this->pendingCommand);
+        std::string command = std::move(this->pendingCommand);
         this->pendingCommand.clear();
         this->hasPendingCommand = false;
-        this->processPendingCommand(command);
+        action.fire(this->processCommand(command));
     }
 }
 
-void SignatureVerifyInterface::processPendingCommand(
+std::vector<std::string> SignatureVerifyInterface::processCommand(
     const std::string& command) {
     SignedEnvelope envelope;
     const EnvelopeError decodeError = decodeSignedEnvelope(command, envelope);
     if (decodeError != EnvelopeError::none) {
-        // A malformed envelope never reaches the verifier.
-        this->pendingEvent = PendingEvent::error;
-        this->pendingError = errorFor(decodeError);
-        this->stage = Stage::busy;
-        return;
+        return singleValue(
+            std::string("ERROR ") + errorMessage(errorFor(decodeError)));
     }
+
     const SignatureResult result = this->verifier->verify(
         SignatureBytes{envelope.data.data(), envelope.data.size()},
         SignatureBytes{envelope.signature.data(), envelope.signature.size()});
-    this->stage = Stage::busy;
     switch (result.status) {
     case SignatureStatus::valid:
-        this->pendingEvent = PendingEvent::ok;
-        this->pendingError = PendingError::none;
-        return;
+        return singleValue("OK");
     case SignatureStatus::invalid:
-        this->pendingEvent = PendingEvent::fail;
-        this->pendingError = PendingError::none;
-        return;
+        return singleValue("FAIL invalid signature");
     case SignatureStatus::error:
     default:
-        this->pendingEvent = PendingEvent::error;
-        this->pendingError = errorFor(result.error);
-        return;
-    }
-}
-
-std::vector<std::string> SignatureVerifyInterface::pendingPresentation() const {
-    switch (this->pendingEvent) {
-    case PendingEvent::ok:
-        return singleValue("OK");
-    case PendingEvent::fail:
-        return singleValue("FAIL invalid signature");
-    case PendingEvent::error:
         return singleValue(
-            std::string("ERROR ") + errorMessage(this->pendingError));
-    case PendingEvent::none:
-        break;
+            std::string("ERROR ") + errorMessage(errorFor(result.error)));
     }
-    return singleValue("ERROR internal error");
 }
 
-const char* SignatureVerifyInterface::errorMessage(PendingError error) {
+const char* SignatureVerifyInterface::errorMessage(Error error) {
     switch (error) {
-    case PendingError::invalidJson:
+    case Error::invalidJson:
         return "invalid JSON";
-    case PendingError::invalidFields:
+    case Error::invalidFields:
         return "invalid fields";
-    case PendingError::invalidBase64:
+    case Error::invalidBase64:
         return "invalid base64";
-    case PendingError::commandTooLarge:
+    case Error::commandTooLarge:
         return "command too large";
-    case PendingError::dataTooLarge:
+    case Error::dataTooLarge:
         return "data too large";
-    case PendingError::invalidSignatureLength:
+    case Error::invalidSignatureLength:
         return "invalid signature length";
-    case PendingError::invalidCertificate:
+    case Error::invalidCertificate:
         return "invalid certificate";
-    case PendingError::unsupportedKey:
+    case Error::unsupportedKey:
         return "unsupported key";
-    case PendingError::certificateUnavailable:
+    case Error::certificateUnavailable:
         return "certificate unavailable";
-    case PendingError::internalError:
+    case Error::internalError:
+    case Error::none:
         return "internal error";
-    case PendingError::busy:
-        return "busy";
-    case PendingError::none:
-        break;
     }
     return "internal error";
 }
 
-SignatureVerifyInterface::PendingError SignatureVerifyInterface::errorFor(
+SignatureVerifyInterface::Error SignatureVerifyInterface::errorFor(
     EnvelopeError error) {
     switch (error) {
     case EnvelopeError::invalidJson:
-        return PendingError::invalidJson;
+        return Error::invalidJson;
     case EnvelopeError::invalidFields:
-        return PendingError::invalidFields;
+        return Error::invalidFields;
     case EnvelopeError::invalidBase64:
-        return PendingError::invalidBase64;
+        return Error::invalidBase64;
     case EnvelopeError::commandTooLarge:
-        return PendingError::commandTooLarge;
+        return Error::commandTooLarge;
     case EnvelopeError::dataTooLarge:
-        return PendingError::dataTooLarge;
+        return Error::dataTooLarge;
     case EnvelopeError::invalidSignatureLength:
-        return PendingError::invalidSignatureLength;
+        return Error::invalidSignatureLength;
     case EnvelopeError::none:
         break;
     }
-    return PendingError::internalError;
+    return Error::internalError;
 }
 
-SignatureVerifyInterface::PendingError SignatureVerifyInterface::errorFor(
+SignatureVerifyInterface::Error SignatureVerifyInterface::errorFor(
     SignatureError error) {
     switch (error) {
     case SignatureError::none:
-        return PendingError::none;
+        return Error::none;
     case SignatureError::invalidCertificate:
-        return PendingError::invalidCertificate;
+        return Error::invalidCertificate;
     case SignatureError::unsupportedKey:
-        return PendingError::unsupportedKey;
+        return Error::unsupportedKey;
     case SignatureError::certificateUnavailable:
-        return PendingError::certificateUnavailable;
+        return Error::certificateUnavailable;
     case SignatureError::invalidSignatureLength:
-        return PendingError::invalidSignatureLength;
+        return Error::invalidSignatureLength;
     case SignatureError::internalError:
-        return PendingError::internalError;
+        return Error::internalError;
     case SignatureError::invalidSignature:
         break;
     }
-    return PendingError::internalError;
+    return Error::internalError;
 }

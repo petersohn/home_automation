@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 SIGNATURE_TEST_PATH = (
-    Path(__file__).resolve().parents[1] / "basic" / "test_signature_verify.py"
+    Path(__file__).resolve().parents[1]
+    / "signature_verify"
+    / "test_signature_verify.py"
 )
 
 

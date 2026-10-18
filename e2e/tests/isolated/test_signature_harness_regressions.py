@@ -1,7 +1,6 @@
 """Host-only regressions for signature provisioning and MQTT recovery harness."""
 
 import ast
-import copy
 import json
 import shutil
 import socket
@@ -15,10 +14,14 @@ from typing import Any
 import pytest
 
 E2E_DIR = Path(__file__).resolve().parents[2]
-SIGNATURE_TEST_PATH = E2E_DIR / "tests" / "basic" / "test_signature_verify.py"
+SIGNATURE_TEST_PATH = (
+    E2E_DIR / "tests" / "signature_verify" / "test_signature_verify.py"
+)
 MQTT_CLIENT_PATH = E2E_DIR / "lib" / "mqtt_client.py"
 FIXTURES_DIR = E2E_DIR / "signing_fixtures" / "device"
-DEVICE_CONFIG_DIR = E2E_DIR / "configs" / "basic"
+DEVICE_CONFIG_PATH = (
+    E2E_DIR / "configs" / "signature_verify" / "device_config.json"
+)
 GLOBAL_CONFIG_PATH = E2E_DIR / "configs" / "global_config.json"
 
 
@@ -48,7 +51,6 @@ def _load_provisioning_functions() -> dict[str, Any]:
         if isinstance(node, ast.FunctionDef) and node.name in names
     ]
     namespace: dict[str, Any] = {
-        "copy": copy,
         "json": json,
         "shutil": shutil,
         "tempfile": tempfile,
@@ -56,6 +58,7 @@ def _load_provisioning_functions() -> dict[str, Any]:
         "Device": object,
         "MqttClient": object,
         "DEVICE_CERTS_DIR": FIXTURES_DIR,
+        "DEVICE_CONFIG_PATH": DEVICE_CONFIG_PATH,
         "DEVICE_CERT_ALIAS": _constant(tree, "DEVICE_CERT_ALIAS"),
         "COMMAND_TOPIC": "home/testDevice/sv1/set",
         "RESULT_TOPIC": "home/testDevice/sv1/state",
@@ -125,27 +128,39 @@ def test_all_device_certificates_use_short_alias_and_preserve_bytes() -> None:
     alias = _constant(tree, "DEVICE_CERT_ALIAS")
     assert len(alias.encode("utf-8")) <= 31
     namespace = _load_provisioning_functions()
-    base_config = DEVICE_CONFIG_DIR / "device_config.json"
+    fixed_config = DEVICE_CONFIG_PATH.read_bytes()
 
     for source in FIXTURES_DIR.iterdir():
         if not source.is_file():
             continue
-        temp_dir = namespace["_make_temp_config"](source.name, base_config)
+        temp_dir = namespace["_make_temp_config"](source.name)
         try:
-            config = json.loads((temp_dir / "device_config.json").read_text())
-            interface = config["interfaces"][-1]
+            config_bytes = (temp_dir / "device_config.json").read_bytes()
+            config = json.loads(config_bytes)
+            interface = next(
+                item
+                for item in config["interfaces"]
+                if item.get("type") == "signatureVerify"
+            )
+            assert config_bytes == fixed_config
             assert interface["certificate"] == f"/{alias}"
             assert len(interface["certificate"].encode("utf-8")) <= 31
             assert (temp_dir / alias).read_bytes() == source.read_bytes()
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    missing_dir = namespace["_make_temp_config"](None, base_config)
+    missing_dir = namespace["_make_temp_config"](None)
     try:
-        config = json.loads((missing_dir / "device_config.json").read_text())
-        assert config["interfaces"][-1]["certificate"] == "/signing_test_missing.pem"
+        config_bytes = (missing_dir / "device_config.json").read_bytes()
+        config = json.loads(config_bytes)
+        interface = next(
+            item
+            for item in config["interfaces"]
+            if item.get("type") == "signatureVerify"
+        )
+        assert config_bytes == fixed_config
+        assert interface["certificate"] == f"/{alias}"
         assert not (missing_dir / alias).exists()
-        assert not (missing_dir / "signing_test_missing.pem").exists()
     finally:
         shutil.rmtree(missing_dir, ignore_errors=True)
 
@@ -165,11 +180,20 @@ def test_provisioning_fixtures_upload_each_scenario_with_function_scope() -> Non
     class RecordingDevice:
         def __init__(self) -> None:
             self.uploads: list[tuple[str, bytes | None]] = []
+            self.configs: list[bytes] = []
 
         def upload_config(self, paths: list[Path]) -> None:
-            config = json.loads((paths[0] / "device_config.json").read_text())
-            certificate = config["interfaces"][-1]["certificate"]
+            assert paths[1] == GLOBAL_CONFIG_PATH
+            config_bytes = (paths[0] / "device_config.json").read_bytes()
+            config = json.loads(config_bytes)
+            interface = next(
+                item
+                for item in config["interfaces"]
+                if item.get("type") == "signatureVerify"
+            )
+            certificate = interface["certificate"]
             certificate_path = paths[0] / Path(certificate).name
+            self.configs.append(config_bytes)
             self.uploads.append(
                 (
                     certificate,
@@ -198,7 +222,6 @@ def test_provisioning_fixtures_upload_each_scenario_with_function_scope() -> Non
             temp_dirs.append(
                 namespace["_provision_certificate"](
                     certificate_name,
-                    DEVICE_CONFIG_DIR,
                     device,
                     GLOBAL_CONFIG_PATH,
                     client,
@@ -207,11 +230,12 @@ def test_provisioning_fixtures_upload_each_scenario_with_function_scope() -> Non
 
         expected_names = scenarios
         assert len(device.uploads) == len(expected_names)
+        assert device.configs == [DEVICE_CONFIG_PATH.read_bytes()] * len(expected_names)
         for (certificate_path, contents), certificate_name in zip(
             device.uploads, expected_names, strict=True
         ):
             if certificate_name is None:
-                assert certificate_path == "/signing_test_missing.pem"
+                assert certificate_path == f"/{alias}"
                 assert contents is None
             else:
                 assert certificate_path == f"/{alias}"

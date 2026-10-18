@@ -5,7 +5,6 @@ uses isolated temporary config directories; host private keys never enter SPIFFS
 """
 
 import base64
-import copy
 import json
 import shutil
 import tempfile
@@ -26,6 +25,9 @@ E2E_DIR = Path(__file__).resolve().parents[2]
 FIXTURES_DIR = E2E_DIR / "signing_fixtures"
 VECTORS_PATH = FIXTURES_DIR / "host" / "vectors.json"
 DEVICE_CERTS_DIR = FIXTURES_DIR / "device"
+DEVICE_CONFIG_PATH = (
+    E2E_DIR / "configs" / "signature_verify" / "device_config.json"
+)
 
 COMMAND_TOPIC = "home/testDevice/sv1/set"
 RESULT_TOPIC = "home/testDevice/sv1/state"
@@ -161,80 +163,41 @@ def send_signed_command_until_ok(mqtt_client: MqttClient, command: str) -> None:
     raise AssertionError("no signed-command result after broker restart")
 
 
-def _make_temp_config(certificate_name: str | None, device_config_path: Path) -> Path:
-    """Create isolated config with signature and MQTT-status test actions."""
-    config = copy.deepcopy(json.loads(device_config_path.read_text()))
-    certificate_filename = (
-        DEVICE_CERT_ALIAS
-        if certificate_name is not None
-        else "signing_test_missing.pem"
-    )
-    certificate_path = f"/{certificate_filename}"
-    config["interfaces"].append(
-        {
-            "type": "signatureVerify",
-            "name": "sv1",
-            "commandTopic": COMMAND_TOPIC,
-            "certificate": certificate_path,
-        }
-    )
-    config["actions"].extend(
-        [
-            {
-                "type": "publish",
-                "interface": "sv1",
-                "topic": RESULT_TOPIC,
-                "template": "%1",
-            },
-            {
-                "type": "publish",
-                "interface": "s1",
-                "topic": STATUS_ACTION_TOPIC,
-                "template": "%1",
-            },
-        ]
-    )
-
+def _make_temp_config(certificate_name: str | None) -> Path:
+    """Copy fixed test config and selected certificate into isolated SPIFFS input."""
     temp_dir = Path(tempfile.mkdtemp(prefix="signing_config_"))
-    (temp_dir / "device_config.json").write_text(json.dumps(config, indent=4) + "\n")
-    if certificate_name is not None:
-        shutil.copy2(
-            DEVICE_CERTS_DIR / certificate_name, temp_dir / DEVICE_CERT_ALIAS
-        )
+    try:
+        shutil.copy2(DEVICE_CONFIG_PATH, temp_dir / "device_config.json")
+        if certificate_name is not None:
+            shutil.copy2(
+                DEVICE_CERTS_DIR / certificate_name, temp_dir / DEVICE_CERT_ALIAS
+            )
+    except BaseException:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise
     return temp_dir
 
 
 def _provision_certificate(
     certificate_name: str | None,
-    device_config: Path,
     device: Device,
     global_config_path: Path,
     mqtt_client: MqttClient,
 ) -> Path:
-    temp_dir = _make_temp_config(
-        certificate_name, device_config / "device_config.json"
-    )
-    device.upload_config([temp_dir, global_config_path])
-    mqtt_client.subscribe(RESULT_TOPIC)
-    mqtt_client.subscribe(STATUS_ACTION_TOPIC)
+    temp_dir = _make_temp_config(certificate_name)
+    try:
+        device.upload_config([temp_dir, global_config_path])
+        mqtt_client.subscribe(RESULT_TOPIC)
+        mqtt_client.subscribe(STATUS_ACTION_TOPIC)
+    except BaseException:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise
     return temp_dir
-
-
-@pytest.fixture(scope="module", autouse=True)
-def restore_basic_config(
-    device_config: Path,
-    device: Device,
-    global_config_path: Path,
-) -> Iterator[None]:
-    """Restore base configuration after signature scenarios finish."""
-    yield
-    device.upload_config([device_config, global_config_path])
 
 
 @pytest.fixture
 def provisioning_complete(
     request: pytest.FixtureRequest,
-    device_config: Path,
     device: Device,
     global_config_path: Path,
     mqtt_client: MqttClient,
@@ -252,13 +215,12 @@ def provisioning_complete(
 
 @pytest.fixture
 def valid_signing_config(
-    device_config: Path,
     device: Device,
     global_config_path: Path,
     mqtt_client: MqttClient,
 ) -> Iterator[None]:
     temp_dir = _provision_certificate(
-        VALID_CERT_NAME, device_config, device, global_config_path, mqtt_client
+        VALID_CERT_NAME, device, global_config_path, mqtt_client
     )
     try:
         yield
@@ -268,13 +230,12 @@ def valid_signing_config(
 
 @pytest.fixture
 def whitespace_signing_config(
-    device_config: Path,
     device: Device,
     global_config_path: Path,
     mqtt_client: MqttClient,
 ) -> Iterator[None]:
     temp_dir = _provision_certificate(
-        WHITESPACE_CERT_NAME, device_config, device, global_config_path, mqtt_client
+        WHITESPACE_CERT_NAME, device, global_config_path, mqtt_client
     )
     try:
         yield
@@ -285,7 +246,6 @@ def whitespace_signing_config(
 @pytest.fixture(params=INVALID_CERT_CASES)
 def invalid_certificate_config(
     request: pytest.FixtureRequest,
-    device_config: Path,
     device: Device,
     global_config_path: Path,
     mqtt_client: MqttClient,
@@ -293,7 +253,7 @@ def invalid_certificate_config(
     """Provision rejected certificate configurations without a device restore."""
     scenario, certificate_name, expected_result = request.param
     temp_dir = _provision_certificate(
-        certificate_name, device_config, device, global_config_path, mqtt_client
+        certificate_name, device, global_config_path, mqtt_client
     )
     try:
         yield scenario, expected_result
@@ -468,7 +428,7 @@ def test_size_limits_error(
 
 
 @pytest.mark.parametrize(
-    "shape", ["unknown", "duplicate", "missing-data", "missing-signature"]
+    "shape", ["unknown", "missing-data", "missing-signature"]
 )
 def test_invalid_envelope_fields_error(
     valid_signing_config: None,
@@ -478,7 +438,7 @@ def test_invalid_envelope_fields_error(
     mqtt_client: MqttClient,
     shape: str,
 ) -> None:
-    """Unknown, duplicate, and missing envelope fields are rejected."""
+    """Unknown and missing envelope fields are rejected."""
     assert_booted(device, mqtt_client, restarted=True)
     vector = vectors["vectors"]["binary"]
     data = base64.b64encode(bytes.fromhex(vector["data_hex"])).decode("ascii")
@@ -487,13 +447,33 @@ def test_invalid_envelope_fields_error(
     )
     if shape == "unknown":
         command = f'{{"data":"{data}","signature":"{signature}","extra":1}}'
-    elif shape == "duplicate":
-        command = f'{{"data":"{data}","data":"{data}","signature":"{signature}"}}'
     elif shape == "missing-data":
         command = f'{{"signature":"{signature}"}}'
     else:
         command = f'{{"data":"{data}"}}'
     assert send_and_wait(mqtt_client, command) == "ERROR invalid fields"
+
+
+def test_duplicate_fields_use_last_value(
+    valid_signing_config: None,
+    vectors: dict[str, Any],
+    device: Device,
+    reset_device: None,
+    mqtt_client: MqttClient,
+) -> None:
+    """A duplicate literal data key replaces earlier value."""
+    assert_booted(device, mqtt_client, restarted=True)
+    vector = vectors["vectors"]["binary"]
+    data = base64.b64encode(bytes.fromhex(vector["data_hex"])).decode("ascii")
+    wrong_data = base64.b64encode(b"wrong first value").decode("ascii")
+    signature = base64.b64encode(bytes.fromhex(vector["signature_hex"])).decode(
+        "ascii"
+    )
+    command = (
+        f'{{"data":"{wrong_data}","data":"{data}",'
+        f'"signature":"{signature}"}}'
+    )
+    assert send_and_wait(mqtt_client, command) == "OK"
 
 
 def test_whitespace_certificate_accepted(

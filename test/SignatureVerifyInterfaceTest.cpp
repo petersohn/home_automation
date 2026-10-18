@@ -16,12 +16,10 @@
 // stub that records exact byte lengths) and presentation is observed through
 // a capturing Action. Real InterfaceConfig/Actions drive the stored values.
 //
-// Scheduling contract exercised here (one action per update, in priority
-// order): emit the initial empty value once; then emit a pending result; then
-// queued error events (coalesced "ERROR busy" first, then oversized-input
-// error); then process at most one queued command per update. A command
-// queued before the initial update is processed on the next update, so the
-// initial empty event is always preserved.
+// Scheduling contract exercised here: emit the initial empty value once;
+// later updates process and emit one command result immediately. Multiple
+// execute() calls between updates discard the entire burst and emit one
+// "ERROR busy" without verification.
 //
 // Limits mirrored from the envelope wire format: a command longer than 512
 // bytes is rejected in execute() without being copied.
@@ -174,15 +172,13 @@ public:
         this->interface.interface->execute(command);
     }
 
-    // Verifies the event emitted after a command whose decoding fails: the
-    // stable error message with three updates (initial empty, processing,
-    // presentation) and no verifier call.
+    // Verifies same-update presentation for a decode error and no verifier
+    // call. The first update remains reserved for the initial empty event.
     void expectDecodeError(
         const std::string& command, const std::string& errorMessage) {
         this->execute(command);
         this->updateInterface();
         EXPECT_EQ(this->interface.storedValue, singleValue(""));
-        this->updateInterface();
         this->updateInterface();
         EXPECT_EQ(this->interface.storedValue, singleValue(errorMessage));
         EXPECT_EQ(this->verifier->verifyCallCount, 0u);
@@ -206,9 +202,8 @@ TEST_F(SignatureVerifyInterfaceTest, InitialStoredValueIsEmptyEvent) {
 TEST_F(SignatureVerifyInterfaceTest, ValidSignatureEmitsOk) {
     this->execute(commandWith({0x11}));
     this->updateInterface();  // Initial empty event.
-    this->updateInterface();  // Processes the queued command, verifying once.
+    this->updateInterface();  // Verifies and emits in this same update.
     EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    this->updateInterface();  // Presents the pending result.
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
         this->action->firedValues, (std::vector<std::vector<std::string>>{
@@ -245,14 +240,13 @@ TEST_F(SignatureVerifyInterfaceTest, VerifierErrorResultsInStableErrorEvent) {
         {SignatureError::internalError, "ERROR internal error"},
     };
     std::size_t expectedCalls = 0;
+    this->updateInterface();
     for (const auto& caseValue : cases) {
         SCOPED_TRACE(caseValue.second);
         this->verifier->nextResult = {SignatureStatus::error, caseValue.first};
         this->execute(commandWith({0x11}));
         this->updateInterface();
         ++expectedCalls;
-        this->updateInterface();
-        this->updateInterface();
         EXPECT_EQ(this->interface.storedValue, singleValue(caseValue.second));
         EXPECT_EQ(this->verifier->verifyCallCount, expectedCalls);
         this->updateInterface();
@@ -305,7 +299,6 @@ TEST_F(SignatureVerifyInterfaceTest, BinaryBytesPassedWithExactLengths) {
     this->execute(commandWith(data));
     this->updateInterface();
     this->updateInterface();
-    this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(this->verifier->verifyCallCount, 1u);
     EXPECT_EQ(
@@ -319,7 +312,6 @@ TEST_F(SignatureVerifyInterfaceTest, BinaryBytesPassedWithExactLengths) {
     this->execute(envelope("", signature64Base64));
     this->updateInterface();
     EXPECT_EQ(this->verifier->verifyCallCount, 2u);
-    this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
         this->verifier->receivedData,
@@ -329,16 +321,13 @@ TEST_F(SignatureVerifyInterfaceTest, BinaryBytesPassedWithExactLengths) {
 
 TEST_F(SignatureVerifyInterfaceTest, TwoEqualValidResultsFireTwice) {
     const std::string command = commandWith({0x11});
+    this->updateInterface();
     this->execute(command);
-    this->updateInterface();
-    this->updateInterface();
     this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     this->execute(command);
     this->updateInterface();
-    this->updateInterface();
     EXPECT_EQ(this->verifier->verifyCallCount, 2u);
-    this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
         this->action->firedValues,
@@ -349,17 +338,14 @@ TEST_F(SignatureVerifyInterfaceTest, TwoEqualValidResultsFireTwice) {
 TEST_F(SignatureVerifyInterfaceTest, BadThenGoodRecovers) {
     this->verifier->nextResult = {
         SignatureStatus::invalid, SignatureError::invalidSignature};
+    this->updateInterface();
     this->execute(commandWith({0x11}));
-    this->updateInterface();
-    this->updateInterface();
     this->updateInterface();
     EXPECT_EQ(
         this->interface.storedValue, singleValue("FAIL invalid signature"));
 
     this->verifier->nextResult = {SignatureStatus::valid, SignatureError::none};
     this->execute(commandWith({0x22}));
-    this->updateInterface();
-    this->updateInterface();
     this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
@@ -379,144 +365,68 @@ TEST_F(
     EXPECT_EQ(this->interface.storedValue, singleValue(""));
     EXPECT_EQ(this->verifier->verifyCallCount, 0u);
     this->updateInterface();
-    // Processed on the next update; nothing is presented yet.
+    // Processed and presented together on the next update.
     EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    EXPECT_EQ(this->action->firedValues.size(), 1u);
-    this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
         this->action->firedValues, (std::vector<std::vector<std::string>>{
                                        singleValue(""), singleValue("OK")}));
 }
 
-TEST_F(SignatureVerifyInterfaceTest, OnePendingSlotRetainsFirstCommand) {
+TEST_F(SignatureVerifyInterfaceTest, MultipleCommandsDiscardWholeBurst) {
+    this->updateInterface();
     this->execute(commandWith({0x11}));
-    this->execute(commandWith({0x22}));  // Overflow: dropped.
-    this->updateInterface();
-    this->updateInterface();
-    // The first command is the only one ever verified.
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    EXPECT_EQ(
-        this->verifier->receivedData,
-        (std::vector<std::vector<uint8_t>>{{0x11}}));
-    this->updateInterface();
-    EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
-    this->updateInterface();
-    // A single coalesced busy error follows the pending result.
-    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
-    this->updateInterface();
-    this->updateInterface();
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    EXPECT_EQ(
-        this->action->firedValues,
-        (std::vector<std::vector<std::string>>{
-            singleValue(""), singleValue("OK"), singleValue("ERROR busy")}));
-}
-
-TEST_F(SignatureVerifyInterfaceTest, OverflowCoalescesToOneBusyError) {
-    this->execute(commandWith({0x11}));
-    for (int i = 0; i < 20; ++i) {
-        this->execute(commandWith({0x22, static_cast<uint8_t>(i)}));
-    }
-    this->updateInterface();
-    this->updateInterface();
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    this->updateInterface();
-    EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
-    this->updateInterface();
-    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
-    this->updateInterface();
-    this->updateInterface();
-    this->updateInterface();
-    // No unbounded growth: 21 arrivals collapse into one dropped-command
-    // error, and later idle updates stay silent.
-    EXPECT_EQ(
-        this->action->firedValues,
-        (std::vector<std::vector<std::string>>{
-            singleValue(""), singleValue("OK"), singleValue("ERROR busy")}));
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-}
-
-TEST_F(
-    SignatureVerifyInterfaceTest,
-    BusyNotificationNotStarvedAndNoSecondVerificationInSameUpdate) {
-    this->execute(commandWith({0x11}));
-    this->updateInterface();  // Initial empty event; A is still queued.
-    this->execute(commandWith({0x22}));  // Slot held by A: B overflows.
-    this->updateInterface();             // Processes A.
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    this->execute(commandWith({0x33}));  // Arrival while busy: retained.
-    this->updateInterface();
-    // The pending result is presented despite the retained command, and
-    // nothing is verified in the same update as the presentation.
-    EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    this->updateInterface();
-    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    this->updateInterface();
-    // The retained command is processed after the notification was emitted.
-    EXPECT_EQ(this->verifier->verifyCallCount, 2u);
-    EXPECT_EQ(
-        this->verifier->receivedData,
-        (std::vector<std::vector<uint8_t>>{{0x11}, {0x33}}));
-    this->updateInterface();
-    EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
-    EXPECT_EQ(
-        this->action->firedValues,
-        (std::vector<std::vector<std::string>>{
-            singleValue(""), singleValue("OK"), singleValue("ERROR busy"),
-            singleValue("OK")}));
-}
-
-TEST_F(
-    SignatureVerifyInterfaceTest, RetainedCommandProcessedAfterNotification) {
-    this->execute(commandWith({0x11}));
-    this->updateInterface();
-    this->updateInterface();
-    // Arrival while the result notification is pending: retained, not
-    // dropped, because the slot was free.
     this->execute(commandWith({0x22}));
+    this->execute(commandWith({0x33}));
     this->updateInterface();
-    // The notification is emitted first; the retained command cannot starve
-    // it and is not verified in the same update.
+    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
+    EXPECT_EQ(this->verifier->verifyCallCount, 0u);
+
+    // Arrivals remain discarded until the update resets the busy burst.
+    this->execute(commandWith({0x44}));
+    this->execute(commandWith({0x55}));
+    this->updateInterface();
+    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
+    EXPECT_EQ(this->verifier->verifyCallCount, 0u);
+
+    this->execute(commandWith({0x66}));
+    this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    this->updateInterface();
-    EXPECT_EQ(this->verifier->verifyCallCount, 2u);
     EXPECT_EQ(
         this->verifier->receivedData,
-        (std::vector<std::vector<uint8_t>>{{0x11}, {0x22}}));
-    this->updateInterface();
-    EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
-    EXPECT_EQ(
-        this->action->firedValues,
-        (std::vector<std::vector<std::string>>{
-            singleValue(""), singleValue("OK"), singleValue("OK")}));
+        (std::vector<std::vector<uint8_t>>{{0x66}}));
 }
 
-TEST_F(SignatureVerifyInterfaceTest, OversizedInputQueuesOnlyErrorWithoutCopy) {
+TEST_F(SignatureVerifyInterfaceTest, OversizedAndValidBurstReportsBusy) {
+    this->updateInterface();
     const std::string oversized(interfaceMaxCommandSize + 1, 'x');
     this->execute(oversized);
-    // The oversized input did not occupy the command slot and did not copy
-    // the payload: only an error code was queued.
     this->execute(commandWith({0x22}));
     this->updateInterface();
+    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
+    EXPECT_EQ(this->verifier->verifyCallCount, 0u);
+
+    // A lone oversized arrival retains its specific error and no payload.
+    this->execute(oversized);
     this->updateInterface();
     EXPECT_EQ(
         this->interface.storedValue, singleValue("ERROR command too large"));
     EXPECT_EQ(this->verifier->verifyCallCount, 0u);
-    this->updateInterface();
-    // The normal command queued after the oversized one is processed.
-    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
-    EXPECT_EQ(
-        this->verifier->receivedData,
-        (std::vector<std::vector<uint8_t>>{{0x22}}));
+
+    this->execute(commandWith({0x33}));
     this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
-    EXPECT_EQ(
-        this->action->firedValues,
-        (std::vector<std::vector<std::string>>{
-            singleValue(""), singleValue("ERROR command too large"),
-            singleValue("OK")}));
+    EXPECT_EQ(this->verifier->verifyCallCount, 1u);
+}
+
+TEST_F(SignatureVerifyInterfaceTest, TwoOversizedArrivalsAreBusy) {
+    this->updateInterface();
+    const std::string oversized(interfaceMaxCommandSize + 1, 'x');
+    this->execute(oversized);
+    this->execute(oversized);
+    this->execute(commandWith({0x11}));
+    this->updateInterface();
+    EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
+    EXPECT_EQ(this->verifier->verifyCallCount, 0u);
 }

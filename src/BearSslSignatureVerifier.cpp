@@ -129,22 +129,22 @@ extern "C" bool thunk_BearSslSignatureVerifier_verifyRaw(
 #endif
 
 BearSslSignatureVerifier::BearSslSignatureVerifier(
-    const uint8_t* certificateBytes, size_t certificateLength) {
+    SignatureBytes certificateBytes) {
     // BearSSL's X509List parser also accepts DER and ignores content between
     // PEM objects. Validate the complete input envelope before parsing so only
     // one CERTIFICATE block with surrounding whitespace reaches that parser.
-    if (!isSinglePemCertificate(certificateBytes, certificateLength)) {
+    if (!isSinglePemCertificate(certificateBytes.data, certificateBytes.size)) {
         this->initError = SignatureError::invalidCertificate;
         return;
     }
 
     size_t certificateStartOffset = 0;
-    while (isPemWhitespace(certificateBytes[certificateStartOffset])) {
+    while (isPemWhitespace(certificateBytes.data[certificateStartOffset])) {
         ++certificateStartOffset;
     }
     if (!this->certificate.append(
-            certificateBytes + certificateStartOffset,
-            certificateLength - certificateStartOffset) ||
+            certificateBytes.data + certificateStartOffset,
+            certificateBytes.size - certificateStartOffset) ||
         this->certificate.getCount() != 1) {
         this->initError = SignatureError::invalidCertificate;
         return;

@@ -263,7 +263,7 @@ std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
                 // certificate buffer below can be released when this block
                 // exits while the verifier stays valid.
                 verifier = std::make_unique<BearSslSignatureVerifier>(
-                    certificateBytes.get(), certificateSize);
+                    SignatureBytes{certificateBytes.get(), certificateSize});
             }
         }
     }

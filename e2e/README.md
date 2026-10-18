@@ -9,6 +9,10 @@ See `docs/superpowers/specs/2026-08-04-e2e-tests-design.md` for full design.
 
     cd e2e
     python3 -m pytest tests/basic/test_gpio_input.py -v
+    python3 -m pytest tests/basic/ tests/signature_verify/ -v
+
+The signature verification suite uses its own fixed config and provisions each
+test independently; run it after the basic suite when exercising the full bench.
 
 ## Hardware setup
 

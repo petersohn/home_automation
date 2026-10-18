@@ -1,0 +1,37 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "availabilityTopic": "home/testDevice/available",
+    "statusTopic": "home/testDevice/status",
+    "debugTopic": "home/testDevice/debug",
+    "interfaces": [
+        {"type": "mqtt", "name": "m1", "topic": "home/testDevice/m1/in"},
+        {"type": "status", "name": "s1"},
+        {
+            "type": "signatureVerify",
+            "name": "sv1",
+            "commandTopic": "home/testDevice/sv1/set",
+            "certificate": "/signing_test.pem"
+        }
+    ],
+    "actions": [
+        {
+            "type": "publish",
+            "interface": "m1",
+            "topic": "home/testDevice/m1/out",
+            "template": "%1"
+        },
+        {
+            "type": "publish",
+            "interface": "s1",
+            "topic": "home/testDevice/s1/state",
+            "template": "%1"
+        },
+        {
+            "type": "publish",
+            "interface": "sv1",
+            "topic": "home/testDevice/sv1/state",
+            "template": "%1"
+        }
+    ]
+}
