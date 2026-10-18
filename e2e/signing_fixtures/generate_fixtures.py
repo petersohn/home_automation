@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""Generate test-only signing keys, certificates, and device regressions.
+"""Generate test-only signing fixtures.
 
-The private keys and vectors are host-only test material. The device/ directory
-contains public certificates and intentionally invalid certificate fixtures;
-never copy host/ into a SPIFFS image or use these keys in production.
-
-Requires cryptography==45.0.7. ECDSA signatures use P-256 with SHA-256 and are
-converted from DER to raw64 as big-endian r padded to 32 bytes followed by s.
-
-Run from the repository root:
-    python3 e2e/signing_fixtures/generate_fixtures.py
-
-To validate regeneration without touching checked-in fixtures:
-    python3 e2e/signing_fixtures/generate_fixtures.py --output-dir /tmp/signing-fixtures
+Private keys and vectors stay under host/; only public certificates belong in
+device/ or SPIFFS. Requires cryptography==45.0.7. Run from the repo root with
+python3 e2e/signing_fixtures/generate_fixtures.py; use --output-dir to avoid
+overwriting checked-in fixtures.
 """
 
 from __future__ import annotations
@@ -48,7 +40,6 @@ PAYLOAD_ALTERED = (
 
 
 def certificate_for(private_key: Any, common_name: str) -> x509.Certificate:
-    """Build a long-lived self-signed X.509 certificate for test provisioning."""
     name = x509.Name(
         [
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "home-automation-e2e"),
@@ -80,7 +71,6 @@ def write_private_key(path: Path, private_key: Any) -> None:
 
 
 def sign_raw64(private_key: ec.EllipticCurvePrivateKey, data: bytes) -> bytes:
-    """Sign data with ECDSA-SHA256 and convert DER signature to raw r||s."""
     der_signature = private_key.sign(data, ec.ECDSA(hashes.SHA256()))
     r, s = decode_dss_signature(der_signature)
     return r.to_bytes(32, "big") + s.to_bytes(32, "big")
@@ -92,7 +82,6 @@ def verify_raw64(
     raw_signature: bytes,
     should_verify: bool,
 ) -> None:
-    """Check raw-to-DER conversion and expected valid/invalid test vectors."""
     if len(raw_signature) != 64:
         raise ValueError("raw signature must be exactly 64 bytes")
     signature = encode_dss_signature(
@@ -144,8 +133,7 @@ def create_fixture_tree(output_dir: Path) -> None:
         unsupported_algorithm_certificate.public_bytes(serialization.Encoding.PEM)
     )
 
-    # Derived strict-PEM fixtures are regenerated with each certificate. This
-    # prevents stale key material in whitespace/DER/trailing-content cases.
+    # Regenerate derived fixtures to keep their certificate key material aligned.
     (device_dir / "signing_test_whitespace.pem").write_bytes(
         b" \t\r\n \t" + valid_pem + b"\n\t "
     )

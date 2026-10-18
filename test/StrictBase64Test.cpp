@@ -6,20 +6,12 @@
 
 #include "tools/StrictBase64.hpp"
 
-// Tests for the strict canonical base64 wrapper. Decoding delegates to the
-// vendored libb64 decoder (test/libb64), which is permissive; these tests pin
-// the strict validation contract: standard alphabet, canonical padding,
-// zero unused bits, no whitespace, and output bounds. Expected bytes are
-// hardcoded golden vectors, asserted exactly, not only success/failure.
-
 namespace {
 
 std::vector<uint8_t> bytesOf(const std::string& chars) {
     return std::vector<uint8_t>(chars.begin(), chars.end());
 }
 
-// Decoding must succeed and produce exactly the expected bytes, fully
-// replacing the previous output contents.
 void expectDecode(
     const std::string& input, const std::vector<uint8_t>& expected) {
     std::vector<uint8_t> output(16, 0xEE);
@@ -28,7 +20,6 @@ void expectDecode(
     EXPECT_EQ(output, expected);
 }
 
-// Decoding must fail without producing output and must clear the output.
 void expectReject(const std::string& input) {
     std::vector<uint8_t> output(8, 0xEE);
 
@@ -101,7 +92,6 @@ TEST(StrictBase64Test, RejectsMissingPadding) {
     expectReject("Zg");
     expectReject("Zg=");
     expectReject("Zm9vYg");
-    // Padding is mandatory for partial groups but forbidden after full groups.
     expectReject("Zm9v=");
 }
 
@@ -111,30 +101,25 @@ TEST(StrictBase64Test, RejectsExtraOrMisplacedPadding) {
     expectReject("=");
     expectReject("==");
     expectReject("Zm9vYg===");
-    // Padding only allowed at the very end.
     expectReject("Zg==Zm8=");
 }
 
 TEST(StrictBase64Test, RejectsNonzeroUnusedBits) {
-    // Q(16) R(17): low four bits of the second char are 0001.
+    // QR== has nonzero low four bits.
     expectReject("QR==");
-    // Q(16) U(20) W(22): low two bits of the third char are 10.
+    // QUW= has nonzero low two bits.
     expectReject("QUW=");
 }
 
 TEST(StrictBase64Test, RejectsNonzeroUnusedBitsInDoublePaddingGroup) {
-    // Regression test for a pad-bits mask bug: an "XY==" group uses only
-    // the top two bits of the second data char, so its low four bits are
-    // unused and must be zero. These vectors have zero low two bits but
-    // nonzero bits 2-3, which a too-narrow 0x03 mask incorrectly accepts.
-    expectReject("QU==");      // Q(16) U(20): low nibble 0100.
-    expectReject("QY==");      // Q(16) Y(24): low nibble 1000.
-    expectReject("Zm9vQU==");  // Same non-canonical QU== group after "foo".
+    // Catch checks that test only two of the four unused bits in XY== groups.
+    expectReject("QU==");
+    expectReject("QY==");
+    expectReject("Zm9vQU==");
 }
 
 TEST(StrictBase64Test, DecodesCanonicalDoublePaddingGroup) {
-    // Positive control: "QQ==" is the unique canonical encoding of 'A'
-    // (Q(16) Q(16): the second char's low nibble is zero).
+    // Canonical control for the non-canonical XY== vectors above.
     expectDecode("QQ==", bytesOf("A"));
 }
 
@@ -156,7 +141,6 @@ TEST(StrictBase64Test, RejectsUrlSafeAlphabet) {
 TEST(StrictBase64Test, RejectsInvalidCharacters) {
     expectReject("Zm!v");
     expectReject("!///");
-    // High-bit and NUL bytes are not part of the base64 alphabet either.
     expectReject(std::string(1, '\xFF') + "===");
     expectReject(std::string("Zm\x00v", 4));
 }
@@ -170,7 +154,7 @@ TEST(StrictBase64Test, RejectsOutputBoundTooSmall) {
     EXPECT_FALSE(tools::decodeCanonicalBase64("Zm9vYg==", 3, output));
     EXPECT_TRUE(output.empty());
 
-    // 344 'A' characters decode to 258 zero bytes; bound 255 is too small.
+    // 344 'A's decode to 258 bytes, exceeding this bound.
     EXPECT_FALSE(
         tools::decodeCanonicalBase64(std::string(344, 'A'), 255, output));
     EXPECT_TRUE(output.empty());

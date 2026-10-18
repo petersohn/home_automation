@@ -1,5 +1,3 @@
-"""Host-only regressions for signature-suite provisioning/capture ordering."""
-
 import ast
 import json
 import os

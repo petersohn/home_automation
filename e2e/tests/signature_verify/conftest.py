@@ -1,5 +1,3 @@
-"""Per-test hardware fixtures for signature verification suite."""
-
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -16,7 +14,6 @@ from lib.serial_capture import SerialCapture
 def serial(
     request: pytest.FixtureRequest, provisioning_complete: None
 ) -> Iterator[SerialCapture]:
-    """Capture serial output after per-test config provisioning."""
     capture = SerialCapture(
         port=SERIAL_PORT,
         baud=SERIAL_BAUD,
@@ -34,6 +31,5 @@ def reset_device(
     mqtt_client: MqttClient,
     gpio: Gpio,
 ) -> None:
-    """Reset device after capture starts and clear observed MQTT state."""
     device.reset()
     mqtt_client.clear_all()

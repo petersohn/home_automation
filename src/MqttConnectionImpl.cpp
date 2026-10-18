@@ -4,11 +4,8 @@ static_assert(MQTT_MAX_PACKET_SIZE == 256, "check MQTT packet size");
 
 namespace {
 
-// Runtime receive/publish buffer size, set with setBufferSize() before
-// connecting. MQTT_MAX_PACKET_SIZE (compile-time 256) is only the initial
-// default allocation; changing the macro alone does not resize the runtime
-// buffer, so this must stay above the 512-byte command limit while still
-// holding topic and protocol overhead.
+// setBufferSize() controls runtime allocation; the macro sets only its default.
+// Keep space for a 512-byte command plus topic and MQTT overhead.
 constexpr uint16_t mqttBufferSize = 1024;
 
 }  // unnamed namespace
@@ -25,8 +22,7 @@ bool MqttConnectionImpl::connect(
                          unsigned length) {
         this->onMessageReceived(topic, payload, length);
     });
-    // The buffer is (re)allocated here; a failed allocation is a connection
-    // failure, never a silently undersized packet space.
+    // Fail connection rather than accept an undersized packet buffer.
     if (!this->mqttClient.setBufferSize(mqttBufferSize)) {
         this->debug << "Could not allocate " << mqttBufferSize
                     << "-byte MQTT buffer." << std::endl;

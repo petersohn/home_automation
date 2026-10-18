@@ -6,16 +6,6 @@
 #include <string>
 #include <vector>
 
-// Decoder for the signed-envelope wire format: one MQTT payload
-// carrying a UTF-8 JSON object with exactly two string fields:
-//
-//   {"data":"<base64>","signature":"<base64>"}
-//
-// data holds the prototype payload (at most 256 decoded bytes, empty data is
-// allowed) and signature holds the raw ECDSA signature (exactly 64 decoded
-// bytes, big-endian r followed by s). Signature bytes are signed as decoded;
-// no JSON canonicalization or sender-selected algorithm exists.
-
 enum class EnvelopeError {
     none,
     invalidJson,
@@ -31,32 +21,20 @@ struct SignedEnvelope {
     std::array<uint8_t, 64> signature;
 };
 
-// Decodes a signed envelope. Checks, in order:
-//
-// 1. Oversize command: a command longer than 512 bytes is rejected
-//    (commandTooLarge) without parsing it, before copying into any storage.
-// 2. JSON is parsed directly by ArduinoJson. Its native syntax and escape
-//    behavior applies; no Unicode escape normalization is performed. The root
-//    must be an object with exactly two fields, data and signature, both
-//    strings. Whitespace and key order are irrelevant. Duplicate literal keys
-//    use ArduinoJson's last-value-wins behavior. Embedded NUL and trailing
-//    non-whitespace data are rejected (invalidJson). Parseable documents with
-//    the wrong envelope shape, unknown/missing fields, or non-string values
-//    are rejected (invalidFields).
-// 3. Limits before decoding buffers: data content that would decode to more
-//    than 256 bytes is rejected (dataTooLarge) based on its length.
-// 4. Base64: both fields must be canonical RFC 4648 (strict; see
-//    tools::decodeCanonicalBase64) after ArduinoJson string decoding
-//    (invalidBase64).
-// 5. Signature length: the decoded signature must be exactly 64 bytes
-//    (invalidSignatureLength).
-//
-// Cryptographic verification is not part of decoding.
-//
-// On success returns EnvelopeError::none and output holds the decoded data
-// bytes and signature. On failure returns the error above and output is
-// reset (data emptied, signature zeroed), so the output is valid only after
-// a successful call.
+/**
+ * Decodes a JSON object with exactly two string fields: data and signature.
+ * Commands over 512 bytes are rejected before parsing. Data decodes to at most
+ * 256 bytes (empty is allowed); signature is 64-byte big-endian raw ECDSA r||s.
+ * Both fields require canonical RFC 4648 base64. Whitespace and key order are
+ * allowed; the envelope selects no algorithm and JSON is not canonicalized.
+ *
+ * ArduinoJson 5 escape behavior applies without Unicode normalization;
+ * duplicate literal keys use the last value. Embedded NUL and trailing
+ * non-whitespace are rejected. Only decoded data is signed. Success replaces
+ * output; failure clears data and zeroes signature. Malformed JSON, invalid
+ * fields, size violations, invalid base64, and signature-length errors have
+ * distinct EnvelopeError values.
+ */
 EnvelopeError decodeSignedEnvelope(
     const std::string& command, SignedEnvelope& output);
 

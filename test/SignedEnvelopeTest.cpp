@@ -7,29 +7,24 @@
 
 #include "common/SignedEnvelope.hpp"
 
-// Tests for the signed-envelope decoder. Expected data bytes are
-// hardcoded golden vectors asserted exactly; the signature fixture decodes to
-// 64 identical 0xA5 bytes. Limits: command <= 512 bytes, data <= 256 bytes,
-// signature exactly 64 bytes (= 88 base64 chars).
-
 namespace {
 
-// Base64 of 64 bytes 0xA5: raw big-endian r||s shaped ECDSA fixture (88 chars).
+// Base64 of 64 bytes of 0xA5 (88 chars).
 const char* const signature64Base64 =
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWl"
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpQ==";
 
-// Base64 of 63 bytes 0xA5 (84 chars, no padding).
+// Base64 of 63 bytes of 0xA5 (84 chars).
 const char* const signature63Base64 =
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaW"
     "lpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWl";
 
-// Base64 of 65 bytes 0xA5 (88 chars).
+// Base64 of 65 bytes of 0xA5 (88 chars).
 const char* const signature65Base64 =
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWl"
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU=";
 
-// Base64 of bytes 0..255, the maximum allowed payload (344 chars).
+// Base64 of bytes 0..255 (maximum payload).
 const char* const maxDataBase64 =
     "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
     "gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0"
@@ -40,7 +35,7 @@ const char* const maxDataBase64 =
     "HCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4"
     "eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==";
 
-// Base64 of bytes 0..255 followed by 0x42, one byte over the limit.
+// Base64 of bytes 0..255 followed by 0x42 (one byte over limit).
 const char* const oversizeDataBase64 =
     "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
     "gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0"
@@ -59,15 +54,11 @@ std::string envelope(const std::string& data, const std::string& signature) {
     return "{\"data\":\"" + data + "\",\"signature\":\"" + signature + "\"}";
 }
 
-// Builds an envelope whose data field carries a raw JSON value instead of a
-// quoted string, for testing non-string field values.
 std::string envelopeRawData(const std::string& dataValue) {
     return "{\"data\":" + dataValue + ",\"signature\":\"" + signature64() +
            "\"}";
 }
 
-// Success must decode the exact data bytes and the 64 x 0xA5 signature,
-// fully replacing the previous output contents.
 void expectSuccess(
     const std::string& command, const std::vector<uint8_t>& expectedData) {
     SignedEnvelope output;
@@ -82,8 +73,6 @@ void expectSuccess(
     EXPECT_EQ(output.signature, expectedSignature);
 }
 
-// Failure must return the mapped error and reset the output: data emptied
-// and signature zeroed.
 void expectError(const std::string& command, EnvelopeError expected) {
     SignedEnvelope output;
     output.data.assign(16, 0xEE);
@@ -135,7 +124,6 @@ TEST(SignedEnvelopeTest, AcceptsWhitespaceBetweenTokens) {
 }
 
 TEST(SignedEnvelopeTest, AcceptsExactly512ByteCommand) {
-    // Pad a valid envelope with spaces to exactly the 512 byte limit.
     const std::string minimal = envelope("", signature64());
     ASSERT_EQ(minimal.size(), 114u);
     const std::string command = minimal.substr(0, 1) +
@@ -155,7 +143,6 @@ TEST(SignedEnvelopeTest, RejectsCommandLargerThan512) {
     ASSERT_EQ(padded.size(), 513u);
     expectError(padded, EnvelopeError::commandTooLarge);
 
-    // Rejected before parsing, regardless of content.
     expectError(std::string(513, 'x'), EnvelopeError::commandTooLarge);
 }
 
@@ -264,7 +251,6 @@ TEST(SignedEnvelopeTest, RejectsEscapedStructuralTokenOutsideString) {
 }
 
 TEST(SignedEnvelopeTest, RejectsNonCanonicalDataBase64) {
-    // Whitespace inside the value is part of the base64 and rejected.
     expectError(envelope("AP 8B", signature64()), EnvelopeError::invalidBase64);
     expectError(envelope("QQ", signature64()), EnvelopeError::invalidBase64);
     expectError(envelope("Zm8-", signature64()), EnvelopeError::invalidBase64);
@@ -272,15 +258,10 @@ TEST(SignedEnvelopeTest, RejectsNonCanonicalDataBase64) {
 }
 
 TEST(SignedEnvelopeTest, RejectsNonCanonicalDoublePaddingGroup) {
-    // Regression test for a pad-bits mask bug: the non-canonical group
-    // "QU==" permissively decodes to the same byte 'A' as the canonical
-    // "QQ==" (U(20) has nonzero unused low four bits), so accepting it
-    // would make the envelope encoding malleable.
+    // QU== has nonzero unused bits but decodes like canonical QQ==.
     expectError(envelope("QU==", signature64()), EnvelopeError::invalidBase64);
 
-    // Same defect reachable through the signature field: the final group
-    // "pU==" permissively decodes to the same 0xA5 byte as the canonical
-    // "pQ==", differing only in the nonzero unused bits.
+    // pU== has nonzero unused bits but decodes like canonical pQ==.
     std::string nonCanonicalSignature = signature64();
     ASSERT_EQ(
         nonCanonicalSignature.substr(nonCanonicalSignature.size() - 4), "pQ==");

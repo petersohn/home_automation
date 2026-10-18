@@ -11,31 +11,21 @@
 #include "common/SignatureVerifier.hpp"
 #include "common/SignatureVerifyInterface.hpp"
 
-// Tests for the portable signature verification interface state machine. The
-// interface under test is real; only the verifier is faked (a scriptable
-// stub that records exact byte lengths) and presentation is observed through
-// a capturing Action. Real InterfaceConfig/Actions drive the stored values.
-//
-// Scheduling contract exercised here: emit the initial empty value once;
-// later updates process and emit one command result immediately. Multiple
-// execute() calls between updates discard the entire burst and emit one
-// "ERROR busy" without verification.
-//
-// Limits mirrored from the envelope wire format: a command longer than 512
-// bytes is rejected in execute() without being copied.
-
 namespace {
 
 constexpr std::size_t interfaceMaxCommandSize = 512;
 
+// Base64 of 64 bytes of 0xA5.
 const char* const signature64Base64 =
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWl"
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpQ==";
 
+// Base64 of 63 bytes of 0xA5.
 const char* const signature63Base64 =
     "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaW"
     "lpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWl";
 
+// Base64 of bytes 0..255 followed by 0x02 (one byte over limit).
 const char* const oversizeDataBase64 =
     "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
     "gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0"
@@ -51,8 +41,6 @@ std::vector<uint8_t> signature64Bytes() {
     return bytes;
 }
 
-// RFC 4648 base64 encoder, test only: produces canonical output with
-// padding so envelope commands can be built for arbitrary binary data.
 std::string base64Encode(const std::vector<uint8_t>& bytes) {
     static const char* const alphabet =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -107,8 +95,6 @@ std::vector<uint8_t> copyBytes(SignatureBytes bytes) {
     return out;
 }
 
-// Scriptable verifier stub: returns the scripted result and records what it
-// was asked about, with exact lengths.
 class FakeVerifier : public SignatureVerifier {
 public:
     SignatureResult nextResult{SignatureStatus::valid, SignatureError::none};
@@ -125,8 +111,6 @@ public:
     }
 };
 
-// The interface owns its verifier; this adapter forwards to the shared fake
-// so the test keeps a handle to it.
 class ForwardingVerifier : public SignatureVerifier {
 public:
     explicit ForwardingVerifier(std::shared_ptr<FakeVerifier> target)
@@ -172,8 +156,6 @@ public:
         this->interface.interface->execute(command);
     }
 
-    // Verifies same-update presentation for a decode error and no verifier
-    // call. The first update remains reserved for the initial empty event.
     void expectDecodeError(
         const std::string& command, const std::string& errorMessage) {
         this->execute(command);
@@ -187,22 +169,20 @@ public:
 };
 
 TEST_F(SignatureVerifyInterfaceTest, InitialStoredValueIsEmptyEvent) {
-    // Before the first update nothing has been emitted yet.
     EXPECT_EQ(this->interface.storedValue, std::vector<std::string>());
     this->updateInterface();
     EXPECT_EQ(this->interface.storedValue, singleValue(""));
     EXPECT_EQ(this->action->firedValues.size(), 1u);
     this->updateInterface();
     this->updateInterface();
-    // Idle updates never repeat the initial event.
     EXPECT_EQ(this->interface.storedValue, singleValue(""));
     EXPECT_EQ(this->action->firedValues.size(), 1u);
 }
 
 TEST_F(SignatureVerifyInterfaceTest, ValidSignatureEmitsOk) {
     this->execute(commandWith({0x11}));
-    this->updateInterface();  // Initial empty event.
-    this->updateInterface();  // Verifies and emits in this same update.
+    this->updateInterface();
+    this->updateInterface();
     EXPECT_EQ(this->verifier->verifyCallCount, 1u);
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
@@ -227,9 +207,6 @@ TEST_F(SignatureVerifyInterfaceTest, InvalidSignatureEmitsFail) {
 }
 
 TEST_F(SignatureVerifyInterfaceTest, VerifierErrorResultsInStableErrorEvent) {
-    // An initialization failure makes the verifier fail closed with its
-    // retained error; the interface must present each code as a stable
-    // string, one verification per case.
     const std::vector<std::pair<SignatureError, std::string>> cases = {
         {SignatureError::invalidCertificate, "ERROR invalid certificate"},
         {SignatureError::unsupportedKey, "ERROR unsupported key"},
@@ -289,8 +266,6 @@ TEST_F(SignatureVerifyInterfaceTest, InvalidSignatureLengthNeverCallsVerifier) {
 }
 
 TEST_F(SignatureVerifyInterfaceTest, EncoderMatchesSignatureFixture) {
-    // Sanity check for the test's own base64 encoder against the known-good
-    // signature fixture used by the envelope decoder tests.
     EXPECT_EQ(base64Encode(signature64Bytes()), signature64Base64);
 }
 
@@ -308,7 +283,6 @@ TEST_F(SignatureVerifyInterfaceTest, BinaryBytesPassedWithExactLengths) {
         this->verifier->receivedSignature,
         (std::vector<std::vector<uint8_t>>{signature64Bytes()}));
 
-    // Empty data is allowed and must reach the verifier with length zero.
     this->execute(envelope("", signature64Base64));
     this->updateInterface();
     EXPECT_EQ(this->verifier->verifyCallCount, 2u);
@@ -358,14 +332,11 @@ TEST_F(SignatureVerifyInterfaceTest, BadThenGoodRecovers) {
 TEST_F(
     SignatureVerifyInterfaceTest,
     CommandBeforeFirstUpdatePreservesInitialEmptyEventAndQueuedCommand) {
-    this->execute(commandWith({0x11}));  // Before the initial update.
+    this->execute(commandWith({0x11}));
     this->updateInterface();
-    // The queued command did not displace the initial empty event and was
-    // not processed yet.
     EXPECT_EQ(this->interface.storedValue, singleValue(""));
     EXPECT_EQ(this->verifier->verifyCallCount, 0u);
     this->updateInterface();
-    // Processed and presented together on the next update.
     EXPECT_EQ(this->verifier->verifyCallCount, 1u);
     EXPECT_EQ(this->interface.storedValue, singleValue("OK"));
     EXPECT_EQ(
@@ -382,7 +353,6 @@ TEST_F(SignatureVerifyInterfaceTest, MultipleCommandsDiscardWholeBurst) {
     EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
     EXPECT_EQ(this->verifier->verifyCallCount, 0u);
 
-    // Arrivals remain discarded until the update resets the busy burst.
     this->execute(commandWith({0x44}));
     this->execute(commandWith({0x55}));
     this->updateInterface();
@@ -407,7 +377,6 @@ TEST_F(SignatureVerifyInterfaceTest, OversizedAndValidBurstReportsBusy) {
     EXPECT_EQ(this->interface.storedValue, singleValue("ERROR busy"));
     EXPECT_EQ(this->verifier->verifyCallCount, 0u);
 
-    // A lone oversized arrival retains its specific error and no payload.
     this->execute(oversized);
     this->updateInterface();
     EXPECT_EQ(

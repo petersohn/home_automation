@@ -216,8 +216,7 @@ std::unique_ptr<Interface> ConfigFactory::buildStatus(const StatusConfig&) {
 
 std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
     const SignatureVerifyConfig& c) {
-    // The whole certificate must fit one bounded read; oversized files are
-    // rejected before allocating the payload buffer.
+    // Bound the certificate read before allocating its buffer.
     static constexpr size_t maxCertificateSize = 4096;
 
     std::unique_ptr<SignatureVerifier> verifier;
@@ -225,8 +224,7 @@ std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
     if (!certificateFile) {
         this->debug << "Could not open certificate: " << c.certificate
                     << std::endl;
-        // Missing or unreadable file: the interface is still created, but
-        // kept in an error state; every command fails closed.
+        // Keep the interface active so commands fail closed with this error.
         verifier = std::make_unique<BearSslSignatureVerifier>(
             SignatureError::certificateUnavailable);
         return std::make_unique<SignatureVerifyInterface>(std::move(verifier));
@@ -259,9 +257,7 @@ std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
                 verifier = std::make_unique<BearSslSignatureVerifier>(
                     SignatureError::certificateUnavailable);
             } else {
-                // The backend copies all key material, so the temporary
-                // certificate buffer below can be released when this block
-                // exits while the verifier stays valid.
+                // The backend owns copied key material; this buffer can expire.
                 verifier = std::make_unique<BearSslSignatureVerifier>(
                     SignatureBytes{certificateBytes.get(), certificateSize});
             }

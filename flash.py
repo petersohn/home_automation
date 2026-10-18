@@ -490,12 +490,7 @@ def _esptool_upload_image(
 
 
 def run_esptool(cmd: list[str], *, dry: bool = False) -> int:
-    """Run the core upload recipe and reject its swallowed fatal diagnostic.
-
-    ESP8266 core 3.1.2's upload.py can print this diagnostic but return zero.
-    Keep invoking the expanded recipe for custom-recipe compatibility; this
-    marker check only covers wrappers that emit the core's fatal-error text.
-    """
+    """Run upload recipe and detect ESP8266 core 3.1.2's swallowed fatal error."""
     if dry:
         return run(cmd, dry=True)
 

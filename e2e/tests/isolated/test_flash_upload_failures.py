@@ -1,5 +1,3 @@
-"""Subprocess regressions for ESP8266 upload error propagation."""
-
 import subprocess
 import sys
 from pathlib import Path

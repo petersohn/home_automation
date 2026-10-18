@@ -14,9 +14,7 @@ SignatureVerifyInterface::SignatureVerifyInterface(
     std::unique_ptr<SignatureVerifier> verifier)
     : verifier(std::move(verifier)) {}
 
-void SignatureVerifyInterface::start() {
-    // The initial empty event is emitted by the first update.
-}
+void SignatureVerifyInterface::start() {}
 
 void SignatureVerifyInterface::execute(const std::string& command) {
     if (this->busyPending) {
@@ -24,8 +22,7 @@ void SignatureVerifyInterface::execute(const std::string& command) {
     }
 
     if (this->hasPendingCommand || this->oversizedPending) {
-        // Any second arrival makes the whole burst busy, even if one or both
-        // commands exceeded the limit. Release retained command memory now.
+        // A second arrival makes the burst busy regardless of command size.
         this->pendingCommand.clear();
         this->hasPendingCommand = false;
         this->oversizedPending = false;

@@ -3,11 +3,9 @@
 
 #include <string>
 
-// Configuration for the signatureVerify interface.
-// certificate holds an absolute SPIFFS path to a single PEM X.509
-// certificate whose public key is pinned as the trusted signing key. A
-// relative path must be rejected during parsing; whether the file exists is
-// only checked at config factory time.
+/** Absolute SPIFFS path to the trusted PEM certificate; existence is checked
+ * when the interface is constructed.
+ */
 struct SignatureVerifyConfig {
     std::string certificate;
 };

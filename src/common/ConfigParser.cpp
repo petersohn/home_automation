@@ -360,9 +360,8 @@ std::optional<SignatureVerifyConfig> ConfigParser::parseSignatureVerify(
         return std::nullopt;
     }
     result.certificate = rawCertificate.as<std::string>();
-    // Only absolute SPIFFS paths are accepted. Whether the file exists is
-    // checked at config factory time, not here: an absent file yields an
-    // error-state verifier at runtime, not a dropped interface.
+    // Defer file checks so missing certificates retain an error-state
+    // interface.
     if (result.certificate.empty() || result.certificate.front() != '/') {
         this->debug << "Invalid certificate: " << result.certificate
                     << std::endl;

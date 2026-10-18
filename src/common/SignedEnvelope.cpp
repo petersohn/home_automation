@@ -9,10 +9,8 @@
 #include "../tools/StrictBase64.hpp"
 #include "ArduinoJson.hpp"
 
-// ArduinoJson 5's string traits normally read NUL-terminated input and don't
-// expose how much input its parser consumed. This bounded reader gives its
-// existing parser length-aware input and leaves the consumed offset available
-// for rejecting trailing bytes and embedded-NUL truncation.
+// ArduinoJson 5 reads NUL-terminated strings without exposing parser position.
+// Preserve input length to reject trailing data and embedded NULs.
 struct SignedEnvelopeJsonInput {
     explicit SignedEnvelopeJsonInput(const std::string& value) : text(value) {}
 
@@ -66,8 +64,7 @@ constexpr std::size_t maxDataBytes = 256;
 constexpr std::size_t signatureBytes = 64;
 constexpr std::uint8_t maxNestingDepth = 8;
 
-// Upper bound of decoded length, assuming canonical padding. Rejecting by
-// this bound avoids allocating decoded data larger than the protocol limit.
+// Bound decoded allocation before base64 validation.
 std::size_t decodedUpperBound(const std::string& encoded) {
     const std::size_t padding =
         encoded.size() >= 2 && encoded.compare(encoded.size() - 2, 2, "==") == 0

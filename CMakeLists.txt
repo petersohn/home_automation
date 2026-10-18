@@ -23,9 +23,7 @@ file(GLOB common_sources src/common/*.cpp)
 file(GLOB operation_sources src/operation/*.cpp)
 file(GLOB tools_sources src/tools/*.cpp)
 
-# Vendored public-domain libb64 decoder, verbatim copy of the decoder bundled
-# with ESP8266 core 3.1.2 (see test/libb64/README.md). Compiled with warnings
-# disabled: third-party code is not held to the project warning policy.
+# Native tests compile the core's libb64 decoder with warnings disabled.
 add_library(native_libb64 STATIC EXCLUDE_FROM_ALL test/libb64/cdecode.cpp)
 target_include_directories(native_libb64 PRIVATE test/libb64)
 target_compile_options(native_libb64 PRIVATE -w)

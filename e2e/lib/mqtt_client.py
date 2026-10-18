@@ -180,13 +180,13 @@ class MqttClient:
         )
 
     def get_event_count(self, topic: str) -> int:
-        """Return count of non-retained MQTT messages observed for topic."""
+        """Count non-retained messages observed for topic."""
         return self._locked_event_count(topic)
 
     def wait_for_next_state(
         self, topic: str, previous_event_count: int, timeout: float
     ) -> str | None:
-        """Wait for a message after a baseline, including identical payloads."""
+        """Wait for a new message, even if its payload repeats."""
         received = wait_for(
             lambda: self._locked_event_count(topic) > previous_event_count,
             timeout=timeout,
@@ -202,7 +202,7 @@ class MqttClient:
         previous_event_count: int,
         timeout: float,
     ) -> bool:
-        """Wait for expected state published in a new MQTT event."""
+        """Wait for expected state in a new message."""
         return wait_for(
             lambda: self._locked_state_matches_after(
                 topic, expected, previous_event_count
@@ -220,7 +220,7 @@ class MqttClient:
     def wait_ready(
         self, timeout: float, after_generation: int | None = None
     ) -> bool:
-        """Wait for CONNACK and successful SUBACKs for all tracked topics."""
+        """Wait for CONNACK and successful SUBACKs on tracked topics."""
         return wait_for(
             lambda: self._locked_ready(after_generation), timeout=timeout
         )

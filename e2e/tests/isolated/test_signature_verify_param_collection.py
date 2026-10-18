@@ -1,5 +1,3 @@
-"""Isolated regression test for signature certificate fixture collection."""
-
 import ast
 from pathlib import Path
 

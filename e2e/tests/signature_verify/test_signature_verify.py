@@ -1,8 +1,4 @@
-"""Hardware acceptance tests for the signatureVerify interface.
-
-These tests run on a real ESP against the production BearSSL backend. Provisioning
-uses isolated temporary config directories; host private keys never enter SPIFFS.
-"""
+"""Hardware acceptance tests; host private keys never enter SPIFFS."""
 
 import base64
 import json
@@ -115,7 +111,6 @@ def vectors() -> dict[str, Any]:
 
 
 def envelope(vector: dict[str, Any]) -> str:
-    """Build the wire envelope for one raw64 signature vector."""
     data = bytes.fromhex(vector["data_hex"])
     signature = bytes.fromhex(vector["signature_hex"])
     command = json.dumps(
@@ -130,7 +125,7 @@ def envelope(vector: dict[str, Any]) -> str:
 
 
 def send_and_wait(mqtt_client: MqttClient, command: str) -> str:
-    """Publish one envelope and wait for a new result event, even if identical."""
+    """Wait for a new result event, even if its payload repeats."""
     previous_event = mqtt_client.get_event_count(RESULT_TOPIC)
     mqtt_client.publish(COMMAND_TOPIC, command)
     result = mqtt_client.wait_for_next_state(
@@ -141,7 +136,7 @@ def send_and_wait(mqtt_client: MqttClient, command: str) -> str:
 
 
 def send_signed_command_until_ok(mqtt_client: MqttClient, command: str) -> None:
-    """Retry only transient publish/no-response failures after broker restart."""
+    """Retry transient publish failures and missing responses after reconnect."""
     for attempt in range(RECONNECT_ATTEMPTS):
         previous_event = mqtt_client.get_event_count(RESULT_TOPIC)
         try:
@@ -164,7 +159,6 @@ def send_signed_command_until_ok(mqtt_client: MqttClient, command: str) -> None:
 
 
 def _make_temp_config(certificate_name: str | None) -> Path:
-    """Copy fixed test config and selected certificate into isolated SPIFFS input."""
     temp_dir = Path(tempfile.mkdtemp(prefix="signing_config_"))
     try:
         shutil.copy2(DEVICE_CONFIG_PATH, temp_dir / "device_config.json")
@@ -202,7 +196,6 @@ def provisioning_complete(
     global_config_path: Path,
     mqtt_client: MqttClient,
 ) -> None:
-    """Provision this test's signing config before serial capture starts."""
     for fixture_name in (
         "valid_signing_config",
         "whitespace_signing_config",
@@ -250,7 +243,6 @@ def invalid_certificate_config(
     global_config_path: Path,
     mqtt_client: MqttClient,
 ) -> Iterator[tuple[str, str]]:
-    """Provision rejected certificate configurations without a device restore."""
     scenario, certificate_name, expected_result = request.param
     temp_dir = _provision_certificate(
         certificate_name, device, global_config_path, mqtt_client
@@ -268,7 +260,6 @@ def test_signed_empty_payload_ok(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """An empty payload with a valid signature is accepted."""
     assert_booted(device, mqtt_client, restarted=True)
     assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["empty"])) == "OK"
 
@@ -280,7 +271,6 @@ def test_signed_binary_payload_ok(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """Binary payload bytes verify unchanged."""
     assert_booted(device, mqtt_client, restarted=True)
     assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
 
@@ -292,7 +282,6 @@ def test_signed_max256_payload_ok(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """The maximum 256-byte payload fits command limit and verifies."""
     assert_booted(device, mqtt_client, restarted=True)
     assert (
         send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary_max256"]))
@@ -307,7 +296,6 @@ def test_altered_data_fails(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """A signature paired with altered data fails verification."""
     assert_booted(device, mqtt_client, restarted=True)
     assert (
         send_and_wait(
@@ -324,7 +312,6 @@ def test_wrong_key_fails(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """A same-curve signature from a different key fails verification."""
     assert_booted(device, mqtt_client, restarted=True)
     assert (
         send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary_wrong_key"]))
@@ -351,7 +338,6 @@ def test_wrong_signature_length_error(
     mqtt_client: MqttClient,
     signature_size: int,
 ) -> None:
-    """Only signatures of exactly 64 bytes are accepted."""
     assert_booted(device, mqtt_client, restarted=True)
     data = bytes.fromhex(vectors["vectors"]["binary"]["data_hex"])
     command = json.dumps(
@@ -388,7 +374,6 @@ def test_invalid_base64_error(
     data_value: str,
     signature_value: str,
 ) -> None:
-    """Malformed and non-canonical base64 return exact error string."""
     assert_booted(device, mqtt_client, restarted=True)
     command = json.dumps(
         {"data": data_value, "signature": signature_value}, separators=(",", ":")
@@ -421,7 +406,6 @@ def test_size_limits_error(
     command: str,
     expected: str,
 ) -> None:
-    """Commands and decoded payloads beyond protocol limits are rejected."""
     assert_booted(device, mqtt_client, restarted=True)
     assert len(command.encode("ascii")) <= 512 or expected == "ERROR command too large"
     assert send_and_wait(mqtt_client, command) == expected
@@ -438,7 +422,6 @@ def test_invalid_envelope_fields_error(
     mqtt_client: MqttClient,
     shape: str,
 ) -> None:
-    """Unknown and missing envelope fields are rejected."""
     assert_booted(device, mqtt_client, restarted=True)
     vector = vectors["vectors"]["binary"]
     data = base64.b64encode(bytes.fromhex(vector["data_hex"])).decode("ascii")
@@ -461,7 +444,6 @@ def test_duplicate_fields_use_last_value(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """A duplicate literal data key replaces earlier value."""
     assert_booted(device, mqtt_client, restarted=True)
     vector = vectors["vectors"]["binary"]
     data = base64.b64encode(bytes.fromhex(vector["data_hex"])).decode("ascii")
@@ -483,7 +465,6 @@ def test_whitespace_certificate_accepted(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """A single PEM certificate with surrounding ASCII whitespace is accepted."""
     assert_booted(device, mqtt_client, restarted=True)
     assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
 
@@ -495,7 +476,6 @@ def test_bad_command_recovery(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """A malformed command does not block a subsequent valid verification."""
     assert_booted(device, mqtt_client, restarted=True)
     assert send_and_wait(mqtt_client, "not json") == "ERROR invalid JSON"
     assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
@@ -508,7 +488,6 @@ def test_repeated_identical_ok_results_are_distinct_events(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """Repeated identical result strings each produce a new MQTT event."""
     assert_booted(device, mqtt_client, restarted=True)
     first_count = mqtt_client.get_event_count(RESULT_TOPIC)
     command = envelope(vectors["vectors"]["binary"])
@@ -526,7 +505,6 @@ def test_rejected_certificate_shapes_error(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """Invalid or unavailable certificate yields its exact error string."""
     assert_booted(device, mqtt_client, restarted=True)
     scenario, expected_result = invalid_certificate_config
     result = send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"]))
@@ -541,7 +519,6 @@ def test_reconnect_then_verify(
     mqtt_client: MqttClient,
     mqtt_broker: MqttBroker,
 ) -> None:
-    """After MQTT broker reconnect, the device verifies a signed command."""
     assert_booted(device, mqtt_client, restarted=True)
     assert mqtt_client.wait_ready(timeout=10.0), (
         "MQTT observer not ready before restart"
@@ -568,7 +545,6 @@ def test_signature_interface_preserves_passthrough_and_status(
     reset_device: None,
     mqtt_client: MqttClient,
 ) -> None:
-    """Signed commands leave unrelated MQTT passthrough and boot status intact."""
     assert_booted(device, mqtt_client, restarted=True)
     assert mqtt_client.wait_for_state(
         STATUS_ACTION_TOPIC, "1", timeout=RESULT_TIMEOUT

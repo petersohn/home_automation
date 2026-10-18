@@ -4,8 +4,6 @@
 
 namespace {
 
-// Raw ECDSA P-256 signature: big-endian r followed by big-endian s, 32 bytes
-// each. The uncompressed P-256 public point is 1 + 32 + 32 bytes.
 constexpr size_t p256SignatureLength = 64;
 constexpr size_t p256PointLength = 65;
 constexpr size_t sha256Length = 32;
@@ -106,13 +104,8 @@ bool isP256TrustAnchor(const br_x509_trust_anchor* anchor) {
 
 }  // unnamed namespace
 
-// ECDSA verification needs more stack than the Arduino main stack provides
-// (up to ~6 KB for the i31 implementation), so the call is executed on the
-// secondary stack through the StackThunk mechanism, using the same pattern as
-// the bundled BearSSLHelpers.cpp (extern "C" worker + make_stack_thunk +
-// thunk_ declaration). The hash, signature, and key live outside the
-// secondary stack and are accessed through their pointers, which stay valid
-// while the stack pointer switches.
+// BearSSL's i31 verifier can exceed the main stack (~6 KB); use the secondary
+// stack thunk. Input pointers remain valid across the stack switch.
 extern "C" bool BearSslSignatureVerifier_verifyRaw(
     const br_ec_public_key* key, const void* hash, size_t hashLength,
     const void* signature, size_t signatureLength) {
@@ -130,9 +123,7 @@ extern "C" bool thunk_BearSslSignatureVerifier_verifyRaw(
 
 BearSslSignatureVerifier::BearSslSignatureVerifier(
     SignatureBytes certificateBytes) {
-    // BearSSL's X509List parser also accepts DER and ignores content between
-    // PEM objects. Validate the complete input envelope before parsing so only
-    // one CERTIFICATE block with surrounding whitespace reaches that parser.
+    // X509List accepts DER and multiple PEM certificates; enforce one PEM block.
     if (!isSinglePemCertificate(certificateBytes.data, certificateBytes.size)) {
         this->initError = SignatureError::invalidCertificate;
         return;
@@ -156,8 +147,7 @@ BearSslSignatureVerifier::BearSslSignatureVerifier(
         return;
     }
 
-    // Hold a reference on the secondary stack for this verifier's lifetime;
-    // only successfully initialized verifiers ever invoke the thunk.
+    // Only initialized instances invoke the thunk and need its stack reference.
     stack_thunk_add_ref();
     this->thunkStackReferenced = true;
 }
@@ -173,29 +163,21 @@ BearSslSignatureVerifier::~BearSslSignatureVerifier() {
 
 SignatureResult BearSslSignatureVerifier::verify(
     SignatureBytes data, SignatureBytes signature) {
-    // A verifier whose initialization failed fails closed with the retained
-    // error; it never falls back to success.
     if (this->initError != SignatureError::none) {
         return SignatureResult{SignatureStatus::error, this->initError};
     }
 
-    // A nonempty view requires a non-null pointer; a null pointer with a
-    // nonzero size is an input error that fails closed.
     if ((data.size != 0 && data.data == nullptr) ||
         (signature.size != 0 && signature.data == nullptr)) {
         return SignatureResult{
             SignatureStatus::error, SignatureError::internalError};
     }
 
-    // Exactly a 64-byte raw signature is required. The bundled
-    // SigningVerifier wrapper would compare against the public-key point
-    // length instead, so the check is done explicitly here.
     if (signature.size != p256SignatureLength) {
         return SignatureResult{
             SignatureStatus::error, SignatureError::invalidSignatureLength};
     }
 
-    // SHA-256 over the data (empty data is a valid, well-defined input).
     br_sha256_context hashContext;
     br_sha256_init(&hashContext);
     if (data.size != 0) {
@@ -204,9 +186,7 @@ SignatureResult BearSslSignatureVerifier::verify(
     uint8_t digest[sha256Length];
     br_sha256_out(&hashContext, digest);
 
-    // Raw ECDSA verify on the secondary stack. BearSSL rejects
-    // zero or out-of-range r/s values, so those count as invalid
-    // signatures, not errors.
+    // Invalid r/s values are verification failures, not backend errors.
 #if !CORE_MOCK
     const bool valid = thunk_BearSslSignatureVerifier_verifyRaw(
         &this->trustAnchor->pkey.key.ec, digest, sizeof(digest), signature.data,

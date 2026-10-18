@@ -1,5 +1,3 @@
-"""Host-only regressions for signature provisioning and MQTT recovery harness."""
-
 import ast
 import json
 import shutil

@@ -4,10 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
-// Byte view, structured result, and abstract verifier contract for signed
-// data verification. Portable only: no MQTT, JSON/base64, filesystem paths,
-// action dispatch, device types, or presentation strings appear here.
-
+/** Non-owning byte view; data must stay valid during use and be non-null when
+ * size is nonzero.
+ */
 struct SignatureBytes {
     const uint8_t* data;
     size_t size;
@@ -30,13 +29,9 @@ struct SignatureResult {
     SignatureError error;
 };
 
-// Abstract verifier. Hashes the data referenced by data (including empty
-// data) and verifies the raw signature bytes against it, returning a
-// structured result. A non-null pointer is required for a nonempty view; an
-// empty view is permitted. Error enum codes are mapped to stable result
-// strings only in the interface layer, never in implementations. Once a
-// verifier's initialization failed, every attempted verification must fail
-// closed with the retained error.
+/** Hashes data, including empty data, and verifies the raw signature bytes.
+ * Initialization failures must remain fail-closed with their retained error.
+ */
 class SignatureVerifier {
 public:
     virtual ~SignatureVerifier() = default;
