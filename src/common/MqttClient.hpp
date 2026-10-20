@@ -13,6 +13,7 @@
 #include "EspApi.hpp"
 #include "GlobalConfig.hpp"
 #include "MqttConnection.hpp"
+#include "MqttTransportState.hpp"
 #include "Wifi.hpp"
 
 class Client;
@@ -34,10 +35,12 @@ public:
     void loop();
     void disconnect();
     bool isConnected() const;
+    MqttTransportState getTransportState();
 
     void subscribe(
         const char* topic,
-        std::function<void(const MqttConnection::Message&)> callback);
+        std::function<void(const MqttConnection::Message&)> callback,
+        uint8_t qos = 0);
     void unsubscribe(const char* topic);
     void publish(const char* topic, const char* payload, bool retain);
 
@@ -51,8 +54,11 @@ private:
         connectionFailed
     };
 
-    using Subscription = std::pair<
-        std::string, std::function<void(const MqttConnection::Message&)>>;
+    struct Subscription {
+        std::string topic;
+        std::function<void(const MqttConnection::Message&)> callback;
+        uint8_t qos;
+    };
 
     std::ostream& debug;
     EspApi& esp;
@@ -78,6 +84,7 @@ private:
 
     bool initialized = false;
     bool restarted = true;
+    MqttTransportState transportState{false, 0};
 
     static constexpr size_t statusMsgBufSize = 350;
     static constexpr size_t statusMsgSize = 250;
@@ -97,6 +104,8 @@ private:
     void refreshAvailability();
     void handleStatusMessage(const ArduinoJson::JsonObject& message);
     void handleMessage(const MqttConnection::Message& message);
+    void updateTransportState();
+    void disconnectTransport();
     bool tryToConnect(const ServerConfig& server);
     ConnectStatus connectIfNeeded();
     void sendStatusMessage(bool restarted);

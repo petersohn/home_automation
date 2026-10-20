@@ -30,7 +30,7 @@ public:
     virtual void disconnect() = 0;
     virtual bool isConnected() = 0;
 
-    virtual bool subscribe(const char* topic) = 0;
+    virtual bool subscribe(const char* topic, uint8_t qos = 0) = 0;
     virtual bool unsubscribe(const char* topic) = 0;
     virtual bool publish(const Message& message) = 0;
     virtual void loop() = 0;

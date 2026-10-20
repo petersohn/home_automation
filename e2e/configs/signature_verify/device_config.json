@@ -31,7 +31,9 @@
             "type": "publish",
             "interface": "sv1",
             "topic": "home/testDevice/sv1/state",
-            "template": "%1"
+            "template": "[\"%1\",\"%2\",\"%3\"]",
+            "retain": false,
+            "minimumSendInterval": 0
         }
     ]
 }

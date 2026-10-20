@@ -45,8 +45,11 @@ bool MqttConnectionImpl::isConnected() {
     return this->mqttClient.connected();
 }
 
-bool MqttConnectionImpl::subscribe(const char* topic) {
-    return this->mqttClient.subscribe(topic);
+bool MqttConnectionImpl::subscribe(const char* topic, uint8_t qos) {
+    if (qos > 1) {
+        return false;
+    }
+    return this->mqttClient.subscribe(topic, qos);
 }
 
 bool MqttConnectionImpl::unsubscribe(const char* topic) {

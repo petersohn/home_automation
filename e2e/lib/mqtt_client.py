@@ -137,10 +137,12 @@ class MqttClient:
                 self._subscribe_locked(topic)
                 self._update_ready_locked()
 
-    def publish(self, topic: str, payload: str, retain: bool = False) -> None:
+    def publish(
+        self, topic: str, payload: str, retain: bool = False, qos: int = 0
+    ) -> None:
         # paho returns MQTT_ERR_NO_CONN and drops the message silently when
         # not connected; fail fast instead.
-        result = self._client.publish(topic, payload, retain=retain)
+        result = self._client.publish(topic, payload, retain=retain, qos=qos)
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
             raise ConnectionError(
                 f"publish({topic!r}) failed with rc={result.rc}"
@@ -228,6 +230,10 @@ class MqttClient:
     def get_ready_generation(self) -> int:
         with self._lock:
             return self._ready_generation
+
+    def get_readiness_snapshot(self) -> tuple[bool, int]:
+        with self._lock:
+            return self._ready, self._ready_generation
 
     def get_state(self, topic: str) -> str | None:
         with self._lock:

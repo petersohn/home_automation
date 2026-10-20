@@ -144,6 +144,7 @@ def test_all_device_certificates_use_short_alias_and_preserve_bytes() -> None:
             assert interface["certificate"] == f"/{alias}"
             assert len(interface["certificate"].encode("utf-8")) <= 31
             assert (temp_dir / alias).read_bytes() == source.read_bytes()
+            assert not any("private_key" in path.name for path in temp_dir.iterdir())
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -308,6 +309,55 @@ def test_mqtt_client_manages_paho_network_loop() -> None:
     mqtt_client_class = _load_mqtt_client_class(mqtt_module)
     with pytest.raises(RuntimeError, match="Failed to start MQTT network loop"):
         mqtt_client_class("localhost", 1883, "user", "password")
+
+
+def test_mqtt_publish_preserves_default_qos_and_accepts_requested_qos() -> None:
+    calls: list[tuple[str, str, bool, int]] = []
+
+    class FakePahoClient:
+        def publish(
+            self, topic: str, payload: str, *, retain: bool, qos: int
+        ) -> SimpleNamespace:
+            calls.append((topic, payload, retain, qos))
+            return SimpleNamespace(rc=0)
+
+    mqtt_module = SimpleNamespace(
+        Client=object,
+        MQTTMessage=object,
+        MQTT_ERR_SUCCESS=0,
+    )
+    mqtt_client_class = _load_mqtt_client_class(mqtt_module)
+    client = mqtt_client_class.__new__(mqtt_client_class)
+    client._client = FakePahoClient()
+
+    client.publish("topic/default", "legacy")
+    client.publish("topic/qos1", "broadcast", qos=1)
+
+    assert calls == [
+        ("topic/default", "legacy", False, 0),
+        ("topic/qos1", "broadcast", False, 1),
+    ]
+
+
+def test_mqtt_publish_raises_for_failed_qos_publish() -> None:
+    class FailedPahoClient:
+        def publish(
+            self, topic: str, payload: str, *, retain: bool, qos: int
+        ) -> SimpleNamespace:
+            assert (topic, payload, retain, qos) == ("topic", "payload", False, 1)
+            return SimpleNamespace(rc=4)
+
+    mqtt_module = SimpleNamespace(
+        Client=object,
+        MQTTMessage=object,
+        MQTT_ERR_SUCCESS=0,
+    )
+    mqtt_client_class = _load_mqtt_client_class(mqtt_module)
+    client = mqtt_client_class.__new__(mqtt_client_class)
+    client._client = FailedPahoClient()
+
+    with pytest.raises(ConnectionError, match="failed with rc=4"):
+        client.publish("topic", "payload", qos=1)
 
 
 def test_real_paho_write_failure_does_not_block_subscribe_and_clears_pending() -> None:
@@ -497,85 +547,51 @@ def test_observer_readiness_requires_fresh_connection_and_all_subacks() -> None:
     client._pending_subscriptions = set()
     client._subscription_failed = False
 
+    assert client.get_readiness_snapshot() == (False, 0)
     client._on_connect(fake_client, None, {}, 0)
+    assert client.get_readiness_snapshot() == (False, 0)
     assert not client.wait_ready(timeout=0.01)
     first_mids = [mid for _, mid in fake_client.subscriptions]
     client._on_subscribe(fake_client, None, first_mids[0], [0])
+    assert client.get_readiness_snapshot() == (False, 0)
     assert not client.wait_ready(timeout=0.01)
     client._on_subscribe(fake_client, None, first_mids[1], [0])
     assert client.wait_ready(timeout=0.01)
+    assert client.get_readiness_snapshot() == (True, 1)
     first_generation = client.get_ready_generation()
 
     client._on_disconnect(fake_client, None, 1, "broker stopped")
+    assert client.get_readiness_snapshot() == (False, first_generation)
     assert not client.wait_ready(timeout=0.01)
     client._on_connect(fake_client, None, {}, 0)
+    assert client.get_readiness_snapshot() == (False, first_generation)
     assert not client.wait_ready(timeout=0.01, after_generation=first_generation)
     new_mids = [mid for _, mid in fake_client.subscriptions[2:]]
-    for mid in new_mids:
+    for index, mid in enumerate(new_mids):
         client._on_subscribe(fake_client, None, mid, [0])
+        if index < len(new_mids) - 1:
+            assert client.get_readiness_snapshot() == (False, first_generation)
     assert client.wait_ready(timeout=0.01, after_generation=first_generation)
     assert client.get_ready_generation() > first_generation
+    assert client.get_readiness_snapshot() == (True, first_generation + 1)
 
 
-def _load_reconnect_roundtrip_helper() -> dict[str, Any]:
+def test_hardware_suite_uses_stream_sender_without_envelope_helpers() -> None:
     tree = _module_tree(SIGNATURE_TEST_PATH)
-    function = next(
-        node
-        for node in tree.body
-        if isinstance(node, ast.FunctionDef)
-        and node.name == "send_signed_command_until_ok"
-    )
-    namespace = {
-        "MqttClient": object,
-        "RESULT_TOPIC": "home/testDevice/sv1/state",
-        "COMMAND_TOPIC": "home/testDevice/sv1/set",
-        "RECONNECT_RESULT_TIMEOUT": 0.01,
-        "RECONNECT_ATTEMPTS": 3,
-        "time": SimpleNamespace(sleep=lambda _: None),
+    function_names = {
+        node.name for node in tree.body if isinstance(node, ast.FunctionDef)
     }
-    module = ast.Module(body=[function], type_ignores=[])
-    exec(compile(module, str(SIGNATURE_TEST_PATH), "exec"), namespace)
-    return namespace
+    imports = {
+        alias.name
+        for node in tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "lib.signature_stream"
+        for alias in node.names
+    }
 
-
-def test_reconnect_roundtrip_retries_only_no_response_and_transient_publish() -> None:
-    namespace = _load_reconnect_roundtrip_helper()
-
-    class FakeObserver:
-        def __init__(self, results: list[str | None], errors: int = 0) -> None:
-            self.results = iter(results)
-            self.errors = errors
-            self.publish_count = 0
-
-        def get_event_count(self, topic: str) -> int:
-            assert topic == namespace["RESULT_TOPIC"]
-            return self.publish_count
-
-        def publish(self, topic: str, command: str) -> None:
-            assert topic == namespace["COMMAND_TOPIC"]
-            assert command == "signed-envelope"
-            self.publish_count += 1
-            if self.errors:
-                self.errors -= 1
-                raise ConnectionError("transient disconnect")
-
-        def wait_for_next_state(
-            self, topic: str, previous_event: int, timeout: float
-        ) -> str | None:
-            assert topic == namespace["RESULT_TOPIC"]
-            assert timeout == namespace["RECONNECT_RESULT_TIMEOUT"]
-            return next(self.results)
-
-    observer = FakeObserver([None, "OK"], errors=1)
-    namespace["send_signed_command_until_ok"](observer, "signed-envelope")
-    assert observer.publish_count == 3
-
-    wrong_result = FakeObserver(["FAIL invalid signature"])
-    with pytest.raises(AssertionError, match="FAIL invalid signature"):
-        namespace["send_signed_command_until_ok"](wrong_result, "signed-envelope")
-    assert wrong_result.publish_count == 1
-
-    no_response = FakeObserver([None, None, None])
-    with pytest.raises(AssertionError, match="no signed-command result"):
-        namespace["send_signed_command_until_ok"](no_response, "signed-envelope")
-    assert no_response.publish_count == namespace["RECONNECT_ATTEMPTS"]
+    assert "envelope" not in function_names
+    assert "send_and_wait" in function_names
+    assert "send_stream" in imports
+    assert "StreamTarget" in imports
+    assert "test_signed_65536_byte_payload_ok" in function_names
+    assert "test_broker_restart_aborts_transfer_and_requires_full_retransmission" in function_names

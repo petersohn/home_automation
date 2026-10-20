@@ -4,6 +4,8 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "common/MqttConnection.hpp"
 
@@ -58,7 +60,7 @@ public:
     virtual void disconnect() override;
     virtual bool isConnected() override;
 
-    virtual bool subscribe(const char* topic) override;
+    virtual bool subscribe(const char* topic, uint8_t qos = 0) override;
     virtual bool unsubscribe(const char* topic) override;
     virtual bool publish(const Message& message) override;
     virtual void loop() override;
@@ -70,6 +72,10 @@ private:
     ReceiveHandler receiveFunc;
     std::vector<FakeMessage> queue;
 
+public:
+    std::vector<std::pair<std::string, uint8_t>> subscriptionHistory;
+
+private:
     bool connectInner(
         const std::optional<Message>& will, ReceiveHandler receiveFunc);
 };

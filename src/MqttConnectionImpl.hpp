@@ -22,7 +22,7 @@ public:
     virtual void disconnect() override;
     virtual bool isConnected() override;
 
-    virtual bool subscribe(const char* topic) override;
+    virtual bool subscribe(const char* topic, uint8_t qos = 0) override;
     virtual bool unsubscribe(const char* topic) override;
     virtual bool publish(const Message& message) override;
     virtual void loop() override;

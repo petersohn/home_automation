@@ -16,8 +16,8 @@
  * a P-256 key; DER, extra PEM objects, and junk are rejected. Provisioning is
  * the trust boundary; chains, hostname, time, and self-signatures are not
  * validated. The verifier owns parsed key material, so input bytes may be
- * released after construction. Initialization errors are retained and every
- * verify call fails closed.
+ * released after construction. Initialization errors are retained and all
+ * lifecycle calls fail closed.
  *
  * BearSSL's wrapper expects a 65-byte public-point-sized signature; this
  * backend verifies raw r||s directly. Verification uses the core secondary
@@ -35,8 +35,11 @@ public:
     BearSslSignatureVerifier& operator=(const BearSslSignatureVerifier&) =
         delete;
 
-    SignatureResult verify(
-        SignatureBytes data, SignatureBytes signature) override;
+    SignatureError begin() override;
+    SignatureError append(SignatureBytes data) override;
+    SignatureResult finish(
+        SignatureBytes expectedHash, SignatureBytes signature) override;
+    void abort() override;
 
 private:
     BearSSL::X509List certificate;
@@ -45,6 +48,8 @@ private:
     const br_x509_trust_anchor* trustAnchor = nullptr;
 
     SignatureError initError = SignatureError::none;
+    br_sha256_context hashContext{};
+    bool active = false;
 
     // Error-state instances do not acquire the thunk stack reference.
     bool thunkStackReferenced = false;

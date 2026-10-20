@@ -284,6 +284,9 @@ The following additional values are supported:
 *   `certificate`: Absolute path of a PEM-encoded X.509 certificate file in
     SPIFFS containing an ECDSA P-256 public key (required).
 
+Commands use ordered streaming; replies expose status, decoded byte count, and
+payload hash. See the [protocol reference](e2e/signing_fixtures/README.md).
+
 ### `encoder`
 
 Rotary encoder using two GPIO pins. The value reported is the encoder count.

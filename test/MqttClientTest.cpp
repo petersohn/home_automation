@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "DummyBackoff.hpp"
 #include "EspTestBase.hpp"
 #include "FakeMqttConnection.hpp"
@@ -359,6 +361,138 @@ TEST_F(MqttClientTest, Subscribe) {
     this->esp.delay(100000);
     this->mqttClient.loop();
     EXPECT_EQ(received, "payload4");
+}
+
+TEST_F(MqttClientTest, SubscriptionQosRestoredAfterReconnect) {
+    const auto callback = [](const MqttConnection::Message&) {};
+    this->mqttClient.subscribe("defaultQos", callback);
+    this->mqttClient.subscribe("requestedQos", callback, 1);
+    this->mqttClient.subscribe("invalidQos", callback, 2);
+
+    this->mqttClient.loop();
+    this->connection.disconnect();
+    this->mqttClient.loop();
+
+    auto count = [this](const std::string& topic, uint8_t qos) {
+        return std::count(
+            this->connection.subscriptionHistory.begin(),
+            this->connection.subscriptionHistory.end(),
+            std::make_pair(topic, qos));
+    };
+    EXPECT_EQ(count("defaultQos", 0), 2);
+    EXPECT_EQ(count("requestedQos", 1), 2);
+    EXPECT_EQ(count("invalidQos", 2), 0);
+}
+
+TEST_F(MqttClientTest, WifiLossInvalidatesWithoutLoop) {
+    this->mqttClient.loop();
+    const auto before = this->mqttClient.getTransportState();
+    ASSERT_TRUE(before.connected);
+    this->wifi.status = WifiStatus::Disconnected;
+
+    const auto after = this->mqttClient.getTransportState();
+    EXPECT_FALSE(after.connected);
+    EXPECT_NE(after.generation, before.generation);
+}
+
+TEST_F(MqttClientTest, ReplacementConnectionChangesGeneration) {
+    this->mqttClient.loop();
+    const auto before = this->mqttClient.getTransportState();
+    ASSERT_TRUE(before.connected);
+
+    this->connection.disconnect();
+    this->mqttClient.loop();
+    const auto after = this->mqttClient.getTransportState();
+    EXPECT_TRUE(after.connected);
+    EXPECT_NE(after.generation, before.generation);
+}
+
+TEST_F(
+    MqttClientTest,
+    InitializedReplacementChangesGenerationBeforeFirstCallback) {
+    this->mqttClient.loop();
+    this->sendAvailability(false);
+    this->mqttClient.loop();
+    this->mqttClient.loop();
+    ASSERT_FALSE(this->statusMessages.empty());
+    const auto before = this->mqttClient.getTransportState();
+    ASSERT_TRUE(before.connected);
+
+    bool received = false;
+    this->mqttClient.subscribe(
+        "session",
+        [this, &before, &received](const MqttConnection::Message& message) {
+        received = true;
+        const auto state = this->mqttClient.getTransportState();
+        EXPECT_TRUE(state.connected);
+        EXPECT_NE(state.generation, before.generation);
+        EXPECT_EQ(
+            (std::string{message.payload, message.payloadLength}),
+            "new-session");
+    });
+    this->server.publish(
+        this->connectionId, FakeMessage{"session", "new-session", true});
+    this->connection.disconnect();
+
+    this->mqttClient.loop();
+    EXPECT_TRUE(received);
+}
+
+TEST_F(MqttClientTest, ExplicitDisconnectInvalidatesTransportState) {
+    this->mqttClient.loop();
+    const auto before = this->mqttClient.getTransportState();
+    ASSERT_TRUE(before.connected);
+
+    this->mqttClient.disconnect();
+    const auto after = this->mqttClient.getTransportState();
+    EXPECT_FALSE(after.connected);
+    EXPECT_NE(after.generation, before.generation);
+}
+
+TEST_F(MqttClientTest, FailedAttemptsAndStableQueriesDoNotChangeGeneration) {
+    this->server.working = false;
+    this->mqttClient.loop();
+    const auto initial = this->mqttClient.getTransportState();
+    EXPECT_FALSE(initial.connected);
+
+    EXPECT_EQ(
+        this->mqttClient.getTransportState().generation, initial.generation);
+    this->esp.delay(1000);
+    this->mqttClient.loop();
+    EXPECT_EQ(
+        this->mqttClient.getTransportState().generation, initial.generation);
+}
+
+TEST_F(MqttClientTest, DisconnectClearsQueuedMessagesAndSessionSubscriptions) {
+    size_t received = 0;
+    this->mqttClient.subscribe(
+        "someTopic",
+        [&received](const MqttConnection::Message&) { ++received; });
+    this->mqttClient.loop();
+
+    this->server.publish(this->connectionId, {"someTopic", "old-session"});
+    this->connection.disconnect();
+    this->mqttClient.loop();
+    EXPECT_EQ(received, 0);
+
+    this->server.publish(this->connectionId, {"someTopic", "new-session"});
+    this->mqttClient.loop();
+    EXPECT_EQ(received, 1);
+}
+
+TEST_F(MqttClientTest, AvailabilityCollisionInvalidatesTransportState) {
+    this->mqttClient.loop();
+    const auto before = this->mqttClient.getTransportState();
+    ASSERT_TRUE(before.connected);
+
+    this->sendAvailability(true);
+    this->mqttClient.loop();
+    this->sendOtherDeviceStatus();
+    this->mqttClient.loop();
+
+    const auto after = this->mqttClient.getTransportState();
+    EXPECT_FALSE(after.connected);
+    EXPECT_NE(after.generation, before.generation);
 }
 
 TEST_F(MqttClientTest, CycleTime) {

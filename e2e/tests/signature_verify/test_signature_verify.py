@@ -1,10 +1,10 @@
 """Hardware acceptance tests; host private keys never enter SPIFFS."""
 
 import base64
+import hashlib
 import json
 import shutil
 import tempfile
-import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -16,14 +16,17 @@ from conftest import assert_booted
 from lib.device import Device
 from lib.mqtt_broker import MqttBroker
 from lib.mqtt_client import MqttClient
+from lib.signature_stream import (
+    StreamTarget,
+    send_stream,
+    verify_broker_restart_invalidation,
+)
 
 E2E_DIR = Path(__file__).resolve().parents[2]
 FIXTURES_DIR = E2E_DIR / "signing_fixtures"
 VECTORS_PATH = FIXTURES_DIR / "host" / "vectors.json"
 DEVICE_CERTS_DIR = FIXTURES_DIR / "device"
-DEVICE_CONFIG_PATH = (
-    E2E_DIR / "configs" / "signature_verify" / "device_config.json"
-)
+DEVICE_CONFIG_PATH = E2E_DIR / "configs" / "signature_verify" / "device_config.json"
 
 COMMAND_TOPIC = "home/testDevice/sv1/set"
 RESULT_TOPIC = "home/testDevice/sv1/state"
@@ -37,16 +40,10 @@ DEVICE_CERT_ALIAS = "signing_test.pem"
 WHITESPACE_CERT_NAME = "signing_test_whitespace.pem"
 INVALID_CERT_CASES = [
     pytest.param(
-        (
-            "malformed",
-            "signing_test_malformed.pem",
-            "ERROR invalid certificate",
-        ),
+        ("malformed", "signing_test_malformed.pem", "ERROR invalid certificate"),
         id="malformed",
     ),
-    pytest.param(
-        ("DER", "signing_test_der.der", "ERROR invalid certificate"), id="der"
-    ),
+    pytest.param(("DER", "signing_test_der.der", "ERROR invalid certificate"), id="der"),
     pytest.param(
         (
             "trailing junk",
@@ -95,14 +92,10 @@ INVALID_CERT_CASES = [
         ),
         id="unsupported-algorithm",
     ),
-    pytest.param(
-        ("missing", None, "ERROR certificate unavailable"), id="missing"
-    ),
+    pytest.param(("missing", None, "ERROR certificate unavailable"), id="missing"),
 ]
 
 RESULT_TIMEOUT = 15.0
-RECONNECT_RESULT_TIMEOUT = 5.0
-RECONNECT_ATTEMPTS = 8
 
 
 @pytest.fixture(scope="module")
@@ -110,52 +103,68 @@ def vectors() -> dict[str, Any]:
     return json.loads(VECTORS_PATH.read_text())
 
 
-def envelope(vector: dict[str, Any]) -> str:
-    data = bytes.fromhex(vector["data_hex"])
-    signature = bytes.fromhex(vector["signature_hex"])
-    command = json.dumps(
-        {
-            "data": base64.b64encode(data).decode("ascii"),
-            "signature": base64.b64encode(signature).decode("ascii"),
-        },
-        separators=(",", ":"),
-    )
-    assert len(command.encode("ascii")) <= 512, "vector exceeds command limit"
-    return command
-
-
-def send_and_wait(mqtt_client: MqttClient, command: str) -> str:
-    """Wait for a new result event, even if its payload repeats."""
+def send_and_wait(mqtt_client: MqttClient, command: str) -> list[str]:
     previous_event = mqtt_client.get_event_count(RESULT_TOPIC)
-    mqtt_client.publish(COMMAND_TOPIC, command)
+    mqtt_client.publish(COMMAND_TOPIC, command, retain=False, qos=1)
     result = mqtt_client.wait_for_next_state(
         RESULT_TOPIC, previous_event, timeout=RESULT_TIMEOUT
     )
     assert result is not None, f"no result published on {RESULT_TOPIC}"
-    return result
+    report = json.loads(result)
+    assert isinstance(report, list) and len(report) == 3
+    assert all(isinstance(value, str) for value in report)
+    return report
 
 
-def send_signed_command_until_ok(mqtt_client: MqttClient, command: str) -> None:
-    """Retry transient publish failures and missing responses after reconnect."""
-    for attempt in range(RECONNECT_ATTEMPTS):
-        previous_event = mqtt_client.get_event_count(RESULT_TOPIC)
-        try:
-            mqtt_client.publish(COMMAND_TOPIC, command)
-        except ConnectionError:
-            result = None
-        else:
-            result = mqtt_client.wait_for_next_state(
-                RESULT_TOPIC, previous_event, timeout=RECONNECT_RESULT_TIMEOUT
-            )
-        if result == "OK":
-            return
-        if result is not None:
-            raise AssertionError(
-                f"expected signed command result 'OK', got {result!r}"
-            )
-        if attempt + 1 < RECONNECT_ATTEMPTS:
-            time.sleep(0.5)
-    raise AssertionError("no signed-command result after broker restart")
+def _command(command_type: str, payload_hash: str, **fields: Any) -> str:
+    return json.dumps(
+        {"type": command_type, "hash": payload_hash, **fields},
+        separators=(",", ":"),
+    )
+
+
+def _begin(data: bytes, payload_hash: str | None = None) -> str:
+    return _command(
+        "begin",
+        payload_hash or hashlib.sha256(data).hexdigest(),
+        size=len(data),
+    )
+
+
+def _chunk(data: bytes, payload_hash: str, offset: int) -> str:
+    return _command(
+        "chunk",
+        payload_hash,
+        offset=offset,
+        data=base64.b64encode(data).decode("ascii"),
+    )
+
+
+def _finish(payload_hash: str, signature: bytes) -> str:
+    return _command(
+        "finish",
+        payload_hash,
+        signature=base64.b64encode(signature).decode("ascii"),
+    )
+
+
+def _send_valid_stream(
+    mqtt_client: MqttClient, data: bytes, signature: bytes
+) -> None:
+    outcome = send_stream(
+        mqtt_client,
+        COMMAND_TOPIC,
+        [StreamTarget("testDevice", RESULT_TOPIC)],
+        data,
+        signature,
+    )
+    assert outcome.verified == {"testDevice"}
+    assert outcome.dropped == {}
+
+
+def _vector(vectors: dict[str, Any], name: str) -> tuple[bytes, bytes]:
+    item = vectors["vectors"][name]
+    return bytes.fromhex(item["data_hex"]), bytes.fromhex(item["signature_hex"])
 
 
 def _make_temp_config(certificate_name: str | None) -> Path:
@@ -261,7 +270,7 @@ def test_signed_empty_payload_ok(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["empty"])) == "OK"
+    _send_valid_stream(mqtt_client, *_vector(vectors, "empty"))
 
 
 def test_signed_binary_payload_ok(
@@ -272,7 +281,7 @@ def test_signed_binary_payload_ok(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
 
 
 def test_signed_max256_payload_ok(
@@ -283,13 +292,10 @@ def test_signed_max256_payload_ok(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert (
-        send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary_max256"]))
-        == "OK"
-    )
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary_max256"))
 
 
-def test_altered_data_fails(
+def test_signed_65536_byte_payload_ok(
     valid_signing_config: None,
     vectors: dict[str, Any],
     device: Device,
@@ -297,15 +303,34 @@ def test_altered_data_fails(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert (
-        send_and_wait(
-            mqtt_client, envelope(vectors["vectors"]["binary_altered_data"])
-        )
-        == "FAIL invalid signature"
+    data, signature = _vector(vectors, "binary_stream65536")
+    assert len(data) == 65536
+    _send_valid_stream(mqtt_client, data, signature)
+
+
+@pytest.mark.parametrize(
+    "vector_name", ["binary_altered_data", "binary_wrong_key"]
+)
+def test_invalid_signature_fails(
+    valid_signing_config: None,
+    vectors: dict[str, Any],
+    device: Device,
+    reset_device: None,
+    mqtt_client: MqttClient,
+    vector_name: str,
+) -> None:
+    assert_booted(device, mqtt_client, restarted=True)
+    outcome = send_stream(
+        mqtt_client,
+        COMMAND_TOPIC,
+        [StreamTarget("testDevice", RESULT_TOPIC)],
+        *_vector(vectors, vector_name),
     )
+    assert outcome.verified == set()
+    assert outcome.dropped == {"testDevice": "FAIL invalid signature"}
 
 
-def test_wrong_key_fails(
+def test_advertised_hash_mismatch_is_distinct_from_invalid_signature(
     valid_signing_config: None,
     vectors: dict[str, Any],
     device: Device,
@@ -313,10 +338,25 @@ def test_wrong_key_fails(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert (
-        send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary_wrong_key"]))
-        == "FAIL invalid signature"
-    )
+    data, signature = _vector(vectors, "binary")
+    real_hash = hashlib.sha256(data).hexdigest()
+    advertised_hash = ("0" if real_hash[0] != "0" else "1") + real_hash[1:]
+
+    assert send_and_wait(mqtt_client, _begin(data, advertised_hash)) == [
+        "PROGRESS",
+        "0",
+        advertised_hash,
+    ]
+    assert send_and_wait(mqtt_client, _chunk(data, advertised_hash, 0)) == [
+        "PROGRESS",
+        str(len(data)),
+        advertised_hash,
+    ]
+    assert send_and_wait(mqtt_client, _finish(advertised_hash, signature)) == [
+        "FAIL hash mismatch",
+        str(len(data)),
+        advertised_hash,
+    ]
 
 
 def test_malformed_json_error(
@@ -326,7 +366,7 @@ def test_malformed_json_error(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert send_and_wait(mqtt_client, "not json at all") == "ERROR invalid JSON"
+    assert send_and_wait(mqtt_client, "not json at all") == ["ERROR invalid JSON", "0", ""]
 
 
 @pytest.mark.parametrize("signature_size", [63, 65], ids=["short", "long"])
@@ -339,46 +379,73 @@ def test_wrong_signature_length_error(
     signature_size: int,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    data = bytes.fromhex(vectors["vectors"]["binary"]["data_hex"])
-    command = json.dumps(
-        {
-            "data": base64.b64encode(data).decode("ascii"),
-            "signature": base64.b64encode(bytes(signature_size)).decode("ascii"),
-        },
-        separators=(",", ":"),
+    data, _ = _vector(vectors, "binary")
+    payload_hash = hashlib.sha256(data).hexdigest()
+    report = send_and_wait(
+        mqtt_client,
+        _finish(payload_hash, bytes(signature_size)),
     )
-    assert (
-        send_and_wait(mqtt_client, command) == "ERROR invalid signature length"
-    )
+    assert report == ["ERROR invalid signature length", "0", ""]
 
 
 @pytest.mark.parametrize(
-    "data_value,signature_value",
+    "command",
     [
-        pytest.param(
-            "!!!!", base64.b64encode(bytes(64)).decode("ascii"), id="bad-alphabet"
-        ),
-        pytest.param(
-            "AB==",
-            base64.b64encode(bytes(64)).decode("ascii"),
-            id="noncanonical-pad-bits",
-        ),
-        pytest.param("", "?", id="invalid-signature-base64"),
+        '{"type":"chunk","hash":"' + "a" * 64 + '","offset":0,"data":"!!!!"}',
+        '{"type":"chunk","hash":"' + "a" * 64 + '","offset":0,"data":"AB=="}',
+        '{"type":"finish","hash":"' + "a" * 64 + '","signature":"?"}',
     ],
+    ids=["chunk-data", "noncanonical-pad-bits", "signature"],
 )
 def test_invalid_base64_error(
     valid_signing_config: None,
     device: Device,
     reset_device: None,
     mqtt_client: MqttClient,
-    data_value: str,
-    signature_value: str,
+    command: str,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    command = json.dumps(
-        {"data": data_value, "signature": signature_value}, separators=(",", ":")
-    )
-    assert send_and_wait(mqtt_client, command) == "ERROR invalid base64"
+    assert send_and_wait(mqtt_client, command) == ["ERROR invalid base64", "0", ""]
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        pytest.param("size", True, id="size-boolean"),
+        pytest.param("size", -1, id="size-negative"),
+        pytest.param("size", 1.0, id="size-fraction"),
+        pytest.param("size", 4294967296, id="size-overflow"),
+        pytest.param("offset", True, id="offset-boolean"),
+        pytest.param("offset", -1, id="offset-negative"),
+        pytest.param("offset", 1.0, id="offset-fraction"),
+        pytest.param("offset", 4294967296, id="offset-overflow"),
+    ],
+)
+def test_invalid_stream_count_numbers_error(
+    valid_signing_config: None,
+    device: Device,
+    reset_device: None,
+    mqtt_client: MqttClient,
+    field: str,
+    value: bool | int | float,
+) -> None:
+    assert_booted(device, mqtt_client, restarted=True)
+    if field == "size":
+        command = json.dumps(
+            {"type": "begin", "hash": "a" * 64, "size": value},
+            separators=(",", ":"),
+        )
+    else:
+        command = json.dumps(
+            {
+                "type": "chunk",
+                "hash": "a" * 64,
+                "offset": value,
+                "data": base64.b64encode(b"x").decode("ascii"),
+            },
+            separators=(",", ":"),
+        )
+    assert send_and_wait(mqtt_client, command) == ["ERROR invalid fields", "0", ""]
 
 
 @pytest.mark.parametrize(
@@ -386,15 +453,14 @@ def test_invalid_base64_error(
     [
         pytest.param("x" * 513, "ERROR command too large", id="oversized-command"),
         pytest.param(
-            json.dumps(
-                {
-                    "data": base64.b64encode(bytes(257)).decode("ascii"),
-                    "signature": base64.b64encode(bytes(64)).decode("ascii"),
-                },
-                separators=(",", ":"),
+            _command(
+                "chunk",
+                "a" * 64,
+                offset=0,
+                data=base64.b64encode(bytes(257)).decode("ascii"),
             ),
             "ERROR data too large",
-            id="oversized-data",
+            id="oversized-chunk",
         ),
     ],
 )
@@ -407,37 +473,30 @@ def test_size_limits_error(
     expected: str,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert len(command.encode("ascii")) <= 512 or expected == "ERROR command too large"
-    assert send_and_wait(mqtt_client, command) == expected
+    report = send_and_wait(mqtt_client, command)
+    assert report[0] == expected
 
 
 @pytest.mark.parametrize(
-    "shape", ["unknown", "missing-data", "missing-signature"]
+    "command",
+    [
+        '{"type":"begin","hash":"' + "a" * 64 + '","size":0,"extra":1}',
+        '{"type":"begin","hash":"' + "a" * 64 + '"}',
+    ],
+    ids=["unknown-field", "missing-size"],
 )
-def test_invalid_envelope_fields_error(
+def test_invalid_stream_fields_error(
     valid_signing_config: None,
-    vectors: dict[str, Any],
     device: Device,
     reset_device: None,
     mqtt_client: MqttClient,
-    shape: str,
+    command: str,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    vector = vectors["vectors"]["binary"]
-    data = base64.b64encode(bytes.fromhex(vector["data_hex"])).decode("ascii")
-    signature = base64.b64encode(bytes.fromhex(vector["signature_hex"])).decode(
-        "ascii"
-    )
-    if shape == "unknown":
-        command = f'{{"data":"{data}","signature":"{signature}","extra":1}}'
-    elif shape == "missing-data":
-        command = f'{{"signature":"{signature}"}}'
-    else:
-        command = f'{{"data":"{data}"}}'
-    assert send_and_wait(mqtt_client, command) == "ERROR invalid fields"
+    assert send_and_wait(mqtt_client, command)[0] == "ERROR invalid fields"
 
 
-def test_duplicate_fields_use_last_value(
+def test_duplicate_begin_and_chunk_re_ack_without_corrupting_digest(
     valid_signing_config: None,
     vectors: dict[str, Any],
     device: Device,
@@ -445,17 +504,81 @@ def test_duplicate_fields_use_last_value(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    vector = vectors["vectors"]["binary"]
-    data = base64.b64encode(bytes.fromhex(vector["data_hex"])).decode("ascii")
+    data, signature = _vector(vectors, "binary")
+    payload_hash = hashlib.sha256(data).hexdigest()
+    begin = _begin(data, payload_hash)
+    chunk = _chunk(data, payload_hash, 0)
+
+    expected_zero = ["PROGRESS", "0", payload_hash]
+    expected_full = ["PROGRESS", str(len(data)), payload_hash]
+    assert send_and_wait(mqtt_client, begin) == expected_zero
+    assert send_and_wait(mqtt_client, begin) == expected_zero
+    assert send_and_wait(mqtt_client, chunk) == expected_full
+    assert send_and_wait(mqtt_client, begin) == expected_full
+    assert send_and_wait(mqtt_client, chunk) == expected_full
+    assert send_and_wait(mqtt_client, _finish(payload_hash, signature)) == [
+        "OK",
+        str(len(data)),
+        payload_hash,
+    ]
+
+
+def test_duplicate_json_fields_use_last_value(
+    valid_signing_config: None,
+    vectors: dict[str, Any],
+    device: Device,
+    reset_device: None,
+    mqtt_client: MqttClient,
+) -> None:
+    assert_booted(device, mqtt_client, restarted=True)
+    data, signature = _vector(vectors, "binary")
+    payload_hash = hashlib.sha256(data).hexdigest()
+    correct_data = base64.b64encode(data).decode("ascii")
     wrong_data = base64.b64encode(b"wrong first value").decode("ascii")
-    signature = base64.b64encode(bytes.fromhex(vector["signature_hex"])).decode(
-        "ascii"
+
+    assert send_and_wait(mqtt_client, _begin(data, payload_hash)) == [
+        "PROGRESS",
+        "0",
+        payload_hash,
+    ]
+    duplicate_data = (
+        f'{{"type":"chunk","hash":"{payload_hash}","offset":0,'
+        f'"data":"{wrong_data}","data":"{correct_data}"}}'
     )
-    command = (
-        f'{{"data":"{wrong_data}","data":"{data}",'
-        f'"signature":"{signature}"}}'
-    )
-    assert send_and_wait(mqtt_client, command) == "OK"
+    assert send_and_wait(mqtt_client, duplicate_data) == [
+        "PROGRESS",
+        str(len(data)),
+        payload_hash,
+    ]
+    assert send_and_wait(mqtt_client, _finish(payload_hash, signature)) == [
+        "OK",
+        str(len(data)),
+        payload_hash,
+    ]
+
+
+def test_gap_error_recovers_after_fresh_begin(
+    valid_signing_config: None,
+    vectors: dict[str, Any],
+    device: Device,
+    reset_device: None,
+    mqtt_client: MqttClient,
+) -> None:
+    assert_booted(device, mqtt_client, restarted=True)
+    payload = bytes((index * 19 + 7) % 256 for index in range(300))
+    payload_hash = hashlib.sha256(payload).hexdigest()
+
+    assert send_and_wait(mqtt_client, _begin(payload, payload_hash)) == [
+        "PROGRESS",
+        "0",
+        payload_hash,
+    ]
+    assert send_and_wait(mqtt_client, _chunk(payload[:1], payload_hash, 1)) == [
+        "ERROR invalid offset",
+        "0",
+        payload_hash,
+    ]
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
 
 
 def test_whitespace_certificate_accepted(
@@ -466,7 +589,7 @@ def test_whitespace_certificate_accepted(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
 
 
 def test_bad_command_recovery(
@@ -477,8 +600,8 @@ def test_bad_command_recovery(
     mqtt_client: MqttClient,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert send_and_wait(mqtt_client, "not json") == "ERROR invalid JSON"
-    assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
+    assert send_and_wait(mqtt_client, "not json") == ["ERROR invalid JSON", "0", ""]
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
 
 
 def test_repeated_identical_ok_results_are_distinct_events(
@@ -490,11 +613,10 @@ def test_repeated_identical_ok_results_are_distinct_events(
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
     first_count = mqtt_client.get_event_count(RESULT_TOPIC)
-    command = envelope(vectors["vectors"]["binary"])
-    assert send_and_wait(mqtt_client, command) == "OK"
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
     first_result_count = mqtt_client.get_event_count(RESULT_TOPIC)
     assert first_result_count > first_count
-    assert send_and_wait(mqtt_client, command) == "OK"
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
     assert mqtt_client.get_event_count(RESULT_TOPIC) > first_result_count
 
 
@@ -507,11 +629,12 @@ def test_rejected_certificate_shapes_error(
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
     scenario, expected_result = invalid_certificate_config
-    result = send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"]))
-    assert result == expected_result, scenario
+    data, _ = _vector(vectors, "binary")
+    report = send_and_wait(mqtt_client, _begin(data))
+    assert report[0] == expected_result, scenario
 
 
-def test_reconnect_then_verify(
+def test_broker_restart_aborts_transfer_and_requires_full_retransmission(
     valid_signing_config: None,
     vectors: dict[str, Any],
     device: Device,
@@ -520,20 +643,27 @@ def test_reconnect_then_verify(
     mqtt_broker: MqttBroker,
 ) -> None:
     assert_booted(device, mqtt_client, restarted=True)
-    assert mqtt_client.wait_ready(timeout=10.0), (
-        "MQTT observer not ready before restart"
-    )
-    previous_ready_generation = mqtt_client.get_ready_generation()
+    data, signature = _vector(vectors, "binary_max256")
+    payload_hash = hashlib.sha256(data).hexdigest()
+    assert send_and_wait(mqtt_client, _begin(data)) == [
+        "PROGRESS",
+        "0",
+        payload_hash,
+    ]
     try:
-        mqtt_broker.stop()
-        time.sleep(3.0)
-        mqtt_broker.start()
-        assert mqtt_client.wait_ready(
-            timeout=60.0, after_generation=previous_ready_generation
-        ), "MQTT observer did not reconnect and resubscribe"
-        send_signed_command_until_ok(
-            mqtt_client, envelope(vectors["vectors"]["binary"])
+        verify_broker_restart_invalidation(
+            mqtt_client,
+            stop_broker=mqtt_broker.stop,
+            start_broker=mqtt_broker.start,
+            command_topic=COMMAND_TOPIC,
+            result_topic=RESULT_TOPIC,
+            status_topic=DEVICE_STATUS_TOPIC,
+            partial_command=_chunk(data[:128], payload_hash, 0),
+            probe_command=_chunk(data[128:], payload_hash, 128),
+            payload_hash=payload_hash,
+            partial_count=128,
         )
+        _send_valid_stream(mqtt_client, data, signature)
     finally:
         mqtt_broker.start()
 
@@ -563,7 +693,7 @@ def test_signature_interface_preserves_passthrough_and_status(
         timeout=RESULT_TIMEOUT,
     ) == passthrough
 
-    assert send_and_wait(mqtt_client, envelope(vectors["vectors"]["binary"])) == "OK"
+    _send_valid_stream(mqtt_client, *_vector(vectors, "binary"))
 
     passthrough_after = f"signature-regression-after-{uuid4().hex}"
     assert passthrough_after != passthrough

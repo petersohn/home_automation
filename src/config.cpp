@@ -3,6 +3,7 @@
 #include <FS.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <new>
 #include <optional>
@@ -218,6 +219,9 @@ std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
     const SignatureVerifyConfig& c) {
     // Bound the certificate read before allocating its buffer.
     static constexpr size_t maxCertificateSize = 4096;
+    const auto transportState = [client = &this->mqttClient]() {
+        return client->getTransportState();
+    };
 
     std::unique_ptr<SignatureVerifier> verifier;
     File certificateFile = SPIFFS.open(c.certificate.c_str(), "r");
@@ -227,7 +231,8 @@ std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
         // Keep the interface active so commands fail closed with this error.
         verifier = std::make_unique<BearSslSignatureVerifier>(
             SignatureError::certificateUnavailable);
-        return std::make_unique<SignatureVerifyInterface>(std::move(verifier));
+        return std::make_unique<SignatureVerifyInterface>(
+            this->esp, std::move(verifier), transportState);
     }
 
     const size_t certificateSize = certificateFile.size();
@@ -264,7 +269,8 @@ std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
         }
     }
     certificateFile.close();
-    return std::make_unique<SignatureVerifyInterface>(std::move(verifier));
+    return std::make_unique<SignatureVerifyInterface>(
+        this->esp, std::move(verifier), transportState);
 }
 
 std::unique_ptr<Interface> ConfigFactory::createSensorInterface(
@@ -477,12 +483,15 @@ DeviceConfig ConfigFactory::buildDeviceConfig(
             // reference to the local unique_ptr, which would dangle after
             // the move.
             InterfaceConfig* interfacePtr = interfaceConfig.get();
+            const uint8_t qos =
+                std::holds_alternative<SignatureVerifyConfig>(entry.config) ? 1
+                                                                            : 0;
             this->mqttClient.subscribe(
                 entry.commandTopic.c_str(),
                 [interfacePtr](const MqttConnection::Message& message) {
                 std::string command{message.payload, message.payloadLength};
                 interfacePtr->interface->execute(command);
-            });
+            }, qos);
         }
 
         result.interfaces.push_back(std::move(interfaceConfig));

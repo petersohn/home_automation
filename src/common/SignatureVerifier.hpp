@@ -21,6 +21,8 @@ enum class SignatureError {
     unsupportedKey,
     certificateUnavailable,
     invalidSignatureLength,
+    hashMismatch,
+    invalidState,
     internalError
 };
 
@@ -29,15 +31,19 @@ struct SignatureResult {
     SignatureError error;
 };
 
-/** Hashes data, including empty data, and verifies the raw signature bytes.
- * Initialization failures must remain fail-closed with their retained error.
+/** Incrementally hashes data and verifies its digest against a raw signature.
+ * begin resets prior state; finish consumes the stream; abort is idempotent.
+ * Initialization errors must remain fail-closed across lifecycle calls.
  */
 class SignatureVerifier {
 public:
     virtual ~SignatureVerifier() = default;
 
-    virtual SignatureResult verify(
-        SignatureBytes data, SignatureBytes signature) = 0;
+    virtual SignatureError begin() = 0;
+    virtual SignatureError append(SignatureBytes data) = 0;
+    virtual SignatureResult finish(
+        SignatureBytes expectedHash, SignatureBytes signature) = 0;
+    virtual void abort() = 0;
 };
 
 #endif  // COMMON_SIGNATUREVERIFIER_HPP

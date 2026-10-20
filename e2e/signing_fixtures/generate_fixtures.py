@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,7 @@ MAX_CERTIFICATE_BYTES = 4096
 PAYLOAD_EMPTY = b""
 PAYLOAD_BINARY = b"\x00\x42\xfe\xff\x80\x7f\x01\x10\x00"
 PAYLOAD_MAX256 = bytes((index * 37 + 11) % 256 for index in range(256))
+PAYLOAD_STREAM65536 = bytes((index * 37 + 11) % 256 for index in range(65536))
 PAYLOAD_ALTERED = (
     PAYLOAD_BINARY[:1]
     + bytes([PAYLOAD_BINARY[1] ^ 0x01])
@@ -167,6 +169,10 @@ def create_fixture_tree(output_dir: Path) -> None:
         "empty": (PAYLOAD_EMPTY, sign_raw64(main_key, PAYLOAD_EMPTY)),
         "binary": (PAYLOAD_BINARY, sign_raw64(main_key, PAYLOAD_BINARY)),
         "binary_max256": (PAYLOAD_MAX256, sign_raw64(main_key, PAYLOAD_MAX256)),
+        "binary_stream65536": (
+            PAYLOAD_STREAM65536,
+            sign_raw64(main_key, PAYLOAD_STREAM65536),
+        ),
         "binary_altered_data": (
             PAYLOAD_ALTERED,
             sign_raw64(main_key, PAYLOAD_BINARY),
@@ -177,6 +183,12 @@ def create_fixture_tree(output_dir: Path) -> None:
     verify_raw64(main_public_key, PAYLOAD_EMPTY, vectors["empty"][1], True)
     verify_raw64(main_public_key, PAYLOAD_BINARY, vectors["binary"][1], True)
     verify_raw64(main_public_key, PAYLOAD_MAX256, vectors["binary_max256"][1], True)
+    verify_raw64(
+        main_public_key,
+        PAYLOAD_STREAM65536,
+        vectors["binary_stream65536"][1],
+        True,
+    )
     verify_raw64(
         main_public_key, PAYLOAD_ALTERED, vectors["binary_altered_data"][1], False
     )
@@ -201,12 +213,14 @@ def create_fixture_tree(output_dir: Path) -> None:
             "empty": "OK",
             "binary": "OK",
             "binary_max256": "OK",
+            "binary_stream65536": "OK",
             "binary_altered_data": "FAIL",
             "binary_wrong_key": "FAIL",
         },
         "vectors": {
             name: {
                 "data_hex": data.hex(),
+                "sha256": hashlib.sha256(data).hexdigest(),
                 "signature_hex": signature.hex(),
                 "signature_len": len(signature),
             }

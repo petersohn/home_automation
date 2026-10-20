@@ -60,7 +60,7 @@ void MqttClient::availabiltyReceiveSuccess() {
 
 void MqttClient::availabiltyReceiveFail() {
     this->debug << "Device collision." << std::endl;
-    this->connection.disconnect();
+    this->disconnectTransport();
     this->connectionBackoff();
     this->availabilityReceiveTimeLimit = 0;
     this->initState = InitState::Begin;
@@ -155,6 +155,7 @@ const char* MqttClient::currentStateDebug() const {
 }
 
 void MqttClient::handleMessage(const MqttConnection::Message& message) {
+    this->updateTransportState();
     this->debug << "Message received on topic " << message.topic << std::endl;
     if (strcmp(message.topic, this->config.topics.availabilityTopic.c_str()) ==
         0) {
@@ -184,13 +185,33 @@ void MqttClient::handleMessage(const MqttConnection::Message& message) {
     auto iterator = std::find_if(
         this->subscriptions.begin(), this->subscriptions.end(),
         [&message, this](const Subscription& element) {
-        return strcmp(message.topic, element.first.c_str()) == 0;
+        return strcmp(message.topic, element.topic.c_str()) == 0;
     });
     if (iterator == this->subscriptions.end()) {
         this->debug << "No subscription for topic." << std::endl;
         return;
     }
-    iterator->second(message);
+    iterator->callback(message);
+}
+
+void MqttClient::updateTransportState() {
+    bool connected = this->wifi.getStatus() == WifiStatus::Connected &&
+                     this->connection.isConnected();
+    if (this->transportState.connected && !connected) {
+        ++this->transportState.generation;
+    }
+    this->transportState.connected = connected;
+}
+
+void MqttClient::disconnectTransport() {
+    this->updateTransportState();
+    bool wasConnected =
+        this->transportState.connected || this->connection.isConnected();
+    this->connection.disconnect();
+    if (wasConnected) {
+        ++this->transportState.generation;
+    }
+    this->transportState.connected = false;
 }
 
 bool MqttClient::tryToConnect(const ServerConfig& server) {
@@ -217,6 +238,9 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
         return false;
     }
 
+    ++this->transportState.generation;
+    this->updateTransportState();
+
     if (hasAvailability) {
         this->debug << "Connected to server. Listening to availability topic."
                     << std::endl;
@@ -225,7 +249,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
         if (!result) {
             this->debug << "Failed to listen to availability topic."
                         << std::endl;
-            this->connection.disconnect();
+            this->disconnectTransport();
             return false;
         }
 
@@ -234,7 +258,7 @@ bool MqttClient::tryToConnect(const ServerConfig& server) {
                 this->config.topics.statusTopic.c_str());
             if (!result) {
                 this->debug << "Failed to listen to status topic." << std::endl;
-                this->connection.disconnect();
+                this->disconnectTransport();
                 return false;
             }
         }
@@ -257,7 +281,8 @@ MqttClient::ConnectStatus MqttClient::connectIfNeeded() {
             if (this->tryToConnect(server)) {
                 this->debug << "Connection successful." << std::endl;
                 for (const auto& element : this->subscriptions) {
-                    this->connection.subscribe(element.first.c_str());
+                    this->connection.subscribe(
+                        element.topic.c_str(), element.qos);
                 }
                 break;
             }
@@ -324,6 +349,7 @@ void MqttClient::sendStatusMessage(bool restarted) {
 
 void MqttClient::loop() {
     auto now = this->esp.millis();
+    this->updateTransportState();
 
     if (now >= this->nextConnectionAttempt) {
         switch (this->connectIfNeeded()) {
@@ -352,18 +378,26 @@ void MqttClient::loop() {
         }
     }
 
+    this->updateTransportState();
     this->connection.loop();
+    this->updateTransportState();
 }
 
 void MqttClient::connectedLoop() {}
 
 void MqttClient::subscribe(
     const char* topic,
-    std::function<void(const MqttConnection::Message&)> callback) {
+    std::function<void(const MqttConnection::Message&)> callback, uint8_t qos) {
+    if (qos > 1) {
+        this->debug << "Unsupported subscription QoS " << unsigned(qos) << "."
+                    << std::endl;
+        return;
+    }
     this->debug << "Subscribing to " << topic << std::endl;
-    this->subscriptions.emplace_back(topic, callback);
+    this->subscriptions.push_back(
+        Subscription{topic, std::move(callback), qos});
     if (this->connection.isConnected()) {
-        this->connection.subscribe(topic);
+        this->connection.subscribe(topic, qos);
     }
 }
 
@@ -372,7 +406,7 @@ void MqttClient::unsubscribe(const char* topic) {
         std::remove_if(
             this->subscriptions.begin(), this->subscriptions.end(),
             [&topic](const Subscription& element) {
-        return element.first == topic;
+        return element.topic == topic;
     }),
         this->subscriptions.end());
     if (this->connection.isConnected()) {
@@ -391,9 +425,14 @@ void MqttClient::publish(const char* topic, const char* payload, bool retain) {
 }
 
 void MqttClient::disconnect() {
-    this->connection.disconnect();
+    this->disconnectTransport();
 }
 
 bool MqttClient::isConnected() const {
     return this->connection.isConnected();
+}
+
+MqttTransportState MqttClient::getTransportState() {
+    this->updateTransportState();
+    return this->transportState;
 }

@@ -2,6 +2,8 @@
 
 #include <StackThunk.h>
 
+#include <cstring>
+
 namespace {
 
 constexpr size_t p256SignatureLength = 64;
@@ -123,7 +125,8 @@ extern "C" bool thunk_BearSslSignatureVerifier_verifyRaw(
 
 BearSslSignatureVerifier::BearSslSignatureVerifier(
     SignatureBytes certificateBytes) {
-    // X509List accepts DER and multiple PEM certificates; enforce one PEM block.
+    // X509List accepts DER and multiple PEM certificates; enforce one PEM
+    // block.
     if (!isSinglePemCertificate(certificateBytes.data, certificateBytes.size)) {
         this->initError = SignatureError::invalidCertificate;
         return;
@@ -161,30 +164,73 @@ BearSslSignatureVerifier::~BearSslSignatureVerifier() {
     }
 }
 
-SignatureResult BearSslSignatureVerifier::verify(
-    SignatureBytes data, SignatureBytes signature) {
+SignatureError BearSslSignatureVerifier::begin() {
+    if (this->initError != SignatureError::none) {
+        return this->initError;
+    }
+
+    this->abort();
+    br_sha256_init(&this->hashContext);
+    this->active = true;
+    return SignatureError::none;
+}
+
+SignatureError BearSslSignatureVerifier::append(SignatureBytes data) {
+    if (this->initError != SignatureError::none) {
+        return this->initError;
+    }
+
+    if (!this->active) {
+        return SignatureError::invalidState;
+    }
+    if (data.size != 0 && data.data == nullptr) {
+        return SignatureError::internalError;
+    }
+    if (data.size != 0) {
+        br_sha256_update(&this->hashContext, data.data, data.size);
+    }
+    return SignatureError::none;
+}
+
+SignatureResult BearSslSignatureVerifier::finish(
+    SignatureBytes expectedHash, SignatureBytes signature) {
     if (this->initError != SignatureError::none) {
         return SignatureResult{SignatureStatus::error, this->initError};
     }
 
-    if ((data.size != 0 && data.data == nullptr) ||
+    if (!this->active) {
+        return SignatureResult{
+            SignatureStatus::error, SignatureError::invalidState};
+    }
+
+    if ((expectedHash.size != 0 && expectedHash.data == nullptr) ||
         (signature.size != 0 && signature.data == nullptr)) {
+        this->abort();
         return SignatureResult{
             SignatureStatus::error, SignatureError::internalError};
     }
-
+    if (expectedHash.size != sha256Length) {
+        this->abort();
+        return SignatureResult{
+            SignatureStatus::error, SignatureError::internalError};
+    }
     if (signature.size != p256SignatureLength) {
+        this->abort();
         return SignatureResult{
             SignatureStatus::error, SignatureError::invalidSignatureLength};
     }
 
-    br_sha256_context hashContext;
-    br_sha256_init(&hashContext);
-    if (data.size != 0) {
-        br_sha256_update(&hashContext, data.data, data.size);
-    }
     uint8_t digest[sha256Length];
-    br_sha256_out(&hashContext, digest);
+    br_sha256_out(&this->hashContext, digest);
+    this->active = false;
+    std::memset(&this->hashContext, 0, sizeof(this->hashContext));
+
+    for (size_t index = 0; index < sha256Length; ++index) {
+        if (digest[index] != expectedHash.data[index]) {
+            return SignatureResult{
+                SignatureStatus::invalid, SignatureError::hashMismatch};
+        }
+    }
 
     // Invalid r/s values are verification failures, not backend errors.
 #if !CORE_MOCK
@@ -202,4 +248,9 @@ SignatureResult BearSslSignatureVerifier::verify(
     }
     return SignatureResult{
         SignatureStatus::invalid, SignatureError::invalidSignature};
+}
+
+void BearSslSignatureVerifier::abort() {
+    this->active = false;
+    std::memset(&this->hashContext, 0, sizeof(this->hashContext));
 }

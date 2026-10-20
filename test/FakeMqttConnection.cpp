@@ -28,9 +28,16 @@ void FakeMqttServer::disconnect(size_t id) {
         this->publish(id, it->second);
         this->wills.erase(it);
     }
-}
 
-void disconnect(size_t id);
+    for (auto subscription = this->subscriptions.begin();
+         subscription != this->subscriptions.end();) {
+        if (subscription->first.second == id) {
+            subscription = this->subscriptions.erase(subscription);
+        } else {
+            ++subscription;
+        }
+    }
+}
 
 bool FakeMqttServer::subscribe(
     size_t id, const std::string& topic,
@@ -101,14 +108,17 @@ void FakeMqttConnection::disconnect() {
         this->server.disconnect(*this->connectionId);
         this->connectionId.reset();
     }
+    this->receiveFunc = {};
+    this->queue.clear();
 }
 
 bool FakeMqttConnection::isConnected() {
     return this->connectionId.has_value();
 }
 
-bool FakeMqttConnection::subscribe(const char* topic) {
-    if (!this->connectionId) {
+bool FakeMqttConnection::subscribe(const char* topic, uint8_t qos) {
+    this->subscriptionHistory.emplace_back(topic, qos);
+    if (!this->connectionId || qos > 1) {
         return false;
     }
 
@@ -140,8 +150,14 @@ void FakeMqttConnection::loop() {
         return;
     }
 
-    for (const auto& message : this->queue) {
-        this->receiveFunc(message.toMessage());
-    }
+    auto messages = std::move(this->queue);
     this->queue.clear();
+    auto receiveFunc = this->receiveFunc;
+    auto connectionId = this->connectionId;
+    for (const auto& message : messages) {
+        if (!this->connectionId || this->connectionId != connectionId) {
+            break;
+        }
+        receiveFunc(message.toMessage());
+    }
 }

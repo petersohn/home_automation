@@ -40,16 +40,72 @@ converting raw64 back to DER with `encode_dss_signature` and checking them with
 the generated public key. ECDSA signatures are randomized, so regeneration may
 produce different signature bytes while preserving the same expected results.
 
-## Regeneration
+## Stream protocol acceptance
 
-Install the pinned host-only dependency and regenerate checked-in fixtures:
+Hardware tests exercise the test-only streamed verifier. Commands are compact
+JSON objects on `home/testDevice/sv1/set`:
 
-```sh
-python3 -m pip install -r e2e/signing_fixtures/requirements.txt
-python3 e2e/signing_fixtures/generate_fixtures.py
+```json
+{"type":"begin","hash":"<64 lowercase SHA-256 hex>","size":65536}
+{"type":"chunk","hash":"<same hash>","offset":0,"data":"<base64>"}
+{"type":"finish","hash":"<same hash>","signature":"<base64 raw64>"}
 ```
 
-To check regeneration in a disposable directory without modifying fixtures:
+`size` and `offset` count decoded payload bytes, not Base64 or MQTT bytes. A
+payload can exceed one chunk; each decoded chunk contains 1–256 bytes and each
+command is at most 512 bytes. The hash covers the complete decoded payload.
+Finish signature is raw64 ECDSA P-256/SHA-256 (`r || s`), encoded as canonical
+padded Base64.
+
+The signature action publishes a JSON string template as its payload. Keep all
+three values so each progress event is observable:
+
+```json
+{
+  "type": "publish",
+  "interface": "sv1",
+  "topic": "home/testDevice/sv1/state",
+  "template": "[\"%1\",\"%2\",\"%3\"]",
+  "retain": false,
+  "minimumSendInterval": 0
+}
+```
+
+The decoded report is `[status, decodedBytes, advertisedHash]`; all fields are
+strings. `decodedBytes` is decimal. Status is `PROGRESS`, `OK`, `FAIL ...`, or
+`ERROR ...`. Startup still emits the old one-value empty report; host decoder
+ignores it.
+
+The sender publishes non-retained commands at QoS 1, and the device subscribes
+to commands at QoS 1. Device result actions remain QoS 0, so application ACKs
+provide progress correlation, not transport-level delivery guarantees. Sender
+waits for every active target to acknowledge each frame's matching hash and
+byte count before sending next frame. A failed target is dropped; otherwise
+missing ACKs retry every 1 second until the 5 second target deadline. If every
+target drops, sender stops without finish. Finish is not retried. Device abandons
+an inactive transfer after 30 seconds.
+
+Repeated begin with same hash and size reports current progress. A chunk wholly
+inside already-consumed byte range is acknowledged without rehashing; receiver
+does not retain prior chunk bytes for comparison. Only next contiguous range is
+consumed; gaps and overlapping ranges extending beyond progress fail the
+transfer. Duplicates do not extend the inactivity deadline. Reconnect discards
+active transfer; sender never resumes and must retransmit from a fresh begin.
+Protocol tests verify broadcast policy with simulated targets; physical hardware
+suite has one device and does not claim multi-device acceptance.
+
+These keys, payloads, vector hashes, and metadata are test-only. Fixture
+generation requires `cryptography`; hardware acceptance consumes checked-in
+signatures and needs no Python crypto package or firmware install. `sha256` and
+expected-result metadata are unsigned descriptive fields; device verification
+authenticates payload bytes only, not vector metadata.
+
+## Regeneration
+
+The generator requires the pinned host-only dependency. It creates fresh keys
+and certificates when generating a complete fixture tree; do not use its
+default output when preserving the checked-in fixture identity. Generate a
+disposable tree instead:
 
 ```sh
 python3 e2e/signing_fixtures/generate_fixtures.py \
