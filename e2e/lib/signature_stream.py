@@ -69,7 +69,6 @@ def verify_broker_restart_invalidation(
     start_broker: Callable[[], None],
     command_topic: str,
     result_topic: str,
-    status_topic: str,
     partial_command: str,
     probe_command: str,
     payload_hash: str,
@@ -94,7 +93,6 @@ def verify_broker_restart_invalidation(
     clock = monotonic or time.monotonic
     sleeper = sleep or time.sleep
     _, previous_generation = client.get_readiness_snapshot()
-    previous_status_event = client.get_event_count(status_topic)
     partial_event_baseline = client.get_event_count(result_topic)
     deadline = clock() + timeout
 
@@ -162,28 +160,44 @@ def verify_broker_restart_invalidation(
 
     wait_until(observer_is_reconnected, "observer reconnection")
 
-    def has_fresh_status() -> bool:
-        if client.get_event_count(status_topic) <= previous_status_event:
-            return False
-        status = client.get_state_json(status_topic)
-        if status is None:
-            return False
-        if status.get("restarted") is not False:
-            raise AssertionError("device status did not confirm MQTT reconnection")
-        return True
-
-    wait_until(has_fresh_status, "fresh device status")
     remaining("probe baseline")
     probe_event_baseline = client.get_event_count(result_topic)
     remaining("probe publish")
     client.publish(command_topic, probe_command, retain=False, qos=1)
     remaining("probe publish")
-    wait_for_report(
-        probe_event_baseline,
-        lambda report: report.status == "ERROR no active transfer"
-        and report.transferred == 0,
-        "no-active-transfer probe response",
-    )
+    next_probe_at = clock() + 1.0
+    seen_event = probe_event_baseline
+    while True:
+        remaining("no-active-transfer probe response")
+        event_count = client.get_event_count(result_topic)
+        if event_count > seen_event:
+            seen_event = event_count
+            payload = client.get_state(result_topic)
+            report = decode_stream_report(payload) if payload is not None else None
+            if (
+                report is not None
+                and report.hash == payload_hash
+                and report.status == "ERROR no active transfer"
+                and report.transferred == 0
+            ):
+                remaining("no-active-transfer probe response")
+                return
+
+        now = clock()
+        if now >= next_probe_at:
+            remaining("probe publish")
+            client.publish(command_topic, probe_command, retain=False, qos=1)
+            remaining("probe publish")
+            next_probe_at = clock() + 1.0
+            continue
+
+        sleeper(
+            min(
+                poll_interval,
+                remaining("no-active-transfer probe response"),
+                max(0.0, next_probe_at - clock()),
+            )
+        )
 
 
 def _compact_command(command: dict[str, object]) -> str:

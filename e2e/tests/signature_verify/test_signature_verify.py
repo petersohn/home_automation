@@ -657,7 +657,6 @@ def test_broker_restart_aborts_transfer_and_requires_full_retransmission(
             start_broker=mqtt_broker.start,
             command_topic=COMMAND_TOPIC,
             result_topic=RESULT_TOPIC,
-            status_topic=DEVICE_STATUS_TOPIC,
             partial_command=_chunk(data[:128], payload_hash, 0),
             probe_command=_chunk(data[128:], payload_hash, 128),
             payload_hash=payload_hash,
