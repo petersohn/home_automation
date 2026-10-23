@@ -387,14 +387,7 @@ def send_stream(
                 next_retry += retry_interval
                 continue
 
-            deadline_in = min(deadlines[name] - now for name in pending)
-            time.sleep(
-                min(
-                    0.01,
-                    max(0.0, next_retry - now),
-                    max(0.0, deadline_in),
-                )
-            )
+            time.sleep(0.01)
         check_readiness()
         scan_terminal_failures(pending, acknowledged)
         check_readiness()
