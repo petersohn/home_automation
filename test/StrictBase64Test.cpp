@@ -173,3 +173,18 @@ TEST(StrictBase64Test, ClearsPreviousOutputOnFailure) {
     EXPECT_FALSE(tools::decodeCanonicalBase64("Zm!v", 100, output));
     EXPECT_TRUE(output.empty());
 }
+
+TEST(StrictBase64Test, CalculatesDecodedUpperBoundFromLengthAndPadding) {
+    EXPECT_EQ(tools::decodedUpperBound(""), 0u);
+    EXPECT_EQ(tools::decodedUpperBound("A"), 3u);
+    EXPECT_EQ(tools::decodedUpperBound("AA=="), 1u);
+    EXPECT_EQ(tools::decodedUpperBound("AAA="), 2u);
+    EXPECT_EQ(tools::decodedUpperBound("AAAA"), 3u);
+    EXPECT_EQ(tools::decodedUpperBound("AAAAA==="), 4u);
+}
+
+TEST(StrictBase64Test, EstimatesMalformedInputSizeWithoutValidatingIt) {
+    EXPECT_EQ(tools::decodedUpperBound("A==="), 1u);
+    EXPECT_EQ(tools::decodedUpperBound("A="), 2u);
+    EXPECT_EQ(tools::decodedUpperBound("===x"), 3u);
+}

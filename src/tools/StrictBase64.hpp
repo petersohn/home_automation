@@ -16,6 +16,8 @@ namespace tools {
 bool decodeCanonicalBase64(
     const std::string& input, size_t maxOutput, std::vector<uint8_t>& output);
 
+size_t decodedUpperBound(const std::string& input);
+
 }  // namespace tools
 
 #endif  // TOOLS_STRICTBASE64_HPP

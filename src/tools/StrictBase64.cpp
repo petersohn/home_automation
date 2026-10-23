@@ -30,6 +30,15 @@ uint8_t decodeChar(char c) {
 
 }  // namespace
 
+size_t decodedUpperBound(const std::string& input) {
+    const size_t padding =
+        input.size() >= 2 && input.compare(input.size() - 2, 2, "==") == 0
+            ? 2
+            : (!input.empty() && input.back() == '=' ? 1 : 0);
+    const size_t groups = input.size() / 4 + (input.size() % 4 == 0 ? 0 : 1);
+    return groups * 3 - padding;
+}
+
 bool decodeCanonicalBase64(
     const std::string& input, size_t maxOutput, std::vector<uint8_t>& output) {
     output.clear();
