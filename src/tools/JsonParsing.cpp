@@ -13,6 +13,62 @@ struct CountedJsonInput {
 
 }  // namespace tools
 
+tools::detail::JsonStreamInput::JsonStreamInput(
+    void* source, ReadCallback readCallback)
+    : source(source)
+    , readCallback(readCallback)
+    , currentCharacter(-2)
+    , nextCharacter(-2)
+    , nulEncountered(false) {}
+
+int tools::detail::JsonStreamInput::read() {
+    const int character = this->readCallback(this->source);
+    if (character == 0) {
+        this->nulEncountered = true;
+    }
+    return character;
+}
+
+int tools::detail::JsonStreamInput::currentValue() {
+    if (this->currentCharacter == -2) {
+        this->currentCharacter = this->read();
+    }
+    return this->currentCharacter;
+}
+
+int tools::detail::JsonStreamInput::nextValue() {
+    if (this->currentValue() < 0) {
+        return -1;
+    }
+    if (this->nextCharacter == -2) {
+        this->nextCharacter = this->read();
+    }
+    return this->nextCharacter;
+}
+
+char tools::detail::JsonStreamInput::current() {
+    const int character = this->currentValue();
+    return character < 0 ? '\0' : static_cast<char>(character);
+}
+
+char tools::detail::JsonStreamInput::next() {
+    const int character = this->nextValue();
+    return character < 0 ? '\0' : static_cast<char>(character);
+}
+
+void tools::detail::JsonStreamInput::move() {
+    if (this->currentValue() < 0) {
+        return;
+    }
+    this->currentCharacter =
+        this->nextCharacter == -2 ? this->read() : this->nextCharacter;
+    this->nextCharacter = -2;
+}
+
+bool tools::detail::JsonStreamInput::hasNul() const {
+    return this->nulEncountered;
+}
+
 namespace ArduinoJson {
 namespace Internals {
 
@@ -49,20 +105,54 @@ struct StringTraits<tools::CountedJsonInput, void> {
     static const bool has_equals = false;
 };
 
+template <>
+struct StringTraits<tools::detail::JsonStreamInput, void> {
+    class Reader {
+    public:
+        explicit Reader(tools::detail::JsonStreamInput& input) : input(input) {}
+
+        void move() { this->input.move(); }
+        char current() { return this->input.current(); }
+        char next() { return this->input.next(); }
+
+    private:
+        tools::detail::JsonStreamInput& input;
+    };
+
+    static const bool has_append = false;
+    static const bool has_equals = false;
+};
+
 }  // namespace Internals
 }  // namespace ArduinoJson
 
 namespace tools {
 namespace {
 
+bool isJsonWhitespace(char value) {
+    return value == ' ' || value == '\t' || value == '\n' || value == '\r';
+}
+
 bool hasOnlyTrailingWhitespace(const CountedJsonInput& input) {
     for (std::size_t i = input.position; i < input.text.size(); ++i) {
-        const char value = input.text[i];
-        if (value != ' ' && value != '\t' && value != '\n' && value != '\r') {
+        if (!isJsonWhitespace(input.text[i])) {
             return false;
         }
     }
     return true;
+}
+
+bool hasOnlyTrailingWhitespace(detail::JsonStreamInput& input) {
+    for (;;) {
+        const char value = input.current();
+        if (value == '\0') {
+            return !input.hasNul();
+        }
+        if (!isJsonWhitespace(value)) {
+            return false;
+        }
+        input.move();
+    }
 }
 
 }  // namespace
@@ -75,6 +165,16 @@ ArduinoJson::JsonVariant parseFullJson(
     }
 
     CountedJsonInput input(text);
+    ArduinoJson::JsonVariant parsed = buffer.parse(input, maxNestingDepth);
+    if (!parsed.success() || !hasOnlyTrailingWhitespace(input)) {
+        return ArduinoJson::JsonVariant();
+    }
+    return parsed;
+}
+
+ArduinoJson::JsonVariant parseFullJson(
+    detail::JsonStreamInput& input, ArduinoJson::DynamicJsonBuffer& buffer,
+    uint8_t maxNestingDepth) {
     ArduinoJson::JsonVariant parsed = buffer.parse(input, maxNestingDepth);
     if (!parsed.success() || !hasOnlyTrailingWhitespace(input)) {
         return ArduinoJson::JsonVariant();

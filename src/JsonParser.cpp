@@ -2,6 +2,8 @@
 
 #include <FS.h>
 
+#include "tools/JsonParsing.hpp"
+
 using namespace ArduinoJson;
 
 ParsedData JsonParser::parseFile(const char* filename) {
@@ -12,11 +14,13 @@ ParsedData JsonParser::parseFile(const char* filename) {
         return result;
     }
 
-    result.root = &result.buffer->parseObject(f);
-    if (*result.root == JsonObject::invalid()) {
+    const JsonVariant parsed = tools::parseFullJson(
+        f, *result.buffer, ARDUINOJSON_DEFAULT_NESTING_LIMIT);
+    if (!parsed.success() || !parsed.is<JsonObject>()) {
         this->debug << "Could not parse JSON file: " << filename << std::endl;
-        result.root = nullptr;
+        return result;
     }
+    result.root = &parsed.as<JsonObject>();
 
     return result;
 }
