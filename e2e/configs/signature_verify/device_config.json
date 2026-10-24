@@ -1,9 +1,7 @@
 {
     "debug": true,
     "name": "testDevice",
-    "availabilityTopic": "home/testDevice/available",
-    "statusTopic": "home/testDevice/status",
-    "debugTopic": "home/testDevice/debug",
+    "servicePrefix": "home/testDevice",
     "interfaces": [
         {"type": "mqtt", "name": "m1", "topic": "home/testDevice/m1/in"},
         {"type": "status", "name": "s1"},
