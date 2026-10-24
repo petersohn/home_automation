@@ -1,9 +1,7 @@
 {
     "debug": true,
     "name": "testDevice",
-    "availabilityTopic": "home/testDevice/available",
-    "statusTopic": "home/testDevice/status",
-    "debugTopic": "home/testDevice/debug",
+    "servicePrefix": "home/testDevice",
     "interfaces": [
         {"type": "input", "name": "i1", "pin": 14},
         {"type": "input", "name": "i2", "pin": 4},

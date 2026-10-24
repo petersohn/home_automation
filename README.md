@@ -132,6 +132,14 @@ To upload these files to the device, use `flash.py upload-fs` (see
 The `device_config.json` consists of the following fields:
 
 *   `name`: The name of the device.
+*   `servicePrefix`: A string prefix used to derive the MQTT topics for
+    availability (`<prefix>/available`), status (`<prefix>/status`), and debug
+    messages (`<prefix>/debug`). All trailing `/` characters are removed before
+    adding these suffixes; leading and internal `/` characters are preserved.
+    When this field is a string, it overrides `availabilityTopic`, `statusTopic`,
+    and `debugTopic`. An empty or slash-only prefix disables all three topics,
+    even if those fields are set. If `servicePrefix` is absent or not a string,
+    the three topic fields are used as usual.
 *   `debug`: Whether debugging through the serial interface is enabled. If set
     to false, then the TXD port can be used for other purposes. Be aware
     though that some signals are sent through this port at boot time, so it

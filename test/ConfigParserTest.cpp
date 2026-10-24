@@ -91,12 +91,80 @@ TEST_F(ConfigParserTest, ParseDeviceConfig_TopLevelFields) {
     EXPECT_TRUE(result.common.debug);
 }
 
+TEST_F(ConfigParserTest, ParseDeviceConfig_ServicePrefix) {
+    auto& root = parse(R"({"servicePrefix":"/building//sensor"})");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(
+        result.common.topics.availabilityTopic, "/building//sensor/available");
+    EXPECT_EQ(result.common.topics.statusTopic, "/building//sensor/status");
+    EXPECT_EQ(result.common.debugTopic, "/building//sensor/debug");
+}
+
+TEST_F(
+    ConfigParserTest, ParseDeviceConfig_ServicePrefix_OverridesLegacyTopics) {
+    auto& root = parse(R"({
+        "servicePrefix":"device/from-prefix",
+        "availabilityTopic":"legacy/available",
+        "statusTopic":"legacy/status",
+        "debugTopic":"legacy/debug"
+    })");
+    auto result = parser.parseDeviceConfig(root);
+    EXPECT_EQ(
+        result.common.topics.availabilityTopic, "device/from-prefix/available");
+    EXPECT_EQ(result.common.topics.statusTopic, "device/from-prefix/status");
+    EXPECT_EQ(result.common.debugTopic, "device/from-prefix/debug");
+}
+
+TEST_F(
+    ConfigParserTest, ParseDeviceConfig_ServicePrefix_StripsTrailingSlashes) {
+    for (const auto& servicePrefix : {R"("device/")", R"("device///")"}) {
+        SCOPED_TRACE(servicePrefix);
+        auto& root =
+            parse(std::string(R"({"servicePrefix":)") + servicePrefix + R"(})");
+        auto result = parser.parseDeviceConfig(root);
+        EXPECT_EQ(result.common.topics.availabilityTopic, "device/available");
+        EXPECT_EQ(result.common.topics.statusTopic, "device/status");
+        EXPECT_EQ(result.common.debugTopic, "device/debug");
+    }
+}
+
+TEST_F(ConfigParserTest, ParseDeviceConfig_ServicePrefix_EmptyDisablesTopics) {
+    for (const auto& servicePrefix : {R"("")", R"("///")"}) {
+        SCOPED_TRACE(servicePrefix);
+        auto& root = parse(
+            std::string(R"({"servicePrefix":)") + servicePrefix +
+            R"(,"availabilityTopic":"legacy/available","statusTopic":"legacy/status","debugTopic":"legacy/debug"})");
+        auto result = parser.parseDeviceConfig(root);
+        EXPECT_TRUE(result.common.topics.availabilityTopic.empty());
+        EXPECT_TRUE(result.common.topics.statusTopic.empty());
+        EXPECT_TRUE(result.common.debugTopic.empty());
+    }
+}
+
+TEST_F(
+    ConfigParserTest,
+    ParseDeviceConfig_ServicePrefix_MalformedUsesLegacyTopics) {
+    for (const auto& servicePrefix : {"null", "123", "true", "[]", "{}"}) {
+        SCOPED_TRACE(servicePrefix);
+        auto& root = parse(
+            std::string(R"({"servicePrefix":)") + servicePrefix +
+            R"(,"availabilityTopic":"legacy/available","statusTopic":"legacy/status","debugTopic":"legacy/debug"})");
+        auto result = parser.parseDeviceConfig(root);
+        EXPECT_EQ(result.common.topics.availabilityTopic, "legacy/available");
+        EXPECT_EQ(result.common.topics.statusTopic, "legacy/status");
+        EXPECT_EQ(result.common.debugTopic, "legacy/debug");
+    }
+}
+
 TEST_F(ConfigParserTest, ParseDeviceConfig_Defaults) {
     auto& root = parse(R"({})");
     auto result = parser.parseDeviceConfig(root);
     EXPECT_EQ(result.common.debugPort, 2534);
     EXPECT_EQ(result.common.resetPin, 255);
     EXPECT_FALSE(result.common.debug);
+    EXPECT_TRUE(result.common.topics.availabilityTopic.empty());
+    EXPECT_TRUE(result.common.topics.statusTopic.empty());
+    EXPECT_TRUE(result.common.debugTopic.empty());
     EXPECT_TRUE(result.interfaces.empty());
 }
 
