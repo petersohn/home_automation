@@ -601,6 +601,23 @@ DeviceConfigDescription ConfigParser::parseDeviceConfig(
     if (debugTopic) {
         result.common.debugTopic = debugTopic;
     }
+    JsonVariant servicePrefix = root["servicePrefix"];
+    if (servicePrefix.is<std::string>() &&
+        servicePrefix.as<const char*>() != nullptr) {
+        std::string prefix = servicePrefix.as<std::string>();
+        while (!prefix.empty() && prefix.back() == '/') {
+            prefix.pop_back();
+        }
+        if (prefix.empty()) {
+            result.common.topics.availabilityTopic.clear();
+            result.common.topics.statusTopic.clear();
+            result.common.debugTopic.clear();
+        } else {
+            result.common.topics.availabilityTopic = prefix + "/available";
+            result.common.topics.statusTopic = prefix + "/status";
+            result.common.debugTopic = prefix + "/debug";
+        }
+    }
     result.common.debug = parseDebugEnabled(root);
     result.common.debugPort = getJsonWithDefault(root["debugPort"], 2534);
     result.common.resetPin =
