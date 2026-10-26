@@ -63,6 +63,9 @@ private:
     bool configurationPolicyValid = false;
     bool certificateValid = false;
     bool restartPending = false;
+    bool loggedLifecycleEmptyTopicGate = false;
+    bool loggedLifecycleReadinessGate = false;
+    bool loggedLifecycleCanPublishGate = false;
 
     void reportResult(const OtaResult& result);
     void publishPendingResult();

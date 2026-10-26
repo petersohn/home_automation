@@ -25,6 +25,7 @@ OtaResult ordinaryResult(std::string reason) {
 TEST(OtaResultPublisherTest, FailedFirstSubmissionRemainsPendingForRetry) {
     OtaResultPublisher publisher;
     publisher.report(lifecycleResult("STAGED", 8));
+    EXPECT_TRUE(publisher.hasPendingLifecycle());
     std::vector<std::string> submitted;
 
     publisher.flush([&submitted](const OtaResult& result) {

@@ -16,6 +16,10 @@ public:
         }
     }
 
+    bool hasPendingLifecycle() const {
+        return this->lifecycleOutcome.has_value();
+    }
+
     void flush(const std::function<bool(const OtaResult&)>& submit) {
         if (!submit) {
             return;

@@ -28,6 +28,11 @@ bool isUsableServicePrefix(const std::string& prefix) {
     return true;
 }
 
+bool isLifecycleStatus(const std::string& status) {
+    return status == "STAGED" || status == "CONFIRMED" ||
+           status == "ROLLED_BACK";
+}
+
 }  // namespace
 
 DeviceConfigOtaRuntime::RestartEspApi::RestartEspApi(
@@ -61,6 +66,7 @@ void DeviceConfigOtaRuntime::RestartEspApi::delay(unsigned long ms) {
 }
 
 void DeviceConfigOtaRuntime::RestartEspApi::restart(bool hard) {
+    Serial.printf("[OTA] restart at %lu ms\n", this->runtime.esp.millis());
     this->runtime.mqttClient.disconnect();
     this->runtime.esp.restart(hard);
 }
@@ -230,16 +236,54 @@ void DeviceConfigOtaRuntime::update() {
 }
 
 void DeviceConfigOtaRuntime::reportResult(const OtaResult& result) {
-    if (encodeOtaResult(result).empty()) {
+    const std::string payload = encodeOtaResult(result);
+    if (isLifecycleStatus(result.status)) {
+        Serial.printf(
+            "[OTA] outcome at %lu ms status=%s encoded-length=%lu\n",
+            this->esp.millis(), result.status.c_str(),
+            static_cast<unsigned long>(payload.size()));
+    }
+    if (payload.empty()) {
         return;
     }
     this->resultPublisher.report(result);
 }
 
 void DeviceConfigOtaRuntime::publishPendingResult() {
-    if (this->resultTopic.empty() ||
-        this->mqttClient.getReadiness() != MqttReadiness::ready ||
-        !this->mqttClient.canPublish()) {
+    const bool lifecyclePending = this->resultPublisher.hasPendingLifecycle();
+    if (!lifecyclePending) {
+        this->loggedLifecycleEmptyTopicGate = false;
+        this->loggedLifecycleReadinessGate = false;
+        this->loggedLifecycleCanPublishGate = false;
+    }
+
+    if (this->resultTopic.empty()) {
+        if (lifecyclePending && !this->loggedLifecycleEmptyTopicGate) {
+            Serial.println(
+                "[OTA] pending lifecycle publish blocked: empty topic");
+            this->loggedLifecycleEmptyTopicGate = true;
+        }
+        return;
+    }
+
+    const MqttReadiness readiness = this->mqttClient.getReadiness();
+    if (readiness != MqttReadiness::ready) {
+        if (lifecyclePending && !this->loggedLifecycleReadinessGate) {
+            Serial.printf(
+                "[OTA] pending lifecycle publish blocked: readiness-enum=%u\n",
+                static_cast<unsigned int>(readiness));
+            this->loggedLifecycleReadinessGate = true;
+        }
+        return;
+    }
+
+    const bool canPublish = this->mqttClient.canPublish();
+    if (!canPublish) {
+        if (lifecyclePending && !this->loggedLifecycleCanPublishGate) {
+            Serial.println(
+                "[OTA] pending lifecycle publish blocked: canPublish=false");
+            this->loggedLifecycleCanPublishGate = true;
+        }
         return;
     }
 
@@ -248,7 +292,14 @@ void DeviceConfigOtaRuntime::publishPendingResult() {
         if (payload.empty()) {
             return false;
         }
-        return this->mqttClient.tryPublish(
+        const bool submitted = this->mqttClient.tryPublish(
             this->resultTopic.c_str(), payload.c_str(), false);
+        if (isLifecycleStatus(result.status)) {
+            Serial.printf(
+                "[OTA] lifecycle submit status=%s topic=%s returned=%s\n",
+                result.status.c_str(), this->resultTopic.c_str(),
+                submitted ? "true" : "false");
+        }
+        return submitted;
     });
 }
