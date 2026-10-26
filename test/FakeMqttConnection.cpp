@@ -113,6 +113,15 @@ bool FakeMqttConnection::isConnected() {
     return this->connectionId.has_value();
 }
 
+bool FakeMqttConnection::drain(uint32_t timeoutMs) {
+    ++this->drainCalls;
+    this->lastDrainTimeoutMs = timeoutMs;
+    if (this->disconnectDuringDrain) {
+        this->disconnect();
+    }
+    return this->drainResult;
+}
+
 bool FakeMqttConnection::subscribe(const char* topic, uint8_t qos) {
     this->subscriptionHistory.emplace_back(topic, qos);
     if (!this->connectionId || qos > 1) {

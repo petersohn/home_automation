@@ -59,6 +59,7 @@ public:
         ReceiveHandler receiveFunc) override;
     virtual void disconnect() override;
     virtual bool isConnected() override;
+    virtual bool drain(uint32_t timeoutMs) override;
 
     virtual bool subscribe(const char* topic, uint8_t qos = 0) override;
     virtual bool unsubscribe(const char* topic) override;
@@ -74,6 +75,10 @@ private:
 
 public:
     std::vector<std::pair<std::string, uint8_t>> subscriptionHistory;
+    bool drainResult = true;
+    bool disconnectDuringDrain = false;
+    uint32_t lastDrainTimeoutMs = 0;
+    size_t drainCalls = 0;
 
 private:
     bool connectInner(

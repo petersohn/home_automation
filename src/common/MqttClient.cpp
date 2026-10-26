@@ -7,6 +7,7 @@
 
 #include "../tools/string.hpp"
 #include "Interface.hpp"
+#include "MqttDrain.hpp"
 
 using namespace ArduinoJson;
 
@@ -676,6 +677,12 @@ void MqttClient::disconnect() {
 
 bool MqttClient::isConnected() const {
     return this->connection.isConnected();
+}
+
+bool MqttClient::drain(uint32_t timeoutMs) {
+    return drainWhileConnected([this]() {
+        return this->connection.isConnected();
+    }, [this, timeoutMs]() { return this->connection.drain(timeoutMs); });
 }
 
 MqttReadiness MqttClient::getReadiness() const {

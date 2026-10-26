@@ -29,6 +29,7 @@ public:
         const std::optional<Message>& will, ReceiveHandler receiveFunc) = 0;
     virtual void disconnect() = 0;
     virtual bool isConnected() = 0;
+    virtual bool drain(uint32_t timeoutMs) = 0;
 
     virtual bool subscribe(const char* topic, uint8_t qos = 0) = 0;
     virtual bool unsubscribe(const char* topic) = 0;

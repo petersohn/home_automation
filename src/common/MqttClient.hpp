@@ -38,6 +38,7 @@ public:
     void loop();
     void disconnect();
     bool isConnected() const;
+    bool drain(uint32_t timeoutMs);
     MqttTransportState getTransportState();
     MqttReadiness getReadiness() const;
     bool takeCollision();

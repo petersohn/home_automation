@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "common/OtaRestartGate.hpp"
 #include "common/OtaResultPublisher.hpp"
 
 namespace {
@@ -90,4 +91,77 @@ TEST(OtaResultPublisherTest, RepeatedReportsCoalesceIntoTwoBoundedSlots) {
 
     EXPECT_EQ(
         rejected, (std::vector<std::string>{"CONFIRMED:", "ERROR:failure-50"}));
+}
+
+TEST(OtaRestartGateTest, AcceptedLifecycleWaitsForSuccessfulTcpDrainOnce) {
+    OtaResultPublisher publisher;
+    OtaRestartGate gate;
+    bool accepted = false;
+    publisher.report(lifecycleResult("STAGED", 8));
+    gate.requestRestartAfterLifecycleDrain();
+
+    publisher.flush([&accepted](const OtaResult& result) {
+        accepted = result.status == "STAGED";
+        return accepted;
+    });
+    ASSERT_TRUE(accepted);
+    gate.lifecycleResultSubmitted();
+
+    EXPECT_TRUE(gate.hasPendingRestart());
+    EXPECT_FALSE(gate.takeRestart());
+
+    gate.tcpDrainCompleted(false);
+    EXPECT_TRUE(gate.hasPendingRestart());
+    EXPECT_FALSE(gate.takeRestart());
+
+    publisher.report(lifecycleResult("STAGED", 8));
+    publisher.flush([](const OtaResult&) { return true; });
+    gate.lifecycleResultSubmitted();
+    gate.tcpDrainCompleted(true);
+    EXPECT_TRUE(gate.takeRestart());
+    EXPECT_FALSE(gate.hasPendingRestart());
+    EXPECT_FALSE(gate.takeRestart());
+}
+
+TEST(OtaRestartGateTest, ImmediateRollbackRestartIsNotHeldByLifecycleDrain) {
+    OtaRestartGate gate;
+    gate.requestRestartAfterLifecycleDrain();
+    gate.requestImmediateRestart();
+
+    EXPECT_TRUE(gate.takeRestart());
+    EXPECT_FALSE(gate.hasPendingRestart());
+}
+
+TEST(OtaRestartGateTest, StartupStagedOutcomeDoesNotDelayCollisionRestart) {
+    OtaRestartGate gate;
+    gate.recordStagedOutcome(true, true);
+
+    gate.requestRestart(true);
+
+    EXPECT_TRUE(gate.takeRestart());
+    EXPECT_FALSE(gate.hasPendingRestart());
+}
+
+TEST(OtaRestartGateTest, SuccessfulDrainBeforeRestartRequestIsPreserved) {
+    OtaRestartGate gate;
+    gate.recordStagedOutcome(true, false);
+    gate.lifecycleResultSubmitted();
+    gate.tcpDrainCompleted(true);
+
+    gate.requestRestart(false);
+
+    EXPECT_TRUE(gate.takeRestart());
+    EXPECT_FALSE(gate.hasPendingRestart());
+}
+
+TEST(OtaRestartGateTest, RepeatedRestartRequestKeepsSuccessfulDrainEvidence) {
+    OtaRestartGate gate;
+    gate.requestRestartAfterLifecycleDrain();
+    gate.lifecycleResultSubmitted();
+    gate.tcpDrainCompleted(true);
+
+    gate.requestRestartAfterLifecycleDrain();
+
+    EXPECT_TRUE(gate.takeRestart());
+    EXPECT_FALSE(gate.hasPendingRestart());
 }

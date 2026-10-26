@@ -1,5 +1,9 @@
 #include "MqttConnectionImpl.hpp"
 
+#include <lwip/tcp.h>
+
+#include "common/MqttDrain.hpp"
+
 static_assert(MQTT_MAX_PACKET_SIZE == 256, "check MQTT packet size");
 
 namespace {
@@ -16,6 +20,29 @@ void MqttConnectionImpl::TraceWiFiClient::flush() {
     Serial.printf(
         "WiFiClient.flush result=%d elapsed=%lu ms\n", result,
         millis() - start);
+}
+
+bool MqttConnectionImpl::TraceWiFiClient::drain(uint32_t timeoutMs) {
+    const uint32_t startedAtMs = static_cast<uint32_t>(millis());
+    bool result = false;
+    while (!isDrainDeadlineExpired(
+        startedAtMs, static_cast<uint32_t>(millis()), timeoutMs)) {
+        if (this->status() != ESTABLISHED) {
+            break;
+        }
+        if (isTcpDrainComplete(true, this->availableForWrite(), TCP_SND_BUF)) {
+            result =
+                this->status() == ESTABLISHED &&
+                !isDrainDeadlineExpired(
+                    startedAtMs, static_cast<uint32_t>(millis()), timeoutMs);
+            break;
+        }
+        yield();
+    }
+    Serial.printf(
+        "WiFiClient.drain result=%d elapsed=%lu ms\n", result,
+        millis() - static_cast<unsigned long>(startedAtMs));
+    return result;
 }
 
 void MqttConnectionImpl::TraceWiFiClient::stop() {
@@ -58,6 +85,10 @@ void MqttConnectionImpl::disconnect() {
 
 bool MqttConnectionImpl::isConnected() {
     return this->mqttClient.connected();
+}
+
+bool MqttConnectionImpl::drain(uint32_t timeoutMs) {
+    return this->wifiClient.drain(timeoutMs);
 }
 
 bool MqttConnectionImpl::subscribe(const char* topic, uint8_t qos) {

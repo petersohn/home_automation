@@ -67,8 +67,9 @@ void DeviceConfigOtaRuntime::RestartEspApi::delay(unsigned long ms) {
 
 void DeviceConfigOtaRuntime::RestartEspApi::restart(bool hard) {
     Serial.printf("[OTA] restart at %lu ms\n", this->runtime.esp.millis());
-    this->runtime.mqttClient.disconnect();
-    this->runtime.esp.restart(hard);
+    this->runtime.restartHard = hard;
+    this->runtime.restartGate.requestRestart(
+        this->runtime.bootCoordinator.trialRunning());
 }
 
 uint32_t DeviceConfigOtaRuntime::RestartEspApi::getFreeHeap() {
@@ -231,11 +232,18 @@ void DeviceConfigOtaRuntime::update() {
     this->publishPendingResult();
     if (this->restartPending) {
         this->restartPending = false;
-        this->restartEsp.restart(false);
+        this->restartGate.requestImmediateRestart();
+    }
+    if (this->restartGate.takeRestart()) {
+        this->mqttClient.disconnect();
+        this->esp.restart(this->restartHard);
     }
 }
 
 void DeviceConfigOtaRuntime::reportResult(const OtaResult& result) {
+    this->restartGate.recordStagedOutcome(
+        result.status == "STAGED", this->bootCoordinator.trialRunning());
+
     const std::string payload = encodeOtaResult(result);
     if (isLifecycleStatus(result.status)) {
         Serial.printf(
@@ -299,6 +307,15 @@ void DeviceConfigOtaRuntime::publishPendingResult() {
                 "[OTA] lifecycle submit status=%s topic=%s returned=%s\n",
                 result.status.c_str(), this->resultTopic.c_str(),
                 submitted ? "true" : "false");
+        }
+        if (result.status == "STAGED" && submitted) {
+            this->restartGate.lifecycleResultSubmitted();
+            const bool drained = this->mqttClient.drain(1000);
+            Serial.printf(
+                "[OTA] lifecycle TCP drain status=STAGED result=%s\n",
+                drained ? "true" : "false");
+            this->restartGate.tcpDrainCompleted(drained);
+            return drained;
         }
         return submitted;
     });

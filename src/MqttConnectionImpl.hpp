@@ -21,6 +21,7 @@ public:
         ReceiveHandler receiveFunc) override;
     virtual void disconnect() override;
     virtual bool isConnected() override;
+    virtual bool drain(uint32_t timeoutMs) override;
 
     virtual bool subscribe(const char* topic, uint8_t qos = 0) override;
     virtual bool unsubscribe(const char* topic) override;
@@ -32,6 +33,7 @@ private:
     public:
         void flush() override;
         void stop() override;
+        bool drain(uint32_t timeoutMs);
     };
 
     std::ostream& debug;

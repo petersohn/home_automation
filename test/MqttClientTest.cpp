@@ -14,6 +14,7 @@
 #include "common/DeviceConfigOta.hpp"
 #include "common/MqttClient.hpp"
 #include "common/OtaLifecycleReadiness.hpp"
+#include "common/OtaRestartGate.hpp"
 #include "common/OtaResultPublisher.hpp"
 #include "common/OtaTypes.hpp"
 #include "common/UploadJournal.hpp"
@@ -296,6 +297,34 @@ public:
             expectedAvailabilityMessages.end());
     }
 };
+
+TEST_F(MqttClientTest, DrainOnlyCallsConnectedTransportAndReturnsResult) {
+    EXPECT_FALSE(this->mqttClient.drain(1000));
+    EXPECT_EQ(this->connection.drainCalls, 0u);
+
+    this->mqttClient.loop();
+    ASSERT_TRUE(this->connection.isConnected());
+
+    this->connection.drainResult = false;
+    EXPECT_FALSE(this->mqttClient.drain(1000));
+    this->connection.drainResult = true;
+    EXPECT_TRUE(this->mqttClient.drain(1000));
+    EXPECT_EQ(this->connection.drainCalls, 2u);
+    EXPECT_EQ(this->connection.lastDrainTimeoutMs, 1000u);
+}
+
+TEST_F(MqttClientTest, ClosedTransportDuringSuccessfulDrainCannotRestart) {
+    OtaRestartGate gate;
+    gate.recordStagedOutcome(true, false);
+    gate.lifecycleResultSubmitted();
+    gate.requestRestart(false);
+    this->mqttClient.loop();
+    this->connection.disconnectDuringDrain = true;
+
+    gate.tcpDrainCompleted(this->mqttClient.drain(1000));
+
+    EXPECT_FALSE(gate.takeRestart());
+}
 
 TEST_F(MqttClientTest, NormalFlow) {
     this->loopUntil(100000);

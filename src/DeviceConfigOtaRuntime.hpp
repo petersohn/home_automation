@@ -11,6 +11,7 @@
 #include "common/DeviceConfigOta.hpp"
 #include "common/EspApi.hpp"
 #include "common/MqttClient.hpp"
+#include "common/OtaRestartGate.hpp"
 #include "common/OtaResultPublisher.hpp"
 #include "common/Wifi.hpp"
 
@@ -55,6 +56,7 @@ private:
     ConfigBootSelection selection;
     std::unique_ptr<DeviceConfigOta> ota;
     OtaResultPublisher resultPublisher;
+    OtaRestartGate restartGate;
     std::string commandTopic;
     std::string resultTopic;
     bool selected = false;
@@ -63,6 +65,7 @@ private:
     bool configurationPolicyValid = false;
     bool certificateValid = false;
     bool restartPending = false;
+    bool restartHard = false;
     bool loggedLifecycleEmptyTopicGate = false;
     bool loggedLifecycleReadinessGate = false;
     bool loggedLifecycleCanPublishGate = false;
