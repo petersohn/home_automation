@@ -42,10 +42,7 @@ void FakeMqttServer::disconnect(size_t id) {
 bool FakeMqttServer::subscribe(
     size_t id, const std::string& topic,
     std::function<void(size_t, FakeMessage)> callback) {
-    if (!this->subscriptions.emplace(std::make_pair(topic, id), callback)
-             .second) {
-        return false;
-    }
+    this->subscriptions.insert_or_assign(std::make_pair(topic, id), callback);
     auto it = this->retainedMessages.find(topic);
     if (it != this->retainedMessages.end()) {
         callback(it->second.first, it->second.second);

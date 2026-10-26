@@ -4,6 +4,7 @@
 - [Requirements](#requirements)
     - [Hardware](#hardware)
     - [Development](#development)
+- [Testing](#testing)
 - [Configuration](#configuration)
     - [`device_config.json`](#device_configjson)
     - [`global_config.json`](#global_configjson)
@@ -141,6 +142,14 @@ The `device_config.json` consists of the following fields:
     and `debugTopic`. An empty or slash-only prefix disables all three topics,
     even if those fields are set. If `servicePrefix` is absent or not a string,
     the three topic fields are used as usual.
+*   `otaEnabled`: Whether signed device-configuration updates over MQTT are
+    enabled. Defaults to `false`. Updates require a usable `servicePrefix` and
+    use `<prefix>/update/device-config` for commands and
+    `<prefix>/update/device-config/result` for results. The signature is checked
+    against the built-in certificate at `/ota_certificate.pem`.
+*   `configVersion`: The unsigned 32-bit version of this configuration. Older
+    installed configurations may omit this field and are treated as version
+    `0`; signed update documents must provide an explicit integer version.
 *   `debug`: Whether debugging through the serial interface is enabled. If set
     to false, then the TXD port can be used for other purposes. Be aware
     though that some signals are sent through this port at boot time, so it
@@ -167,6 +176,92 @@ The `device_config.json` consists of the following fields:
 *   `interfaces`: A list of the interfaces (sensors etc.) used by the device.
 *   `actions`: A list of the actions that describe how the device should react
     to state changes.
+
+## Device-configuration OTA deployment and recovery
+
+Configuration OTA updates only device configuration; it does not update
+firmware or `global_config.json`. The active configuration lives in
+`/device_config.json` (slot 1) or `/device_config_2.json` (slot 2). OTA writes
+the inactive slot and records lifecycle state in `/upload_status.json` and
+`/upload_status_backup.json`. Do not edit these metadata files manually. The
+download buffer `/device_config.download.json` is never selected at boot.
+
+An update is a signed, complete replacement document. Its `config` object is
+installed as the device configuration; the envelope fields are not written into
+the configuration slot:
+
+```json
+{
+  "type": "device-config",
+  "target": "AA:BB:CC:DD:EE:FF",
+  "config": {
+    "configVersion": 12,
+    "otaEnabled": true,
+    "servicePrefix": "home/example"
+  }
+}
+```
+
+`type` must be exactly `device-config`. `target` is the device's station MAC
+address, compared by its six hexadecimal octets; it is not the device name or
+MQTT topic. The signature authenticates the exact received JSON bytes with
+SHA-256 and a raw 64-byte ECDSA P-256 signature. JSON is not reserialized before
+signature verification. The update stream uses `begin` (hash and total size),
+ordered `chunk` (hash, byte offset, base64 data), and `finish` (hash and
+signature) commands. Hashes are lowercase SHA-256 hex. Retained commands are
+rejected.
+
+`configVersion` is required and must be an unsigned 32-bit integer. Status
+reports the running `configVersion` and `minimumAcceptedConfigVersion`, the
+inclusive minimum version accepted by the next update. Legacy local
+configurations without a version are treated as version `0`, so their first
+accepted update must be at least `1`; version jumps are allowed. Accepting
+version `V` durably advances the minimum to `V + 1` before trial boot. A failed
+trial rolls back to the previously confirmed configuration but does not restore
+the consumed version. Accepting `4294967295` exhausts the range permanently and
+is reported as `minimumAcceptedConfigVersion: null`.
+
+Status also exposes whether an update is idle, pending trial, or started trial,
+and the last persisted outcome (`STAGED`, `CONFIRMED`, or `ROLLED_BACK`) with its
+hash, version, and reason when available. `STAGED` is published using the old
+`servicePrefix`; confirmation uses the candidate's prefix, and rollback uses
+the restored configuration's prefix. A prefix change therefore moves the
+result topic to `<new-prefix>/update/device-config/result` after reboot.
+
+On first boot, the firmware initializes metadata from slot 1. During an OTA
+trial, the candidate is marked started before its configuration is parsed. The
+device confirms it only after MQTT is ready, the built-in certificate is valid,
+and the OTA command subscription succeeds. A power interruption or network
+outage before readiness leaves the candidate unconfirmed; the next boot rolls
+back to the previously confirmed slot. A temporary network outage does not
+time out an active trial. A device-name or `servicePrefix` change does not
+change signature targeting, which uses the station MAC address. Invalid
+interface entries remain nonfatal and are skipped as in ordinary configuration
+loading.
+
+If one metadata copy is damaged but the other contains a valid record, firmware
+can recover from the surviving copy and attempt to repair the journal; OTA
+remains available only after that repair succeeds. Conflicting records, failed
+lookups, or metadata with no recoverable valid copy lock out configuration OTA
+rather than automatically formatting SPIFFS. Normal device configuration
+loading may continue from the fallback slot, but that does not restore OTA
+rollback guarantees. `minimumAcceptedConfigVersion: null` means
+the unsigned 32-bit version range is exhausted; no later configuration version
+can be accepted. The current trial can still be confirmed.
+
+To reset OTA metadata, connect over USB serial and upload a known-good complete
+SPIFFS image with `python3 flash.py upload-fs data example_config`. This
+replaces the whole filesystem, not only metadata: include the desired primary
+configuration, global configuration, and `/ota_certificate.pem` in the image.
+There is no command that safely resets only one metadata copy. Preserve any
+configuration or certificate that must survive before replacing the image.
+
+SPIFFS mounts without autoformat, and firmware uses a redundant checksummed
+metadata journal with validation. These measures provide logical rollback only
+while the underlying filesystem remains consistent or recoverable. SPIFFS
+global garbage collection can affect unrelated files, so physical power-loss
+survival is not guaranteed; a filesystem recovery failure requires explicit
+service reprovisioning. Migration to LittleFS remains deferred.
 
 ## `global_config.json`
 
@@ -555,3 +650,34 @@ The `template` field provides simple value substitution. `%1`, `%2`, etc. are
 replaced by the corresponding stored value of the interface (1-based). For
 example, `template: "%2 %3"` produces the second and third values separated by a
 space.
+
+# Testing
+
+Build and run native tests from the repository root:
+
+```sh
+cmake -S . -B build
+cmake --build build -j2
+./build/home_automation_test
+```
+
+Run host-only end-to-end helper tests with `uv`:
+
+```sh
+PYTHONPATH=e2e uv run --with pytest --with pytest-timeout --with paho-mqtt \
+  --with pyserial --with cryptography python -m pytest \
+  --confcutdir=e2e/tests/isolated e2e/tests/isolated -q
+```
+
+Hardware suites require the Raspberry Pi test bench and replace the device's
+complete SPIFFS image for each independently provisioned scenario. From `e2e/`:
+
+```sh
+PYTHONPATH=$PWD python3 -m pytest \
+  tests/basic/ tests/signature_verify/ tests/device_config_ota/ -v
+```
+
+The device-configuration OTA suite signs payloads with test-only host material;
+the host private-key directory is never uploaded to SPIFFS. See
+[`e2e/signing_fixtures/README.md`](e2e/signing_fixtures/README.md) for fixture
+and signing details.

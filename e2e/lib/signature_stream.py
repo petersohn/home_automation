@@ -226,6 +226,8 @@ def send_stream(
     timeout: float = 5.0,
     retry_interval: float = 1.0,
     chunk_size: int = 256,
+    final_status: str = "OK",
+    report_decoder: Callable[[str], StreamReport | None] = decode_stream_report,
 ) -> StreamOutcome:
     if not targets:
         raise ValueError("at least one stream target is required")
@@ -248,6 +250,10 @@ def send_stream(
         raise ValueError("signature must contain exactly 64 bytes")
     if type(chunk_size) is not int or not 1 <= chunk_size <= 256:
         raise ValueError("chunk size must be between 1 and 256")
+    if not isinstance(final_status, str) or not final_status:
+        raise ValueError("final status must be nonempty")
+    if not callable(report_decoder):
+        raise ValueError("report decoder must be callable")
     if (
         isinstance(timeout, bool)
         or isinstance(retry_interval, bool)
@@ -316,7 +322,7 @@ def send_stream(
             if state is None:
                 continue
             event_cursors[name] = event_count
-            report = decode_stream_report(state)
+            report = report_decoder(state)
             if report is not None and report.hash == payload_hash and _is_failure(
                 report.status
             ):
@@ -357,7 +363,7 @@ def send_stream(
                 if state is None:
                     continue
                 event_cursors[name] = event_count
-                report = decode_stream_report(state)
+                report = report_decoder(state)
                 if report is None or report.hash != payload_hash:
                     continue
                 if _is_failure(report.status):
@@ -371,7 +377,7 @@ def send_stream(
                 if report.transferred != expected_count:
                     continue
                 if final:
-                    matches = report.status == "OK"
+                    matches = report.status == final_status
                 else:
                     matches = report.status == "PROGRESS"
                 if matches:

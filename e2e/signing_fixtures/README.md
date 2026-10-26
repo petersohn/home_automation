@@ -31,6 +31,25 @@ Device fixtures include:
 - `signing_test_malformed.pem`: malformed certificate text.
 - `signing_test_oversized.pem`: valid certificate padded beyond 4096 bytes.
 
+## Device-configuration OTA tests
+
+The `device_config_ota` hardware suite signs each configuration payload at test
+time with `host/signing_test_private_key.pem`. The RPi runner installs the
+pinned dependency from `requirements.txt` (`cryptography==45.0.7`). Each test
+uploads a complete SPIFFS baseline containing the configuration, global
+configuration, and a temporary `/ota_certificate.pem` copied from
+`device/signing_test.pem`. OTA candidate configurations and their signatures are
+generated in host memory; the private key path and `host/` directory are never
+passed to `Device.upload_config`.
+
+The suite discovers the target MAC from a fresh baseline status message, waits
+for a `STAGED` transfer acknowledgement, then correlates lifecycle outcomes by
+MAC, version, payload hash, status, and new MQTT event on either known prefix.
+Staging alone is not confirmation. Tests cover changed prefixes, candidate
+rollback, replay rejection, and an interrupted trial observed through the
+durable `Configuration boot selection: trial` serial marker before MQTT
+readiness. Boundary and power-write failure coverage remains in native tests.
+
 ## Raw64 signature format
 
 The payload is signed with ECDSA P-256 and SHA-256. `cryptography` returns a
@@ -95,10 +114,12 @@ Protocol tests verify broadcast policy with simulated targets; physical hardware
 suite has one device and does not claim multi-device acceptance.
 
 These keys, payloads, vector hashes, and metadata are test-only. Fixture
-generation requires `cryptography`; hardware acceptance consumes checked-in
-signatures and needs no Python crypto package or firmware install. `sha256` and
-expected-result metadata are unsigned descriptive fields; device verification
-authenticates payload bytes only, not vector metadata.
+generation and runtime OTA signing require the pinned `cryptography` package.
+Signature-verification hardware tests consume checked-in signatures, while the
+device-configuration suite signs fresh payloads using the host key. Neither
+suite installs firmware. `sha256` and expected-result metadata are unsigned
+descriptive fields; device verification authenticates payload bytes only, not
+vector metadata.
 
 ## Regeneration
 
@@ -114,5 +135,6 @@ python3 e2e/signing_fixtures/generate_fixtures.py \
 
 Generator emits private keys only beneath `host/`; public certificates and
 derived strict-PEM regression fixtures are regenerated together beneath
-`device/`. Hardware tests and CI consume checked-in fixtures and do not require
-`cryptography` installed. Never upload the `host/` directory.
+`device/`. The signature-verification suite consumes checked-in fixtures; OTA
+hardware tests read the checked-in test key at runtime. Never upload the `host/`
+directory.

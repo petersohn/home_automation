@@ -133,6 +133,7 @@ jobs:
           name: Install Python dependencies
           command: |
             pip3 install --break-system-packages pytest pytest-timeout paho-mqtt pyserial
+            pip3 install --break-system-packages -r e2e/signing_fixtures/requirements.txt
       - run:
           name: Upload firmware
           command: |
@@ -142,7 +143,7 @@ jobs:
           name: Run e2e tests
           command: |
             cd e2e
-            PYTHONPATH=$PWD python3 -m pytest tests/basic/ tests/signature_verify/ -v 2>&1
+            PYTHONPATH=$PWD python3 -m pytest tests/basic/ tests/signature_verify/ tests/device_config_ota/ -v 2>&1
       - store_artifacts:
           path: e2e/artifacts
           destination: serial-logs

@@ -761,3 +761,50 @@ TEST_F(ConfigParserTest, ParseActions_InvalidType_Skipped) {
     auto result = parser.parseDeviceConfig(root);
     EXPECT_EQ(result.actions.size(), 0u);
 }
+
+TEST_F(ConfigParserTest, DefaultsPreserveLegacyConfig) {
+    auto& root = parse(R"({
+        "availabilityTopic":"legacy/available",
+        "statusTopic":"legacy/status",
+        "debugTopic":"legacy/debug"
+    })");
+
+    const auto result = parser.parseDeviceConfig(root);
+
+    EXPECT_FALSE(result.common.otaEnabled);
+    EXPECT_EQ(result.common.configVersion, 0u);
+    EXPECT_TRUE(result.common.configVersionValid);
+    EXPECT_TRUE(result.common.servicePrefix.empty());
+    EXPECT_EQ(result.common.topics.availabilityTopic, "legacy/available");
+    EXPECT_EQ(result.common.topics.statusTopic, "legacy/status");
+    EXPECT_EQ(result.common.debugTopic, "legacy/debug");
+}
+
+TEST_F(ConfigParserTest, ParsesOtaFieldsAndNormalizesServicePrefix) {
+    auto& root = parse(R"({
+        "otaEnabled":true,
+        "configVersion":4294967295,
+        "servicePrefix":"home/device///",
+        "availabilityTopic":"legacy/available",
+        "statusTopic":"legacy/status",
+        "debugTopic":"legacy/debug"
+    })");
+
+    const auto result = parser.parseDeviceConfig(root);
+
+    EXPECT_TRUE(result.common.otaEnabled);
+    EXPECT_EQ(result.common.configVersion, UINT32_MAX);
+    EXPECT_TRUE(result.common.configVersionValid);
+    EXPECT_EQ(result.common.servicePrefix, "home/device");
+    EXPECT_EQ(result.common.topics.availabilityTopic, "home/device/available");
+    EXPECT_EQ(result.common.topics.statusTopic, "home/device/status");
+    EXPECT_EQ(result.common.debugTopic, "home/device/debug");
+}
+
+TEST_F(ConfigParserTest, MarksInvalidExplicitConfigVersion) {
+    auto& root = parse(R"({"configVersion":1.5})");
+
+    const auto result = parser.parseDeviceConfig(root);
+
+    EXPECT_FALSE(result.common.configVersionValid);
+}

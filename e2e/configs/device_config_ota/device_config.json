@@ -1,0 +1,9 @@
+{
+    "debug": true,
+    "name": "testDevice",
+    "servicePrefix": "home/testDevice",
+    "otaEnabled": true,
+    "configVersion": 1,
+    "interfaces": [],
+    "actions": []
+}

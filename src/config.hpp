@@ -30,6 +30,7 @@ extern DeviceConfig deviceConfig;
 
 void initConfig(
     std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp, Rtc& rtc,
-    MqttClient& mqttClient);
+    MqttClient& mqttClient,
+    const char* deviceConfigPath = "/device_config.json");
 
 #endif  // CONFIG_HPP

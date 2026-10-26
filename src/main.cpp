@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "DebugStream.hpp"
+#include "DeviceConfigOtaRuntime.hpp"
 #include "EspApiImpl.hpp"
 #include "EspRtc.hpp"
 #include "EspWifi.hpp"
@@ -65,6 +66,7 @@ MqttClient mqttClient(
             }
         }
     });
+DeviceConfigOtaRuntime deviceConfigOtaRuntime(debug, esp, mqttClient, wifi);
 std::unique_ptr<WifiStreambuf> wifiStream;
 std::unique_ptr<MqttStreambuf> mqttStream;
 
@@ -72,7 +74,9 @@ std::unique_ptr<MqttStreambuf> mqttStream;
 
 void setup() {
     WiFi.mode(WIFI_STA);
-    initConfig(debug, debugStream, esp, rtc, mqttClient);
+    const char* const deviceConfigPath =
+        deviceConfigOtaRuntime.selectConfigPath();
+    initConfig(debug, debugStream, esp, rtc, mqttClient, deviceConfigPath);
     mqttClient.setConfig(
         MqttConfig{
             deviceConfig.common.name,
@@ -86,6 +90,8 @@ void setup() {
             mqttLock, mqttClient, deviceConfig.common.debugTopic);
         debugStream.add(mqttStream.get());
     }
+
+    deviceConfigOtaRuntime.begin(deviceConfig.common);
 
     for (const auto& interface : deviceConfig.interfaces) {
         if (interface->hasInternalAction) {
@@ -120,6 +126,8 @@ void loop() {
     for (const auto& interface : deviceConfig.interfaces) {
         interface->interface->update(Actions{*interface});
     }
+
+    deviceConfigOtaRuntime.update();
 
     const auto rush = esp.getRush();
     if (rush != 0) {

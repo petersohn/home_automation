@@ -167,6 +167,20 @@ def test_decode_stream_report_allows_empty_hash_only_for_error() -> None:
     assert decode_stream_report('["OK","0",""]') is None
 
 
+def test_legacy_decoder_does_not_accept_ota_result_objects() -> None:
+    payload = json.dumps(
+        {
+            "status": "STAGED",
+            "transferred": 0,
+            "hash": "a" * 64,
+            "version": 1,
+            "reason": "",
+        }
+    )
+
+    assert decode_stream_report(payload) is None
+
+
 def test_broadcast_waits_for_every_ack_before_next_chunk(fake_clock: FakeClock) -> None:
     targets = _targets("fast", "middle", "slow")
     client = FakeMqttClient(fake_clock)

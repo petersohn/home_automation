@@ -30,6 +30,10 @@ struct DeviceConfigCommon {
     std::string debugTopic;
     uint8_t resetPin = 255;
     bool debug = false;
+    bool otaEnabled = false;
+    uint32_t configVersion = 0;
+    bool configVersionValid = true;
+    std::string servicePrefix;
 };
 
 #endif  // GLOBAL_CONFIG_HPP

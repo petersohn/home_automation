@@ -39,6 +39,10 @@ class Device:
         """Drive the enable pin low, powering the ESP off."""
         self._rpi.write(self._enable_pin, 0)
 
+    def enable(self) -> None:
+        """Drive the enable pin high, powering the ESP on."""
+        self._rpi.write(self._enable_pin, 1)
+
     def set_mqtt_client(self, mqtt_client: MqttClient) -> None:
         self._mqtt_client = None if mqtt_client is None else mqtt_client
 

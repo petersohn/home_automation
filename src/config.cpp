@@ -1,7 +1,5 @@
 #include "config.hpp"
 
-#include <FS.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -11,7 +9,6 @@
 #include <utility>
 #include <variant>
 
-#include "BearSslSignatureVerifier.hpp"
 #include "CounterInterface.hpp"
 #include "DallasTemperatureSensor.hpp"
 #include "DebugStream.hpp"
@@ -31,6 +28,7 @@
 #include "PowerSupplyInterface.hpp"
 #include "PublishAction.hpp"
 #include "PwmOutput.hpp"
+#include "SignatureVerifierFactory.hpp"
 #include "StatusInterface.hpp"
 #include "common/AnalogInput.hpp"
 #include "common/AnalogInputWithChannel.hpp"
@@ -217,58 +215,12 @@ std::unique_ptr<Interface> ConfigFactory::buildStatus(const StatusConfig&) {
 
 std::unique_ptr<Interface> ConfigFactory::buildSignatureVerify(
     const SignatureVerifyConfig& c) {
-    // Bound the certificate read before allocating its buffer.
-    static constexpr size_t maxCertificateSize = 4096;
     const auto transportState = [client = &this->mqttClient]() {
         return client->getTransportState();
     };
 
-    std::unique_ptr<SignatureVerifier> verifier;
-    File certificateFile = SPIFFS.open(c.certificate.c_str(), "r");
-    if (!certificateFile) {
-        this->debug << "Could not open certificate: " << c.certificate
-                    << std::endl;
-        // Keep the interface active so commands fail closed with this error.
-        verifier = std::make_unique<BearSslSignatureVerifier>(
-            SignatureError::certificateUnavailable);
-        return std::make_unique<SignatureVerifyInterface>(
-            this->esp, std::move(verifier), transportState);
-    }
-
-    const size_t certificateSize = certificateFile.size();
-    if (certificateSize == 0) {
-        this->debug << "Empty certificate file: " << c.certificate << std::endl;
-        verifier = std::make_unique<BearSslSignatureVerifier>(
-            SignatureError::invalidCertificate);
-    } else if (certificateSize > maxCertificateSize) {
-        this->debug << "Certificate too large: " << c.certificate << std::endl;
-        verifier = std::make_unique<BearSslSignatureVerifier>(
-            SignatureError::invalidCertificate);
-    } else {
-        std::unique_ptr<uint8_t[]> certificateBytes(
-            new (std::nothrow) uint8_t[certificateSize]);
-        if (!certificateBytes) {
-            this->debug << "Out of memory for certificate: " << c.certificate
-                        << std::endl;
-            verifier = std::make_unique<BearSslSignatureVerifier>(
-                SignatureError::internalError);
-        } else {
-            const int readLength =
-                certificateFile.read(certificateBytes.get(), certificateSize);
-            if (readLength < 0 ||
-                static_cast<size_t>(readLength) != certificateSize) {
-                this->debug << "Could not read certificate: " << c.certificate
-                            << std::endl;
-                verifier = std::make_unique<BearSslSignatureVerifier>(
-                    SignatureError::certificateUnavailable);
-            } else {
-                // The backend owns copied key material; this buffer can expire.
-                verifier = std::make_unique<BearSslSignatureVerifier>(
-                    SignatureBytes{certificateBytes.get(), certificateSize});
-            }
-        }
-    }
-    certificateFile.close();
+    std::unique_ptr<SignatureVerifier> verifier =
+        loadSignatureVerifier(this->debug, c.certificate.c_str());
     return std::make_unique<SignatureVerifyInterface>(
         this->esp, std::move(verifier), transportState);
 }
@@ -509,12 +461,11 @@ DeviceConfig deviceConfig;
 
 void initConfig(
     std::ostream& debug, DebugStreambuf& debugStream, EspApi& esp, Rtc& rtc,
-    MqttClient& mqttClient) {
-    SPIFFS.begin();
+    MqttClient& mqttClient, const char* deviceConfigPath) {
     JsonParser jsonParser(debug);
 
     ParsedData globalData = jsonParser.parseFile("/global_config.json");
-    ParsedData deviceData = jsonParser.parseFile("/device_config.json");
+    ParsedData deviceData = jsonParser.parseFile(deviceConfigPath);
 
     ConfigParser parser(debug);
     ConfigFactory factory(debug, debugStream, esp, rtc, mqttClient);

@@ -1,5 +1,6 @@
 #include "ConfigParser.hpp"
 
+#include "../tools/JsonParsing.hpp"
 #include "../tools/collection.hpp"
 
 using namespace ArduinoJson;
@@ -608,6 +609,7 @@ DeviceConfigDescription ConfigParser::parseDeviceConfig(
         while (!prefix.empty() && prefix.back() == '/') {
             prefix.pop_back();
         }
+        result.common.servicePrefix = prefix;
         if (prefix.empty()) {
             result.common.topics.availabilityTopic.clear();
             result.common.topics.statusTopic.clear();
@@ -616,6 +618,16 @@ DeviceConfigDescription ConfigParser::parseDeviceConfig(
             result.common.topics.availabilityTopic = prefix + "/available";
             result.common.topics.statusTopic = prefix + "/status";
             result.common.debugTopic = prefix + "/debug";
+        }
+    }
+    JsonVariant otaEnabled = root["otaEnabled"];
+    if (otaEnabled.is<bool>()) {
+        result.common.otaEnabled = otaEnabled.as<bool>();
+    }
+    if (root.containsKey("configVersion")) {
+        JsonVariant configVersion = root["configVersion"];
+        if (!tools::parseUint32(configVersion, result.common.configVersion)) {
+            result.common.configVersionValid = false;
         }
     }
     result.common.debug = parseDebugEnabled(root);
