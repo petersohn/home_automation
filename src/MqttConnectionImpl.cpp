@@ -10,6 +10,21 @@ constexpr uint16_t mqttBufferSize = 1024;
 
 }  // unnamed namespace
 
+void MqttConnectionImpl::TraceWiFiClient::flush() {
+    const unsigned long start = millis();
+    const bool result = WiFiClient::flush(0);
+    Serial.printf(
+        "WiFiClient.flush result=%d elapsed=%lu ms\n", result,
+        millis() - start);
+}
+
+void MqttConnectionImpl::TraceWiFiClient::stop() {
+    const unsigned long start = millis();
+    const bool result = WiFiClient::stop(0);
+    Serial.printf(
+        "WiFiClient.stop result=%d elapsed=%lu ms\n", result, millis() - start);
+}
+
 bool MqttConnectionImpl::connect(
     const char* host, uint16_t port, const char* username, const char* password,
     const char* clientId, const std::optional<Message>& will,

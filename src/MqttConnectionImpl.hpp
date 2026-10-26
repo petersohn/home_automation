@@ -28,9 +28,15 @@ public:
     virtual void loop() override;
 
 private:
+    class TraceWiFiClient : public WiFiClient {
+    public:
+        void flush() override;
+        void stop() override;
+    };
+
     std::ostream& debug;
     Lock& lock;
-    WiFiClient wifiClient;
+    TraceWiFiClient wifiClient;
     PubSubClient mqttClient;
 
     ReceiveHandler receiveHandler;
