@@ -226,8 +226,14 @@ def _base_update(version: int, prefix: str, **changes: object) -> dict[str, obje
 
 def _assert_staged(outcome: StreamOutcome, baseline: dict[str, object]) -> None:
     mac = _value(baseline, "mac")
-    assert outcome.verified == {mac}
-    assert outcome.dropped == {}
+    client = _value(baseline, "client")
+    topic = _result_topic(_value(baseline, "prefix"))
+    diagnostic = (
+        f"result topic {topic}: state={client.get_state(topic)!r}, "
+        f"events={client.get_event_count(topic)}, dropped={outcome.dropped}"
+    )
+    assert outcome.verified == {mac}, diagnostic
+    assert outcome.dropped == {}, diagnostic
 
 
 def test_sequential_updates_confirm_versions_across_alternating_slots(
